@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src https: http: data:;" />
+    <title>Audio &amp; subtitle tool</title>
+    <link rel="stylesheet" href="tracks.css" />
+  </head>
+  <body>
+    <div class="backdrop" id="backdrop"></div>
+    <section class="panel" role="dialog" aria-label="Audio and subtitle tool">
+      <header>
+        <h1>Audio &amp; subtitles</h1>
+        <button type="button" class="close" id="close" title="Close (Esc)">✕</button>
+      </header>
+      <div class="body">
+        <p class="note">Pick the exact audio and subtitle track once and set it on a whole season, show or movie, like PASTA. Plex then uses those tracks every time you play.</p>
+        <div id="fields"></div>
+        <div class="actions">
+          <button type="button" id="apply" class="primary">Apply</button>
+          <span id="status"></span>
+        </div>
+        <div class="bar" id="bar" hidden><i id="barFill"></i></div>
+        <h2>Tracks in <span id="sampleName">this title</span></h2>
+        <div id="preview" class="preview">—</div>
+      </div>
+    </section>
+    <div id="picker" hidden>
+      <div class="pick">
+        <input id="filter" type="text" placeholder="Type to filter…" spellcheck="false" />
+        <div id="pickList"></div>
+      </div>
+    </div>
+    <script src="tracks-core.js"></script>
+    <script src="tracks.js"></script>
+  </body>
+</html>

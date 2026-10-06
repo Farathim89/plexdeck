@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+:root {
+  --tb-bg: #141414;
+  --tb-fg: #e5e5e5;
+  --tb-hover: #2c2c2c;
+  --plex: #e5a00d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--tb-bg);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+  forced-color-adjust: none;
+}
+
+/* The draggable bar; env() = the space left of Windows' min/max/close buttons. */
+.bar {
+  position: fixed;
+  left: env(titlebar-area-x, 0);
+  top: env(titlebar-area-y, 0);
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, 36px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 12px;
+  color: var(--tb-fg);
+  -webkit-app-region: drag;
+}
+
+.logo { width: 18px; height: 18px; flex: none; fill: var(--plex); }
+.brand { font-size: 13px; font-weight: 700; letter-spacing: .3px; margin: 0 10px 0 4px; }
+
+.group { display: flex; -webkit-app-region: no-drag; }
+
+button {
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--tb-fg);
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 9px;
+}
+button:hover, button.open { background: var(--tb-hover); }
+button:active { color: var(--plex); }
+
+.icon { padding: 4px 6px; display: grid; place-items: center; }
+.icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.title {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #b5b5b5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.blurred .logo, body.blurred .brand, body.blurred button, body.blurred .title { opacity: 0.5; }
+
+/* PC | TV switch */
+.modes { gap: 0; margin-right: 6px; background: rgba(255, 255, 255, .06); border-radius: 999px; padding: 2px; }
+.mode { padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .5px; color: var(--tb-fg); opacity: .7; }
+.mode:hover { background: var(--tb-hover); opacity: 1; }
+.mode.on { background: var(--plex); color: #111; opacity: 1; }

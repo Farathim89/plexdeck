@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';" />
+    <title>PlexDeck settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="backdrop" id="backdrop"></div>
+    <section class="panel" role="dialog" aria-label="PlexDeck settings">
+      <header>
+        <h1>PlexDeck settings</h1>
+        <button type="button" class="close" id="close" title="Close (Esc)">✕</button>
+      </header>
+      <div class="body">
+        <nav id="nav">
+          <button type="button" data-pane="playback" class="active">Playback</button>
+          <button type="button" data-pane="appearance">Appearance</button>
+          <button type="button" data-pane="controls">Remote &amp; controller</button>
+          <button type="button" data-pane="plex">Plex</button>
+          <button type="button" data-pane="about">About</button>
+        </nav>
+        <div class="panes">
+          <div class="pane active" id="playback">
+            <h2>Skip intros and credits</h2>
+            <label class="row"><span>Auto-skip intros</span><input type="checkbox" data-key="autoSkipIntro" /></label>
+            <label class="row"><span>…after</span><span class="slider"><input type="range" min="0" max="30" data-key="skipIntroDelay" /><output></output></span></label>
+            <label class="row"><span>Auto-skip credits</span><input type="checkbox" data-key="autoSkipCredits" /></label>
+            <label class="row"><span>…after</span><span class="slider"><input type="range" min="0" max="30" data-key="skipCreditsDelay" /><output></output></span></label>
+            <p class="note">PlexDeck presses Plex's own <b>Skip Intro</b> / <b>Skip Credits</b> button once it has been on screen this long, so you still get a few seconds to watch. Your server needs intro/credit markers (Plex makes them for most TV).</p>
+            <p class="note">Quality, subtitles, audio language and auto-play next episode are in Plex's own settings.</p>
+            <button type="button" class="secondary" data-action="plex">Open Plex settings</button>
+          </div>
+
+          <div class="pane" id="appearance">
+            <h2>Theme</h2>
+            <div class="themes" id="themes"></div>
+            <h2>Look</h2>
+            <label class="row"><span>Text size</span><span class="slider"><input type="range" min="70" max="200" step="5" data-key="textSize" data-scale="100" /><output></output></span></label>
+            <label class="row"><span>Font</span>
+              <select data-key="fontFamily">
+                <option value="">Plex default</option>
+                <option>Segoe UI</option><option>Arial</option><option>Calibri</option><option>Verdana</option>
+                <option>Tahoma</option><option>Trebuchet MS</option><option>Georgia</option><option>Consolas</option>
+                <option>Cascadia Code</option><option>Comic Sans MS</option>
+              </select>
+            </label>
+            <label class="row"><span>Keep Plex colours with a Windows contrast theme</span><input type="checkbox" data-key="plexColours" /></label>
+            <p class="note">With a Windows contrast theme on, Windows recolours every page and the volume and seek sliders can disappear. Leave this on to keep Plex's own colours; turn it off to use your contrast theme.</p>
+            <h2>PC / TV mode</h2>
+            <label class="row"><span>Start in</span>
+              <select data-key="startMode">
+                <option value="last">The mode I used last</option>
+                <option value="pc">PC mode (mouse &amp; keyboard)</option>
+                <option value="tv">TV mode (controller / remote)</option>
+              </select>
+            </label>
+            <label class="row"><span>Theme music on show pages (TV mode)</span><input type="checkbox" data-key="themeMusic" /></label>
+            <label class="row"><span>Screensaver after (TV mode)</span>
+              <select data-key="screensaver" data-number="1"><option value="0">Never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
+            <label class="row"><span>Switch by itself (controller → TV, mouse → PC)</span><input type="checkbox" data-key="autoMode" /></label>
+            <p class="note">TV mode is a controller-first layout like Plex's TV apps. Switch any time with the <b>PC | TV</b> buttons in the title bar or <b>F10</b>.</p>
+            <h2>Picture &amp; sound (native player)</h2>
+            <label class="row"><span>HDR on HDR screens <small>(Windows HDR on)</small></span><input type="checkbox" data-key="hdr" /></label>
+            <label class="row"><span>Surround passthrough to your receiver</span>
+              <select data-key="passthrough">
+                <option value="off">Off — PC decodes the sound</option>
+                <option value="dolby-dts">Dolby Digital / DTS</option>
+                <option value="all">All, incl. TrueHD / Atmos / DTS-HD</option>
+              </select></label>
+            <label class="row"><span>Match screen refresh rate to the video</span><input type="checkbox" data-key="matchRefresh" /></label>
+            <label class="row"><span>Default volume</span><span class="slider"><input type="range" min="0" max="100" step="5" data-key="defaultVolume" /><output></output></span></label>
+            <label class="row"><span>Video decoding</span>
+              <select data-key="hwDecode"><option value="auto">Automatic (graphics card)</option><option value="d3d11">Direct3D 11</option><option value="off">Software (most compatible)</option></select></label>
+            <h2>Subtitles &amp; languages (native player)</h2>
+            <label class="row"><span>Subtitle size</span><select data-key="subSize"><option>Small</option><option>Normal</option><option>Large</option><option>Huge</option></select></label>
+            <label class="row"><span>Subtitle colour</span><select data-key="subColor"><option>White</option><option>Yellow</option><option>Cyan</option><option>Green</option><option>Gray</option></select></label>
+            <label class="row"><span>Subtitle position</span><select data-key="subPosition"><option>Bottom</option><option>Raised</option></select></label>
+            <label class="row"><span>Dark box behind subtitles</span><input type="checkbox" data-key="subBackground" /></label>
+            <label class="row"><span>Preferred audio language</span><select data-key="preferredAudioLang"><option>Any</option><option>English</option><option>Japanese</option><option>Swedish</option><option>Spanish</option><option>French</option><option>German</option><option>Italian</option><option>Korean</option><option>Chinese</option></select></label>
+            <label class="row"><span>Turn on subtitles automatically</span><input type="checkbox" data-key="autoSubtitles" /></label>
+            <label class="row"><span>Subtitle language</span><select data-key="preferredSubtitleLang"><option>English</option><option>Swedish</option><option>Japanese</option><option>Spanish</option><option>French</option><option>German</option></select></label>
+            <label class="row"><span>Prefer subtitles without SDH / CC</span><input type="checkbox" data-key="preferNonSdh" /></label>
+            <p class="note">Picture &amp; sound settings take effect the next time a video starts. Styled (ASS) subtitles keep their own look.</p>
+            <label class="row"><span>PC mode player</span>
+              <select data-key="pcPlayerEngine">
+                <option value="mpv">Native (mpv) for your own media</option>
+                <option value="plex">Plex's own player</option>
+              </select>
+            </label>
+            <label class="row"><span>TV mode player</span>
+              <select data-key="playerEngine">
+                <option value="mpv">Native (mpv) — plays every format, no converting</option>
+                <option value="builtin">Built-in — server converts what it can't play</option>
+              </select>
+            </label>
+            <h2>Window</h2>
+            <label class="row"><span>Start maximised</span><input type="checkbox" data-key="startMaximized" /></label>
+            <label class="row"><span>Keep running in the tray when closed</span><input type="checkbox" data-key="closeToTray" /></label>
+            <label class="row"><span>Start with Windows <small id="swNote">(in the tray, ready to play)</small></span><input type="checkbox" data-key="startWithWindows" /></label>
+            <p class="note">With the tray on, ✕ hides the window and music keeps playing. Click the tray icon to come back; right-click it for Play/Pause, skip and Quit.</p>
+            <p class="note">Shortcuts: <b>Ctrl + / − / 0</b> text size · <b>F11</b> full screen · <b>Alt ← / →</b> back / forward · <b>F5</b> reload · <b>Ctrl ,</b> these settings.</p>
+          </div>
+
+          <div class="pane" id="controls">
+            <h2>Navigation</h2>
+            <label class="row"><span>Arrow-key navigation</span><input type="checkbox" data-key="keyboardNav" /></label>
+            <p class="note">Arrow keys move an orange ring between posters and buttons; <b>Enter</b> opens. In the player the arrows seek and change volume as usual.</p>
+            <label class="row"><span>Game controller (PS4 / PS5 / Xbox)</span><input type="checkbox" data-key="controller" /></label>
+            <table class="keys">
+              <tr><td>D-pad / left stick</td><td>Move · in the player: seek / volume</td></tr>
+              <tr><td>Cross / A</td><td>Open · in the player: play / pause</td></tr>
+              <tr><td>Circle / B</td><td>Back: opens the side menu in a library · back a page on a show · closes the player</td></tr>
+              <tr><td>Triangle / Y</td><td>Actions menu (⋮) of the item</td></tr>
+              <tr><td>L1 / R1</td><td>Back / forward page</td></tr>
+              <tr><td>L2 / R2</td><td>Rewind / fast-forward (player)</td></tr>
+              <tr><td>Options / Start</td><td>These settings</td></tr>
+            </table>
+            <p class="note">Media keys and most remotes (Play/Pause, Next, Previous, Volume) work out of the box.</p>
+            <h2>Controller test</h2>
+            <div class="padtest" id="padtest">Press any button on your controller…</div>
+            <p class="note">Shows what PlexDeck reads from your controller. If a button shows the wrong name here, tell me what this box says.</p>
+          </div>
+
+          <div class="pane" id="plex">
+            <h2>What PlexDeck shows</h2>
+            <label class="row radio"><input type="radio" name="source" value="app" data-key="source" /><span><b>Everything Plex has</b> (app.plex.tv): your libraries plus Discover, Watchlist, Live TV, free Movies &amp; TV.</span></label>
+            <label class="row radio"><input type="radio" name="source" value="server" data-key="source" /><span><b>Just my server</b>: opens your server's own web app directly. Works on your home network without internet.</span></label>
+            <label class="row"><span>Server address</span><input type="text" data-key="serverUrl" placeholder="http://192.168.1.10:32400" spellcheck="false" /></label>
+            <p class="note">Libraries, Home rows, pinned libraries and their order are managed in Plex itself (hover a library → ⋯ → Pin / Manage).</p>
+            <button type="button" class="secondary" data-action="plex">Open Plex settings</button>
+          </div>
+
+          <div class="pane" id="about">
+            <h2>PlexDeck <span id="version"></span></h2>
+            <p class="note">An unofficial Windows desktop app for Plex, by Farathim. It runs the official Plex web app and adds the extras above.</p>
+            <p class="note" id="imported" hidden>Your settings from the older PlexPlayer were imported on first start.</p>
+            <p class="note" id="engine"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <script src="settings.js"></script>
+  </body>
+</html>

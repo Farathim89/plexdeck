@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build-log.txt
+plexdeck-data/
+plexplayer-data/
+# mpv is fetched for builds (too big for git): npm run vendor-mpv
+vendor/mpv/mpv.exe
+vendor/mpv/d3dcompiler_43.dll
+vendor/mpv/doc/

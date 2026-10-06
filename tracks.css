@@ -1,0 +1,48 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+:root { --bg: #1f1f1f; --panel: #282828; --line: #3a3a3a; --fg: #eaeaea; --dim: #a3a3a3; --plex: #e5a00d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; font: 15px "Segoe UI", system-ui, sans-serif; color: var(--fg); background: transparent; forced-color-adjust: none; }
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .66); }
+.panel { position: absolute; inset: 0; margin: auto; width: min(860px, calc(100% - 48px)); height: min(720px, calc(100% - 48px));
+  display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.6); overflow: hidden; }
+header { display: flex; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; flex: 1; font-size: 21px; font-weight: 600; }
+.close { background: none; border: 0; color: var(--dim); font-size: 18px; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; }
+.close:hover { background: var(--panel); color: var(--fg); }
+.body { flex: 1; overflow-y: auto; padding: 6px 26px 24px; }
+.note { color: var(--dim); font-size: 13.5px; line-height: 1.5; }
+h2 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--plex); margin: 22px 0 8px; font-weight: 600; }
+
+/* A field: label, ◀ value ▶. The focused one has a white outline. */
+.field { display: grid; grid-template-columns: 150px 40px 1fr 40px; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; margin-bottom: 4px; border: 2px solid transparent; }
+.field.focus { border-color: #fff; background: rgba(255,255,255,.05); }
+.field.off { opacity: .4; }
+.field .label { color: var(--dim); }
+.field .value { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.field .value:hover { border-color: var(--plex); }
+.arrow { background: none; border: 0; color: var(--dim); font-size: 18px; height: 38px; border-radius: 6px; cursor: pointer; }
+.arrow:hover { background: var(--panel); color: var(--fg); }
+
+.actions { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+.primary { background: var(--plex); color: #111; border: 0; border-radius: 8px; padding: 10px 26px; font: inherit; font-weight: 700; cursor: pointer; border: 2px solid transparent; }
+.primary.focus { border-color: #fff; }
+.primary:disabled { opacity: .5; cursor: default; }
+#status { color: var(--dim); font-size: 14px; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel); margin-top: 12px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--plex); transition: width .2s; }
+
+.preview { background: #181818; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; line-height: 1.7; color: #d4d4d4; }
+.preview b { color: var(--fg); }
+.tag { color: var(--plex); font-size: 12px; margin-left: 6px; }
+
+/* Full list for picking a value (filter by typing). */
+#picker { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.5); }
+#picker[hidden] { display: none; }
+.pick { width: min(620px, calc(100% - 60px)); max-height: min(620px, calc(100% - 60px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+#filter { margin: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; color: var(--fg); font: inherit; outline: none; }
+#filter:focus { border-color: var(--plex); }
+#pickList { overflow-y: auto; padding: 0 8px 10px; }
+.opt { padding: 9px 12px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opt:hover { background: var(--panel); }
+.opt.focus { border-color: #fff; background: rgba(255,255,255,.05); }
+.opt.current { color: var(--plex); }

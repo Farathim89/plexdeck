@@ -1,0 +1,103 @@
+{
+  "name": "plexdeck",
+  "productName": "PlexDeck",
+  "version": "5.0.0",
+  "description": "PlexDeck: an unofficial Windows app for Plex, with a TV mode for controllers, a native mpv player, themes and more",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:setup": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable",
+    "vendor-mpv": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vendor-mpv.ps1"
+  },
+  "author": "Farathim",
+  "devDependencies": {
+    "electron": "32.3.3",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.farathim.plexplayer",
+    "productName": "PlexDeck",
+    "copyright": "Copyright © 2026 Farathim — GPL-3.0-or-later",
+    "files": [
+      "LICENSE",
+      "build/icon.ico",
+      "loading.html",
+      "main.js",
+      "migrate.js",
+      "mpv-main.js",
+      "preload.js",
+      "refresh.js",
+      "settings.css",
+      "settings.html",
+      "settings.js",
+      "titlebar.css",
+      "titlebar.html",
+      "titlebar.js",
+      "tracks-core.js",
+      "tracks.css",
+      "tracks.html",
+      "tracks.js",
+      "tv-main.js",
+      "tv-music.js",
+      "tv-player.js",
+      "tv.css",
+      "tv.html",
+      "tv.js",
+      "vendor/hls.LICENSE",
+      "vendor/hls.min.js"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/mpv",
+        "to": "mpv",
+        "filter": [
+          "mpv.exe",
+          "d3dcompiler_43.dll",
+          "MPV-LICENSE.txt"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PlexDeck",
+      "uninstallDisplayName": "PlexDeck",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "runAfterFinish": true,
+      "include": "build/installer.nsh",
+      "artifactName": "PlexDeck-Setup-${version}.exe",
+      "license": "LICENSE"
+    },
+    "portable": {
+      "artifactName": "PlexDeck-Portable-${version}.exe"
+    }
+  },
+  "dependencies": {
+    "hls.js": "^1.7.3"
+  },
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/Farathim89/plexdeck",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Farathim89/plexdeck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Farathim89/plexdeck/issues"
+  }
+}

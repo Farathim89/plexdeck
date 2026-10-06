@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea to make PlexDeck better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: What should PlexDeck do, and in which mode (PC / TV)?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What would it make easier? If the official Plex app on another device does it, which one?

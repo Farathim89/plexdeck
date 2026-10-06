@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';" />
+    <title>PlexDeck</title>
+    <link rel="stylesheet" href="titlebar.css" />
+  </head>
+  <body>
+    <!-- Our title bar. Minimise / maximise / close are drawn by Windows on the right. -->
+    <header class="bar">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 3h5.5l5.5 9-5.5 9H7l5.5-9z" />
+      </svg>
+      <span class="brand">PlexDeck</span>
+      <div class="group">
+        <button type="button" class="icon" id="back" title="Back (Alt+Left)">
+          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <button type="button" class="icon" id="forward" title="Forward (Alt+Right)">
+          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+      <nav class="group menus">
+        <button type="button" data-menu="0">App</button>
+        <button type="button" data-menu="1">Edit</button>
+        <button type="button" data-menu="2">View</button>
+        <button type="button" data-menu="3">Navigate</button>
+        <button type="button" data-menu="4">Help</button>
+      </nav>
+      <div id="title" class="title">PlexDeck</div>
+      <div class="group modes" role="radiogroup" aria-label="Mode">
+        <button type="button" class="mode" data-mode="pc" title="PC mode: mouse &amp; keyboard (F10)">PC</button>
+        <button type="button" class="mode" data-mode="tv" title="TV mode: controller / remote (F10)">TV</button>
+      </div>
+      <div class="group">
+        <button type="button" class="icon" id="settings" title="PlexDeck settings (Ctrl+,)">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+        </button>
+      </div>
+    </header>
+    <script src="titlebar.js"></script>
+  </body>
+</html>

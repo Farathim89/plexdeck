@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Plex problem (also happens in your web browser)
+    url: https://forums.plex.tv/
+    about: If the same thing happens at app.plex.tv in a normal browser, it's a Plex issue — the Plex forums can help.

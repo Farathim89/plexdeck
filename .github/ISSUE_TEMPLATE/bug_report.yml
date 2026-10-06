@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in PlexDeck doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve PlexDeck!
+        **Does the same problem happen at app.plex.tv in your normal web browser too?** Then it's a Plex issue,
+        not a PlexDeck one — the [Plex forums](https://forums.plex.tv/) are the place for it.
+        Please don't post your server address, Plex token, usernames or passwords here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Press ...
+        3. See ...
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Where
+      options:
+        - PC mode (mouse & keyboard)
+        - TV mode (controller / remote)
+        - Native player (mpv)
+        - Settings / title bar / tray
+        - Installer
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PlexDeck version
+      description: Help → About PlexDeck
+      placeholder: "5.0.0"
+  - type: dropdown
+    id: build
+    attributes:
+      label: Installer or portable?
+      options:
+        - Installer (PlexDeck-Setup)
+        - Portable (PlexDeck-Portable)
+    validations:
+      required: true
+  - type: input
+    id: controller
+    attributes:
+      label: Controller / remote (if any)
+      placeholder: "PS4 DualShock 4 over Bluetooth"
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"

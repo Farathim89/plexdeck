@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self'; script-src 'self'; img-src https: http: data:; media-src blob: https: http:; connect-src https: http:; worker-src blob:;" />
+    <title>PlexDeck TV</title>
+    <link rel="stylesheet" href="tv.css" />
+  </head>
+  <body>
+    <!-- Everything is laid out for a 1920-wide TV screen and scaled to the window. -->
+    <div id="stage">
+      <div id="bg"></div>
+      <div id="art"><img id="artImg" alt="" /></div>
+      <div id="shade"></div>
+
+      <nav id="menu" aria-label="Menu">
+        <div id="profile"><img id="avatar" alt="" /><span id="userName"></span></div>
+        <div id="menuItems"></div>
+      </nav>
+
+      <main id="main">
+        <div id="tabs"></div>
+        <div id="clock"></div>
+        <section id="hero">
+          <h1 id="heroTitle"></h1>
+          <h2 id="heroSub"></h2>
+          <div id="heroMeta"></div>
+          <div id="heroLine"></div>
+          <p id="heroSummary"></p>
+          <div id="heroCast"></div>
+        </section>
+        <div id="rowsWindow"><div id="rows"></div></div>
+      </main>
+
+
+      <!-- The player (TV-app layout) -->
+      <div id="player" hidden>
+        <video id="video"></video>
+        <div id="pSpinner" class="pspin"></div>
+        <div id="pShadeTop"></div><div id="pShadeBottom"></div>
+        <div class="ptop"><div id="pTitle"></div><div id="pSub"></div></div>
+        <div class="pbottom">
+          <div class="pseek"><div id="pBar"><i id="pFill"></i><b id="pKnob"></b></div></div>
+          <div class="ptimes"><span id="pTime">0:00</span><span id="pLeft">-0:00</span></div>
+          <div id="pButtons">
+            <div class="pgroup">
+              <div class="pb" data-b="subs" title="Subtitles"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M13 15h4M7 11h10"/></svg></div>
+              <div class="pb" data-b="audio" title="Audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></div>
+              <div class="pb" data-b="quality" title="Quality"><svg viewBox="0 0 24 24"><text x="12" y="16" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor" stroke="none">HD</text><rect x="3" y="5" width="18" height="14" rx="2"/></svg></div>
+            </div>
+            <div class="pgroup center">
+              <div class="pb" id="bPrev" data-b="prev" title="Previous"><svg viewBox="0 0 24 24"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></div>
+              <div class="pb big" id="bPlay" data-b="play" title="Play / pause"></div>
+              <div class="pb" id="bNext" data-b="next" title="Next"><svg viewBox="0 0 24 24"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></div>
+            </div>
+            <div class="pgroup right">
+              <div class="pb" id="bMore" data-b="more" title="Speed, sync, subtitle size"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>
+              <div class="pb" id="bChapters" data-b="chapters" title="Chapters"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <button id="pSkip" type="button" hidden>Skip Intro</button>
+        <div id="pUpNext" hidden>
+          <img id="pUpNextImg" alt="" />
+          <div><div class="un-label">Up Next</div><div id="pUpNextTitle"></div><div id="pUpNextCount"></div>
+          <div class="un-hint">A: play now · B: keep watching</div></div>
+        </div>
+        <div id="pMenu" hidden><h3 id="pMenuTitle"></h3><div id="pMenuList"></div></div>
+      </div>
+
+      <!-- Music: Now Playing, and the small bar while browsing -->
+      <div id="music" hidden>
+        <img id="mArt" alt="" />
+        <div class="mInfo">
+          <div id="mTitle"></div><div id="mArtist"></div><div id="mAlbum"></div>
+          <div class="mBar"><i id="mFill"></i></div>
+          <div class="mTimes"><span id="mTime">0:00</span><span id="mLeft">-0:00</span></div>
+          <div class="mControls"><span class="mHint">◀ previous</span><div id="mPlay" class="pb big"></div><span class="mHint">next ▶</span></div>
+          <div id="mQueue"></div><div id="mNext"></div>
+          <div class="mHelp">A play/pause · ←/→ track · ↑/↓ ±15 s · B back to browsing · Start stop</div>
+        </div>
+      </div>
+      <div id="mini" hidden><img id="miniArt" alt="" /><div><div id="miniTitle"></div><div id="miniArtist"></div></div></div>
+      <!-- Screensaver -->
+      <div id="saver" hidden><img id="saverA" alt="" /><img id="saverB" alt="" /><div id="saverInfo"><div id="saverClock"></div><div id="saverTitle"></div></div></div>
+      <!-- Photos -->
+      <div id="photo" hidden><img id="photoImg" alt="" /><div id="photoCap"></div></div>
+      <div id="message" hidden>
+        <div class="spinner"></div>
+        <p id="messageText"></p>
+        <button id="messageButton" type="button" hidden></button>
+      </div>
+    </div>
+    <script src="vendor/hls.min.js"></script>
+    <script src="tv-player.js"></script>
+    <script src="tv-music.js"></script>
+    <script src="tv.js"></script>
+  </body>
+</html>

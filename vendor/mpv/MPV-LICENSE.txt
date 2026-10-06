@@ -1,0 +1,5 @@
+mpv — https://mpv.io
+This folder contains mpv.exe (Windows build by shinchiro, v0.41.0), used by PlexPlayer
+as its native video player. mpv is free software, licensed under the GNU General Public
+License v2 or later (parts under the GNU LGPL v2.1 or later). Source code:
+https://github.com/mpv-player/mpv   Windows builds: https://github.com/shinchiro/mpv-winbuild-cmake
