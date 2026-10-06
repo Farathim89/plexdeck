@@ -13,7 +13,7 @@ a stack of small extras.
 
 | TV mode — Live TV | TV mode — Discover |
 |---|---|
-| ![TV mode, Live TV](docs/tv-epg.png) | ![TV mode, Discover](docs/tv-discover.png) |
+| ![TV mode, Live TV](docs/tv-epg.jpg) | ![TV mode, Discover](docs/tv-discover.jpg) |
 | **PC mode — Live TV guide** | **PC mode — themes (paintbrush)** |
 | ![PC mode, Live TV guide](docs/pc-livetv.png) | ![PC mode, Midnight theme with the paintbrush menu](docs/pc-themes.png) |
 
