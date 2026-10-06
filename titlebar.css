@@ -72,3 +72,9 @@ body.blurred .logo, body.blurred .brand, body.blurred button, body.blurred .titl
 .mode { padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .5px; color: var(--tb-fg); opacity: .7; }
 .mode:hover { background: var(--tb-hover); opacity: 1; }
 .mode.on { background: var(--plex); color: #111; opacity: 1; }
+
+/* "Update 5.1.0" — shown only when a newer version is out; opens the download page. */
+.update { -webkit-app-region: no-drag; flex: none; margin-right: 8px; padding: 3px 12px; border: 1px solid var(--plex);
+  border-radius: 999px; background: none; color: var(--plex); font-size: 12px; font-weight: 600; cursor: pointer; }
+.update:hover { background: var(--tb-hover); }
+.update.hidden { display: none; }

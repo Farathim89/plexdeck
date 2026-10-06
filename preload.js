@@ -72,6 +72,8 @@ if (location.protocol === "file:") {
     // PC / TV switch in the title bar
     setMode: (m) => ipcRenderer.send("titlebar:set-mode", m),
     onMode: (cb) => ipcRenderer.on("titlebar:mode", (_e, m) => cb(m)),
+    onUpdate: (cb) => ipcRenderer.on("titlebar:update", (_e, u) => cb(u)),
+    openUpdate: () => ipcRenderer.send("titlebar:open-update"),
     // TV mode (tv.html)
     tvSession: (force) => ipcRenderer.invoke("tv:session", { force: !!force }),
     tvApi: (path, params) => ipcRenderer.invoke("tv:api", { path, params }),

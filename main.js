@@ -14,6 +14,7 @@
 
 const {
   app, BrowserWindow, WebContentsView, Menu, Tray, ipcMain, shell, dialog, screen, session, webContents,
+  net, Notification,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -656,6 +657,64 @@ function closeSettings() {
 }
 
 const REPO_URL = "https://github.com/Farathim89/plexdeck";
+
+// ---- update check -------------------------------------------------------------
+// Asks GitHub for the newest release. If it's newer: an "Update x.y.z" pill in the
+// title bar and a Windows notification (once per version). Automatic checks can be
+// turned off; Help → Check for updates… always works.
+const RELEASES_API = "https://api.github.com/repos/Farathim89/plexdeck/releases/latest";
+let latestRelease = null;   // { version, url } when GitHub has a newer version
+const autoUpdateCheck = () => config.updateCheck !== false;
+function isNewer(a, b) {
+  const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+}
+function sendUpdateToTitleBar() {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send("titlebar:update", latestRelease
+    ? { label: `Update ${latestRelease.version}`, tip: `PlexDeck ${latestRelease.version} is out (you have ${app.getVersion()}). Click to download.` }
+    : null);
+}
+const openUpdatePage = () => openExternal(latestRelease ? latestRelease.url : `${REPO_URL}/releases/latest`);
+async function checkForUpdates(manual) {
+  try {
+    const res = await net.fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rel = await res.json();
+    const version = String(rel.tag_name || "").replace(/^v/i, "");
+    if (version && isNewer(version, app.getVersion())) {
+      latestRelease = { version, url: rel.html_url || `${REPO_URL}/releases/latest` };
+      sendUpdateToTitleBar();
+      if (manual) {
+        const { response } = await dialog.showMessageBox(win, {
+          type: "info", title: "Update available", message: `PlexDeck ${version} is available`,
+          detail: `You have ${app.getVersion()}. Download the new version from GitHub?`,
+          buttons: ["Download", "Later"], defaultId: 0, cancelId: 1,
+        });
+        if (response === 0) openUpdatePage();
+      } else if (config.updateNotified !== version && Notification.isSupported()) {
+        config = { ...config, updateNotified: version };
+        writeJson(dataFile("config.json"), config);
+        const n = new Notification({ title: "PlexDeck update available", body: `Version ${version} is out (you have ${app.getVersion()}).`, icon: ICON });
+        n.on("click", openUpdatePage);
+        n.show();
+      }
+    } else {
+      latestRelease = null;
+      sendUpdateToTitleBar();
+      if (manual) dialog.showMessageBox(win, { type: "info", title: "Up to date", message: "PlexDeck is up to date", detail: `You have the newest version, ${app.getVersion()}.`, buttons: ["OK"] });
+    }
+  } catch {
+    if (manual) dialog.showMessageBox(win, { type: "warning", title: "Couldn't check", message: "Couldn't check for updates", detail: "GitHub couldn't be reached. Check your internet connection and try again.", buttons: ["OK"] });
+  }
+}
+function startUpdateChecks() {
+  setTimeout(() => { if (autoUpdateCheck()) checkForUpdates(false); }, 10000);
+  setInterval(() => { if (autoUpdateCheck()) checkForUpdates(false); }, 12 * 60 * 60 * 1000);
+}
+ipcMain.on("titlebar:open-update", (e) => { if (fromLocalPage(e)) openUpdatePage(); });
 async function showAbout() {
   const { response } = await dialog.showMessageBox(win, {
     type: "info",
@@ -686,6 +745,10 @@ function buildMenu() {
         { label: "Plex settings…", click: openPlexSettings },
         { label: "Audio & subtitle tool…", click: () => openTrackTool() },
         { type: "separator" },
+        {
+          label: "Check for updates automatically", type: "checkbox", checked: autoUpdateCheck(),
+          click: (item) => { config = { ...config, updateCheck: item.checked }; writeJson(dataFile("config.json"), config); if (item.checked) checkForUpdates(false); },
+        },
         {
           label: "Keep running in the tray when closed", type: "checkbox", checked: !!config.closeToTray,
           click: (item) => setSetting("closeToTray", item.checked),
@@ -747,6 +810,7 @@ function buildMenu() {
         { type: "separator" },
         { label: "Report a problem…", click: () => openExternal(`${REPO_URL}/issues/new/choose`) },
         { label: "PlexDeck on GitHub", click: () => openExternal(REPO_URL) },
+        { label: "Check for updates…", click: () => checkForUpdates(true) },
         { type: "separator" },
         { label: "Developer tools", ...shortcut("Ctrl+Shift+I"), click: toggleDevTools },
         { type: "separator" },
@@ -848,6 +912,7 @@ app.whenReady().then(() => {
   refreshStartWithWindows();
   createWindow();
   createTray();
+  startUpdateChecks();
   tv.init({
     win: () => win,
     plexContents: () => wc(),
@@ -858,7 +923,7 @@ app.whenReady().then(() => {
     setConfig: (patch) => { config = { ...config, ...patch }; writeJson(dataFile("config.json"), config); },
     plexReady: () => plexReady,
   });
-  win.webContents.once("did-finish-load", () => tv.startMode());
+  win.webContents.once("did-finish-load", () => { tv.startMode(); sendUpdateToTitleBar(); });
   mpv.init({
     config: () => config,
     plexContents: () => wc(),

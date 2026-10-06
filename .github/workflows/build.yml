@@ -1,0 +1,70 @@
+# Builds PlexDeck on GitHub: installer + portable, with mpv bundled.
+# Runs on demand (Actions → Build → Run workflow) and for version tags (v1.2.3),
+# where the files are also attached to a draft release for review.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # mpv: the official Windows build by shinchiro (x86_64, works on any 64-bit PC).
+      - name: Get mpv
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = gh api repos/shinchiro/mpv-winbuild-cmake/releases/latest --jq '[.assets[] | select(.name | test("^mpv-x86_64-[0-9]"))][0].browser_download_url'
+          Write-Host "mpv: $asset"
+          Invoke-WebRequest $asset -OutFile mpv.7z
+          7z x mpv.7z -ompv-unpacked -y | Out-Null
+          New-Item -ItemType Directory -Force vendor/mpv | Out-Null
+          Copy-Item mpv-unpacked/mpv.exe vendor/mpv/ -Force
+          if (Test-Path mpv-unpacked/d3dcompiler_43.dll) { Copy-Item mpv-unpacked/d3dcompiler_43.dll vendor/mpv/ -Force }
+          & vendor/mpv/mpv.exe --version | Select-Object -First 1
+
+      - run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlexDeck
+          path: |
+            dist/PlexDeck-*.exe
+            dist/SHA256SUMS.txt
+
+      - name: Draft release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ github.ref_name }}" 2>$null
+          if ($LASTEXITCODE -eq 0) { Write-Host "A release for this tag already exists - leaving it alone."; exit 0 }
+          $files = @(Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object FullName) + "dist/SHA256SUMS.txt"
+          gh release create "${{ github.ref_name }}" @files --draft --title "PlexDeck ${{ github.ref_name }}" --generate-notes

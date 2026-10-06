@@ -31,3 +31,11 @@ function showMode(m) { modeButtons.forEach((b) => b.classList.toggle("on", b.dat
 modeButtons.forEach((b) => b.addEventListener("click", () => desktop.setMode(b.dataset.mode)));
 desktop.onMode(showMode);
 showMode("pc");
+
+// "Update x.y.z" pill: shown when GitHub has a newer PlexDeck.
+const updateBtn = document.getElementById("update");
+desktop.onUpdate((u) => {
+  updateBtn.classList.toggle("hidden", !u);
+  if (u) { updateBtn.textContent = u.label; updateBtn.title = u.tip || ""; }
+});
+updateBtn.addEventListener("click", () => desktop.openUpdate());
