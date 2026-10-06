@@ -9,6 +9,14 @@ a stack of small extras.
 > Plex, Inc.** "Plex" is a trademark of Plex, Inc. You need your own Plex account and
 > (for your own media) a Plex Media Server.
 
+## Screenshots
+
+| TV mode — Live TV | TV mode — Discover |
+|---|---|
+| ![TV mode, Live TV](docs/tv-epg.png) | ![TV mode, Discover](docs/tv-discover.png) |
+| **PC mode — Live TV guide** | **PC mode — themes (paintbrush)** |
+| ![PC mode, Live TV guide](docs/pc-livetv.png) | ![PC mode, Midnight theme with the paintbrush menu](docs/pc-themes.png) |
+
 ## Two modes
 
 **PC mode** — the official Plex web app (app.plex.tv) in a clean desktop window:
