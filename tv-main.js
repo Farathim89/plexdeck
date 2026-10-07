@@ -13,7 +13,7 @@
 // and the playback hand-over.
 // ===========================================================================
 
-const { WebContentsView, ipcMain, net, safeStorage, app } = require("electron");
+const { WebContentsView, ipcMain, net, safeStorage, app, session: electronSession } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -195,6 +195,27 @@ function init(deps) {
     if (fromTv(e)) return true;
     try { return /\/(tracks\.html(\?|$)|tv\.html\?osd=1)/.test(e.senderFrame.url) && e.senderFrame.url.startsWith("file:"); } catch { return false; }
   };
+
+  // A song's lyrics (an .lrc / .txt file or Plex's lyrics, as plain text).
+  ipcMain.handle("tv:lyrics", async (e, streamId) => {
+    if (!fromTv(e) || !/^\d+$/.test(String(streamId))) return null;
+    const s = await getSession();
+    const res = await net.fetch(`${s.uri}/library/streams/${streamId}`, { headers: plexHeaders(s.token) }).catch(() => null);
+    if (!res || !res.ok) return null;
+    return (await res.text()).slice(0, 200000);
+  });
+  // The music visualiser reads the sound of the song TV mode plays. A page may only do that
+  // when the server allows it (CORS), and Plex only allows app.plex.tv, so for TV mode's own
+  // music requests to your server the app adds that permission itself.
+  electronSession.defaultSession.webRequest.onHeadersReceived(
+    { urls: ["*://*/library/parts/*", "*://*/music/:/transcode/*"] },
+    (details, callback) => {
+      const ours = tvView && details.webContentsId === tvView.webContents.id && session && details.url.startsWith(session.uri);
+      if (!ours) return callback({});
+      const headers = Object.fromEntries(Object.entries(details.responseHeaders || {}).filter(([k]) => k.toLowerCase() !== "access-control-allow-origin"));
+      headers["Access-Control-Allow-Origin"] = ["*"];
+      callback({ responseHeaders: headers });
+    });
 
   ipcMain.handle("tv:session", async (e, { force } = {}) => {
     if (!fromApiPage(e)) return null;

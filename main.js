@@ -672,6 +672,7 @@ const SETTING_NAMES = {
   subColor: "Subtitle colour", subPosition: "Subtitle position", subBackground: "Subtitle background",
   preferredAudioLang: "Audio language", autoSubtitles: "Subtitles on by themselves", preferredSubtitleLang: "Subtitle language",
   preferNonSdh: "Prefer subtitles without SDH", themeMusic: "Theme music", screensaver: "Screensaver",
+  musicVisualiser: "Music visualiser",
 };
 const showValue = (k, v) => (k === "theme" && THEMES[v] ? THEMES[v].label : typeof v === "boolean" ? (v ? "on" : "off") : v === "" ? "(default)" : String(v));
 async function exportSettings() {

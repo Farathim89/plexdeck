@@ -73,14 +73,16 @@
 
       <!-- Music: Now Playing, and the small bar while browsing -->
       <div id="music" hidden>
+        <canvas id="mViz" width="1920" height="260"></canvas>
         <img id="mArt" alt="" />
         <div class="mInfo">
           <div id="mTitle"></div><div id="mArtist"></div><div id="mAlbum"></div>
+          <div id="mLyrics"></div>
           <div class="mBar"><i id="mFill"></i></div>
           <div class="mTimes"><span id="mTime">0:00</span><span id="mLeft">-0:00</span></div>
           <div class="mControls"><span class="mHint">◀ previous</span><div id="mPlay" class="pb big"></div><span class="mHint">next ▶</span></div>
           <div id="mQueue"></div><div id="mNext"></div>
-          <div class="mHelp">A play/pause · ←/→ track · ↑/↓ ±15 s · B back to browsing · Start stop</div>
+          <div class="mHelp">A play/pause · ←/→ track · ↑/↓ ±15 s · Y lyrics · B back to browsing · Start stop</div>
         </div>
       </div>
       <div id="mini" hidden><img id="miniArt" alt="" /><div><div id="miniTitle"></div><div id="miniArtist"></div></div></div>

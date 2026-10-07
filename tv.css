@@ -280,3 +280,17 @@ body.mini #stage { display: none; }
 .mm-play svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
 .mm-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.2); }
 .mm-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* ---- Now Playing: visualiser and lyrics ------------------------------------ */
+#mViz { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 260px; pointer-events: none; }
+#music > img, #music > .mInfo { position: relative; z-index: 1; }
+#mLyrics { display: none; height: 380px; margin-top: 30px; overflow: hidden; scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
+#music.lyrics #mLyrics { display: block; }
+#music.lyrics #mQueue, #music.lyrics #mNext { display: none; }
+#music.lyrics .mBar { margin-top: 24px; }
+#mLyrics p { margin: 0; padding: 7px 0; font-size: 32px; line-height: 1.3; color: var(--dim); transition: color .25s, transform .25s; transform-origin: left center; }
+#mLyrics.synced p { color: rgba(255,255,255,.35); }
+#mLyrics.synced p.now { color: #fff; transform: scale(1.06); }
+#mLyrics .lnote { color: var(--dimmer); font-size: 26px; padding-top: 150px; }
+#mLyrics:not(.synced) { overflow-y: auto; }

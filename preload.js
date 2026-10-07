@@ -83,6 +83,7 @@ if (location.protocol === "file:") {
     tvApiSend: (method, path, params) => ipcRenderer.invoke("tv:api", { path, params, method }),
     tvWatchlist: () => ipcRenderer.invoke("tv:watchlist"),
     tvProvider: (url) => ipcRenderer.invoke("tv:provider", url),
+    tvLyrics: (streamId) => ipcRenderer.invoke("tv:lyrics", String(streamId)),
     tvPlayProvider: (hash) => ipcRenderer.send("tv:play-provider", hash),
     // native player (mpv)
     nativeAvailable: () => ipcRenderer.invoke("native:available"),
