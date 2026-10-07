@@ -16,6 +16,8 @@ a stack of small extras.
 | ![TV mode, Live TV](docs/tv-epg.jpg) | ![TV mode, Discover](docs/tv-discover.jpg) |
 | **PC mode — Live TV guide** | **PC mode — themes (paintbrush)** |
 | ![PC mode, Live TV guide](docs/pc-livetv.png) | ![PC mode, Midnight theme with the paintbrush menu](docs/pc-themes.png) |
+| **TV mode in Swedish — themes** | **Settings in Swedish — languages** |
+| ![TV mode in Swedish, the theme picker](docs/tv-theme-sv.jpg) | ![The settings window in Swedish](docs/settings-sv.jpg) |
 
 ## Two modes
 
