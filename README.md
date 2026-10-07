@@ -72,8 +72,20 @@ Grab the latest from [Releases](https://github.com/Farathim89/plexdeck/releases)
 - `PlexDeck-Portable-<version>.exe` — no install; settings are kept in a `plexdeck-data`
   folder next to it
 
-Sign in to Plex on first start. Windows SmartScreen may warn about an unknown publisher
-(the builds aren't code-signed): **More info → Run anyway**.
+Sign in to Plex on first start. PlexDeck checks GitHub for new versions and shows an
+**Update** button in the title bar when one is out (Help → *Check for updates…* checks now).
+
+### "Windows protected your PC"?
+
+PlexDeck isn't code-signed yet, so SmartScreen shows a warning for new downloads.
+Click **More info → Run anyway**. To check that your download is the real one, compare
+its SHA-256 with `SHA256SUMS.txt` on the release page:
+
+```powershell
+Get-FileHash .\PlexDeck-Setup-<version>.exe -Algorithm SHA256
+```
+
+Every release is built from this repository; you can also [build it yourself](#building).
 
 ## Building
 
