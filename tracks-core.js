@@ -11,7 +11,8 @@ const Tracks = (() => {
   const api = (p, q) => window.ppDesktop.tvApi(p, q);
   const put = (p, q) => window.ppDesktop.tvApiPut(p, q);
   const mc = (r) => (r && r.MediaContainer) || {};
-  const CH = { 1: "Mono", 2: "Stereo", 6: "5.1", 8: "7.1" };
+  const tr = (typeof window !== "undefined" && window.tr) || ((x) => x);
+  const CH = { 1: tr("Mono"), 2: tr("Stereo"), 6: "5.1", 8: "7.1" };
 
   // The audio and subtitle tracks of one movie / episode.
   async function streams(ratingKey) {
@@ -21,7 +22,7 @@ const Tracks = (() => {
     const all = part.Stream || [];
     const pick = (s) => ({
       id: s.id,
-      language: s.language || s.languageTag || s.languageCode || "Unknown",
+      language: s.language || s.languageTag || s.languageCode || tr("Unknown"),
       languageCode: (s.languageCode || "").toLowerCase(),
       codec: (s.codec || "").toUpperCase(),
       channels: s.channels,
@@ -45,7 +46,7 @@ const Tracks = (() => {
     return `${a.language}${extra ? ` (${extra})` : ""}${a.title ? ` · ${a.title}` : ""}${a.selected ? "  ✓" : ""}`;
   }
   function subLabel(s) {
-    const tags = [s.forced && "Forced", s.sdh && "SDH"].filter(Boolean);
+    const tags = [s.forced && tr("Forced"), s.sdh && "SDH"].filter(Boolean);
     const base = s.display || `${s.language}${s.codec ? ` (${s.codec})` : ""}${s.title ? ` · ${s.title}` : ""}`;
     return base + (tags.length && !s.display ? ` [${tags.join(" · ")}]` : "") + (s.selected ? "  ✓" : "");
   }

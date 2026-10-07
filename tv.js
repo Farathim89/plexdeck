@@ -11,7 +11,7 @@
 //  Play hands over to Plex's player (with the controller layer) and returns.
 // ===========================================================================
 
-const desktop = window.ppDesktop;
+const desktop = window.ppDesktop;   // tr() / N_(): PlexDeck's language, from i18n-dom.js
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
 
@@ -105,10 +105,10 @@ function showHero(it) {
   } else if (it.year) meta.push(it.year);
   if (it.duration) meta.push(fmtDuration(it.duration));
   if (it.rating) meta.push(it.rating);
-  if (it.type === "show" && it.childCount) meta.push(`${it.childCount} season${it.childCount > 1 ? "s" : ""}`);
+  if (it.type === "show" && it.childCount) meta.push(it.childCount > 1 ? tr("{n} seasons", { n: it.childCount }) : tr("1 season"));
   let chips = "";
-  if (it.offset && it.duration) chips = `<span class="chip"><i class="ring"></i>${fmtDuration(it.duration - it.offset)} left</span>`;
-  else if (watched(it)) chips = `<span class="chip">✓ Watched</span>`;
+  if (it.offset && it.duration) chips = `<span class="chip"><i class="ring"></i>${esc(tr("{time} left", { time: fmtDuration(it.duration - it.offset) }))}</span>`;
+  else if (watched(it)) chips = `<span class="chip">✓ ${esc(tr("Watched"))}</span>`;
   $("heroMeta").innerHTML = meta.map((x) => `<span>${esc(x)}</span>`).join("") + chips;
   $("heroLine").textContent = it.genres.join(", ");
   $("heroSummary").textContent = it.summary;
@@ -160,15 +160,15 @@ const ICON = {
 // ---- the side menu -------------------------------------------------------------------
 function buildMenu() {
   menuItems = [
-    { id: "profile", label: S && S.user ? `${S.user.name} · switch` : "Switch user", icon: "user", open: () => { currentMenuId = "profile"; stack.length = 0; showPage(profilesPage()); closeMenu(); } },
-    ...(Music.isActive() ? [{ id: "nowplaying", label: "Now playing", icon: "music", open: () => { closeMenu(); Music.showScreen(); } }] : []),
-    { id: "looks", label: "Theme", icon: "brush", open: () => { currentMenuId = "looks"; stack.length = 0; showPage(looksPage()); closeMenu(); } },
-    { id: "search", label: "Search", icon: "search", open: () => { currentMenuId = "search"; stack.length = 0; showPage(searchPage()); } },
-    { id: "home", label: "Home", icon: "home", live: true, open: () => showPage(homePage()) },
-    { id: "livetv", label: "Live TV", icon: "live", live: true, open: () => showPage(providerPage("epg")) },
-    { id: "discover", label: "Discover", icon: "discover", live: true, open: () => showPage(providerPage("discover")) },
-    { id: "watchlist", label: "Watchlist", icon: "watchlist", live: true, open: () => showPage(watchlistPage()) },
-    { id: "playlists", label: "Playlists", icon: "playlist", live: true, open: () => showPage(listPage("Playlists", "/playlists", null, { playlistType: "video" })) },
+    { id: "profile", label: S && S.user ? tr("{name} · switch", { name: S.user.name }) : tr("Switch user"), icon: "user", open: () => { currentMenuId = "profile"; stack.length = 0; showPage(profilesPage()); closeMenu(); } },
+    ...(Music.isActive() ? [{ id: "nowplaying", label: tr("Now playing"), icon: "music", open: () => { closeMenu(); Music.showScreen(); } }] : []),
+    { id: "looks", label: tr("Theme"), icon: "brush", open: () => { currentMenuId = "looks"; stack.length = 0; showPage(looksPage()); closeMenu(); } },
+    { id: "search", label: tr("Search"), icon: "search", open: () => { currentMenuId = "search"; stack.length = 0; showPage(searchPage()); } },
+    { id: "home", label: tr("Home"), icon: "home", live: true, open: () => showPage(homePage()) },
+    { id: "livetv", label: tr("Live TV"), icon: "live", live: true, open: () => showPage(providerPage("epg")) },
+    { id: "discover", label: tr("Discover"), icon: "discover", live: true, open: () => showPage(providerPage("discover")) },
+    { id: "watchlist", label: tr("Watchlist"), icon: "watchlist", live: true, open: () => showPage(watchlistPage()) },
+    { id: "playlists", label: tr("Playlists"), icon: "playlist", live: true, open: () => showPage(listPage(tr("Playlists"), "/playlists", null, { playlistType: "video" })) },
     ...sections.map((s) => ({
       id: `lib-${s.key}`, label: s.title, live: true,
       icon: s.type === "show" ? "show" : s.type === "artist" ? "artist" : s.type === "photo" ? "photo" : "movie",
@@ -469,20 +469,20 @@ function listPage(title, path, heroItem = null, params = {}) {
   const p = makePage({ heroItem });
   loadInto(p, async () => {
     const items = (mc(await api(path, params)).Metadata || []).map(norm);
-    return items.length ? gridRows(items, title) : [{ kind: "posters", title: `${title} — nothing here`, col: 0, items: [] }];
+    return items.length ? gridRows(items, title) : [{ kind: "posters", title: tr("{title} — nothing here", { title }), col: 0, items: [] }];
   });
   return p;
 }
 
 // ---- a library: Recommended / Library / Collections / Categories -----------------------
 const SORTS = [
-  { label: "Title", v: "titleSort" }, { label: "Recently added", v: "addedAt:desc" },
-  { label: "Release date", v: "originallyAvailableAt:desc" }, { label: "Year", v: "year:desc" },
-  { label: "Rating", v: "rating:desc" }, { label: "Recently watched", v: "lastViewedAt:desc" },
+  { label: tr("Title"), v: "titleSort" }, { label: tr("Recently added"), v: "addedAt:desc" },
+  { label: tr("Release date"), v: "originallyAvailableAt:desc" }, { label: tr("Year"), v: "year:desc" },
+  { label: tr("Rating"), v: "rating:desc" }, { label: tr("Recently watched"), v: "lastViewedAt:desc" },
 ];
-const SHOWS = [{ label: "All", q: {} }, { label: "Unwatched", q: { unwatched: 1 } }, { label: "In progress", q: { inProgress: 1 } }];
+const SHOWS = [{ label: tr("All"), q: {} }, { label: tr("Unwatched"), q: { unwatched: 1 } }, { label: tr("In progress"), q: { inProgress: 1 } }];
 function libraryPage(sec) {
-  const tabs = { kind: "tabs", items: [{ label: "Recommended" }, { label: "Library" }, { label: "Collections" }, { label: "Categories" }], col: 0, selected: 0 };
+  const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Library") }, { label: tr("Collections") }, { label: tr("Categories") }], col: 0, selected: 0 };
   const p = makePage({ tabs });
   let sort = 0, show = 0;
   const loadRecommended = () => loadInto(p, async () => hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []));
@@ -491,8 +491,8 @@ function libraryPage(sec) {
     const opts = {
       kind: "options", col: 0,
       items: [
-        { label: `Sort: ${SORTS[sort].label}`, action: () => { sort = (sort + 1) % SORTS.length; loadLibrary(); } },
-        { label: `Show: ${SHOWS[show].label}`, action: () => { show = (show + 1) % SHOWS.length; loadLibrary(); } },
+        { label: tr("Sort: {value}", { value: SORTS[sort].label }), action: () => { sort = (sort + 1) % SORTS.length; loadLibrary(); } },
+        { label: tr("Show: {value}", { value: SHOWS[show].label }), action: () => { show = (show + 1) % SHOWS.length; loadLibrary(); } },
       ],
     };
     p.rows = [opts]; p.row = 1; p.rendered = false;
@@ -505,7 +505,7 @@ function libraryPage(sec) {
         const items = (r.Metadata || []).map(norm);
         start += items.length;
         if (!items.length) total = start;
-        for (let i = 0; i < items.length; i += 7) p.rows.push({ kind: "posters", grid: true, title: p.rows.length === 1 ? `${sec.title} · ${total} titles` : "", col: 0, items: items.slice(i, i + 7) });
+        for (let i = 0; i < items.length; i += 7) p.rows.push({ kind: "posters", grid: true, title: p.rows.length === 1 ? tr("{library} · {n} titles", { library: sec.title, n: total }) : "", col: 0, items: items.slice(i, i + 7) });
         if (page === p) { p.rendered = false; drawPage(p); }
       } finally { loading = false; }
     };
@@ -514,13 +514,13 @@ function libraryPage(sec) {
   };
   const loadCollections = () => loadInto(p, async () => {
     const items = (mc(await api(`/library/sections/${sec.key}/collections`)).Metadata || []).map(norm);
-    return items.length ? gridRows(items, "Collections") : [{ kind: "posters", title: "No collections in this library", col: 0, items: [] }];
+    return items.length ? gridRows(items, tr("Collections")) : [{ kind: "posters", title: tr("No collections in this library"), col: 0, items: [] }];
   });
   const loadCategories = () => loadInto(p, async () => {
     const genres = mc(await api(`/library/sections/${sec.key}/genre`)).Directory || [];
     const tiles = genres.map((g) => ({ title: g.title, open: () => showPage(listPage(g.title, `/library/sections/${sec.key}/all`, null, { genre: g.key, sort: "titleSort" }), { push: true }) }));
     const rows = [];
-    for (let i = 0; i < tiles.length; i += 4) rows.push({ kind: "tiles", grid: true, title: i === 0 ? "Genres" : "", col: 0, items: tiles.slice(i, i + 4) });
+    for (let i = 0; i < tiles.length; i += 4) rows.push({ kind: "tiles", grid: true, title: i === 0 ? tr("Genres") : "", col: 0, items: tiles.slice(i, i + 4) });
     return rows;
   });
   p.onTab = (i) => {
@@ -541,17 +541,17 @@ async function loadInto(p, fetchRows) {
     if (p.tabs && p.row === 0) p.row = rows.length ? 1 : 0;
     if (page === p) { p.rendered = false; drawPage(p); }
   } catch (err) {
-    showError("Couldn't load this from your Plex server.", "Try again", () => loadInto(p, fetchRows));
+    showError(tr("Couldn't load this from your Plex server."), tr("Try again"), () => loadInto(p, fetchRows));
     return;
   } finally { busy(false); }
 }
 
 // ---- extra rows on details pages ------------------------------------------------------
 function peopleRow(m) {
-  const people = [...(m.Role || []).map((r) => ({ ...r, kind: "actor" })), ...(m.Director || []).map((d) => ({ ...d, role: "Director", kind: "director" }))].slice(0, 20);
+  const people = [...(m.Role || []).map((r) => ({ ...r, kind: "actor" })), ...(m.Director || []).map((d) => ({ ...d, role: tr("Director"), kind: "director" }))].slice(0, 20);
   if (!people.length) return null;
   return {
-    kind: "people", title: "Cast & Crew", col: 0,
+    kind: "people", title: tr("Cast & Crew"), col: 0,
     items: people.map((r) => ({
       title: r.tag, role: r.role || "", thumb: r.thumb,
       open: () => showPage(listPage(r.tag, `/library/sections/${m.librarySectionID}/all`, null, { [r.kind]: r.id, sort: "year:desc" }), { push: true }),
@@ -567,9 +567,9 @@ async function extraRows(m) {
     api(`/library/metadata/${m.ratingKey}/extras`).catch(() => null),
   ]);
   const sim = (mc(similar).Metadata || []).map(norm);
-  if (sim.length) rows.push({ kind: "posters", title: "More like this", col: 0, items: sim });
+  if (sim.length) rows.push({ kind: "posters", title: tr("More like this"), col: 0, items: sim });
   const ex = (mc(extras).Metadata || []).map(norm);
-  if (ex.length) rows.push({ kind: "landscape", title: "Extras & trailers", col: 0, items: ex });
+  if (ex.length) rows.push({ kind: "landscape", title: tr("Extras & trailers"), col: 0, items: ex });
   return rows;
 }
 
@@ -584,21 +584,21 @@ function moviePage(item) {
     p.heroItem = full;
     const buttons = [];
     if (full.offset) {
-      buttons.push({ icon: "play", label: "Resume", action: () => playItem(full, true) });
-      buttons.push({ icon: "restart", label: "Play from start", action: () => playItem(full, false) });
-    } else buttons.push({ icon: "play", label: "Play", action: () => playItem(full, false) });
+      buttons.push({ icon: "play", label: tr("Resume"), action: () => playItem(full, true) });
+      buttons.push({ icon: "restart", label: tr("Play from start"), action: () => playItem(full, false) });
+    } else buttons.push({ icon: "play", label: tr("Play"), action: () => playItem(full, false) });
     const isW = watched(full);
-    buttons.push({ icon: "check", label: isW ? "Mark as unwatched" : "Mark as watched", on: isW,
+    buttons.push({ icon: "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"), on: isW,
       action: async () => { await setWatched(full, !isW); refresh(); } });
-    buttons.push({ icon: "playlist", label: "Add to playlist", action: () => showPage(addToPlaylistPage(full), { push: true }) });
-    buttons.push({ icon: "tracks", label: "Audio & subtitles", action: () => desktop.openTracks(full.key) });
+    buttons.push({ icon: "playlist", label: tr("Add to playlist"), action: () => showPage(addToPlaylistPage(full), { push: true }) });
+    buttons.push({ icon: "tracks", label: tr("Audio & subtitles"), action: () => desktop.openTracks(full.key) });
     const keepRow = p.rows.length ? p.row : 0;
     p.rows = [{ kind: "buttons", col: 0, items: buttons }, ...more];
     p.row = Math.min(keepRow, p.rows.length - 1);
     if (page === p) { p.rendered = false; drawPage(p); }
   };
   busy(true);
-  refresh().catch(() => showError("Couldn't load this movie.")).finally(() => busy(false));
+  refresh().catch(() => showError(tr("Couldn't load this movie."))).finally(() => busy(false));
   p.refresh = refresh;
   return p;
 }
@@ -616,14 +616,14 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     if (!ep) { btnRow.items = []; return; }
     const b = [];
     if (ep.offset) {
-      b.push({ icon: "play", label: "Resume", action: () => playItem(ep, true) });
-      b.push({ icon: "restart", label: "Play from start", action: () => playItem(ep, false) });
-    } else b.push({ icon: "play", label: "Play", action: () => playItem(ep, false) });
+      b.push({ icon: "play", label: tr("Resume"), action: () => playItem(ep, true) });
+      b.push({ icon: "restart", label: tr("Play from start"), action: () => playItem(ep, false) });
+    } else b.push({ icon: "play", label: tr("Play"), action: () => playItem(ep, false) });
     const isW = watched(ep);
-    b.push({ icon: "check", label: isW ? "Mark as unwatched" : "Mark as watched", on: isW,
+    b.push({ icon: "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"), on: isW,
       action: async () => { await setWatched(ep, !isW); await loadSeason(tabs.selected, ep.key); } });
-    b.push({ icon: "playlist", label: "Add to playlist", action: () => showPage(addToPlaylistPage(ep), { push: true }) });
-    b.push({ icon: "tracks", label: "Audio & subtitles", action: () => desktop.openTracks(ep.key) });
+    b.push({ icon: "playlist", label: tr("Add to playlist"), action: () => showPage(addToPlaylistPage(ep), { push: true }) });
+    b.push({ icon: "tracks", label: tr("Audio & subtitles"), action: () => desktop.openTracks(ep.key) });
     btnRow.items = b;
     btnRow.col = Math.min(btnRow.col, b.length - 1);
   };
@@ -667,7 +667,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     if (m && m.theme && page === p) playTheme(showKey, m.theme);
     p.themeFor = showKey;
     seasons = (mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
-    tabs.items = seasons.map((s) => ({ label: s.sub || s.epTitle || `Season ${s.raw.index}` }));
+    tabs.items = seasons.map((s) => ({ label: s.sub || s.epTitle || tr("Season {n}", { n: s.raw.index }) }));
     // Which season: the asked-for one, else the On Deck episode's, else the first.
     let si = seasonKey ? seasons.findIndex((s) => s.key === String(seasonKey)) : -1;
     let focusKey = episodeKey;
@@ -678,7 +678,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     tabs.col = tabs.selected = si;
     p.row = 1;
     await loadSeason(si, focusKey ? String(focusKey) : null);
-  })().catch(() => showError("Couldn't load this show.")).finally(() => busy(false));
+  })().catch(() => showError(tr("Couldn't load this show."))).finally(() => busy(false));
   return p;
 }
 
@@ -695,8 +695,8 @@ function albumPage(item) {
     const tracks = mc(await api(`/library/metadata/${item.key}/children`)).Metadata || [];
     return [
       { kind: "buttons", col: 0, items: [
-        { icon: "play", label: "Play", action: () => Music.playQueue(tracks, 0) },
-        { icon: "shuffle", label: "Shuffle", action: () => Music.playQueue(tracks, 0, { shuffle: true }) },
+        { icon: "play", label: tr("Play"), action: () => Music.playQueue(tracks, 0) },
+        { icon: "shuffle", label: tr("Shuffle"), action: () => Music.playQueue(tracks, 0, { shuffle: true }) },
       ] },
       ...trackRows(tracks),
     ];
@@ -710,10 +710,10 @@ function artistPage(item) {
     const all = async () => mc(await api(`/library/metadata/${item.key}/allLeaves`)).Metadata || [];
     return [
       { kind: "buttons", col: 0, items: [
-        { icon: "play", label: "Play all", action: async () => Music.playQueue(await all(), 0) },
-        { icon: "shuffle", label: "Shuffle", action: async () => Music.playQueue(await all(), 0, { shuffle: true }) },
+        { icon: "play", label: tr("Play all"), action: async () => Music.playQueue(await all(), 0) },
+        { icon: "shuffle", label: tr("Shuffle"), action: async () => Music.playQueue(await all(), 0, { shuffle: true }) },
       ] },
-      { kind: "posters", title: "Albums", col: 0, items: albums },
+      { kind: "posters", title: tr("Albums"), col: 0, items: albums },
     ];
   });
   return p;
@@ -725,7 +725,7 @@ const Photos = (() => {
   function show() {
     const it = list[i];
     $("photoImg").src = img(it.raw.thumb || it.poster, 1920, 1080);
-    $("photoCap").textContent = `${it.title || ""}   ${i + 1} / ${list.length}   ·   A: ${slide ? "stop" : "start"} slideshow`;
+    $("photoCap").textContent = `${it.title || ""}   ${i + 1} / ${list.length}   ·   ${slide ? tr("A: stop slideshow") : tr("A: start slideshow")}`;
   }
   return {
     open(pg, it) {
@@ -758,7 +758,7 @@ function watchlistPage() {
       try { return (mc(await api("/library/all", { guid: m.guid })).Metadata || [])[0] || null; } catch { return null; }
     }));
     const items = found.filter(Boolean).map(norm);
-    return items.length ? gridRows(items, "Watchlist · on your server") : [{ kind: "posters", title: "Nothing on your Watchlist is on your server yet", col: 0, items: [] }];
+    return items.length ? gridRows(items, tr("Watchlist · on your server")) : [{ kind: "posters", title: tr("Nothing on your Watchlist is on your server yet"), col: 0, items: [] }];
   });
   return p;
 }
@@ -767,18 +767,18 @@ async function openWatchlistItem(it) {
   try {
     const found = (mc(await api("/library/all", { guid: it.guid })).Metadata || [])[0];
     if (found) openItem(norm(found));
-    else showError(`"${it.title}" isn't on your Plex server yet.`, "OK", () => {});
+    else showError(tr("\"{title}\" isn't on your Plex server yet.", { title: it.title }), tr("OK"), () => {});
   } finally { busy(false); }
 }
 
 // ---- profiles: switch Plex Home user (PIN if it has one) --------------------------------
 function profilesPage() {
   const p = makePage({});
-  p.drawHero = () => { $("heroTitle").textContent = "Who's watching?"; $("heroSub").textContent = ""; $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = ""; $("artImg").classList.remove("on"); };
+  p.drawHero = () => { $("heroTitle").textContent = tr("Who's watching?"); $("heroSub").textContent = ""; $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = ""; $("artImg").classList.remove("on"); };
   loadInto(p, async () => {
     const users = await desktop.tvHomeUsers();
-    return [{ kind: "people", title: "Plex Home", col: 0, items: (users || []).map((u) => ({
-      title: u.title, role: u.protected ? "🔒 PIN" : (u.admin ? "Admin" : ""), thumb: u.thumb,
+    return [{ kind: "people", title: tr("Plex Home"), col: 0, items: (users || []).map((u) => ({
+      title: u.title, role: u.protected ? "🔒 PIN" : (u.admin ? tr("Admin") : ""), thumb: u.thumb,
       open: () => (u.protected ? showPage(pinPage(u), { push: true }) : switchTo(u, "")),
     })) }];
   });
@@ -793,7 +793,7 @@ function pinPage(user) {
   ] };
   p.rows = [keys];
   p.drawHero = () => {
-    $("heroTitle").textContent = `PIN for ${user.title}`;
+    $("heroTitle").textContent = tr("PIN for {name}", { name: user.title });
     $("heroSub").textContent = "●".repeat(p.pin.length) + "○".repeat(4 - p.pin.length);
     $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = "";
   };
@@ -803,7 +803,7 @@ async function switchTo(user, pin) {
   busy(true);
   const r = await desktop.tvSwitchUser(user.uuid, pin).catch(() => null);
   busy(false);
-  if (!r || !r.ok) { showError(pin ? "Wrong PIN — try again." : "Couldn't switch user.", "OK", () => { if (page && page.pin != null) { page.pin = ""; page.drawHero(); } }); return; }
+  if (!r || !r.ok) { showError(pin ? tr("Wrong PIN — try again.") : tr("Couldn't switch user."), tr("OK"), () => { if (page && page.pin != null) { page.pin = ""; page.drawHero(); } }); return; }
   stack.length = 0;
   start(true);
 }
@@ -812,8 +812,8 @@ async function switchTo(user, pin) {
 function looksPage() {
   const p = makePage({});
   p.drawHero = () => {
-    $("heroTitle").textContent = "Theme";
-    $("heroSub").textContent = "Pick a look — it changes everywhere at once";
+    $("heroTitle").textContent = tr("Theme");
+    $("heroSub").textContent = tr("Pick a look — it changes everywhere at once");
     $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = "";
     $("artImg").classList.remove("on"); $("bg").style.background = "";
   };
@@ -823,7 +823,7 @@ function looksPage() {
       title: t.label, on: t.id === lastPrefs.theme, swatch: t,
       open: () => { lastPrefs.theme = t.id; desktop.setSetting("theme", t.id); applyPrefs(lastPrefs); const keep = p.rows[0] ? p.rows[0].col : 0; build(); p.rows[0].col = keep; p.rendered = false; drawPage(p); },
     }));
-    p.rows = [{ kind: "tiles", title: "Themes", col: Math.max(0, items.findIndex((x) => x.on)), items }];
+    p.rows = [{ kind: "tiles", title: tr("Themes"), col: Math.max(0, items.findIndex((x) => x.on)), items }];
   };
   build();
   return p;
@@ -856,7 +856,7 @@ function providerPage(kind) {
           it.sub = m.grandparentTitle ? m.title : "";
           it.still = m.thumb || m.grandparentThumb || med.channelArt;
           it.art = m.grandparentArt || m.art || med.channelArt;
-          it.summary = (med.onAir ? `On now${end ? ` · until ${end}` : ""}. ` : "") + (m.summary || "");
+          it.summary = (med.onAir ? `${end ? tr("On now · until {time}.", { time: end }) : tr("On now.")} ` : "") + (m.summary || "");
         }
         it.cloud = true;
         it.open = () => (kind === "epg"
@@ -911,10 +911,10 @@ function addToPlaylistPage(item) {
   loadInto(p, async () => {
     const lists = (mc(await api("/playlists", { playlistType: "video" })).Metadata || []).filter((x) => !x.smart);
     const opts = [
-      { label: "+ New playlist", action: () => showPage(newPlaylistPage(item), { push: true }) },
+      { label: tr("+ New playlist"), action: () => showPage(newPlaylistPage(item), { push: true }) },
       ...lists.map((pl) => ({ label: pl.title, action: async () => {
         await desktop.tvApiSend("PUT", `/playlists/${pl.ratingKey}/items`, { uri: itemUri(item.key) }).catch(() => null);
-        toast(`Added to "${pl.title}"`); back();
+        toast(tr("Added to \"{name}\"", { name: pl.title })); back();
       } })),
     ];
     return [{ kind: "options", col: 0, items: opts.slice(0, 1) }, ...chunk(opts.slice(1), 4).map((g) => ({ kind: "options", col: 0, items: g }))];
@@ -928,23 +928,23 @@ function newPlaylistPage(item) {
   p.query = "";
   const keys = { kind: "keys", col: 0, items: [
     ...KEY_CHARS.map((c) => ({ label: c.toUpperCase(), action: () => p.type(c) })),
-    { label: "Space", wide: true, action: () => p.type(" ") },
+    { label: tr("Space"), wide: true, action: () => p.type(" ") },
     { label: "⌫", wide: true, action: () => p.erase() },
-    { label: "Create", wide: true, action: create },
+    { label: tr("Create"), wide: true, action: create },
   ] };
   p.rows = [keys];
   p.type = (t) => { p.query += t; p.drawHero(); };
   p.erase = () => { p.query = p.query.slice(0, -1); p.drawHero(); };
   p.drawHero = () => {
-    $("heroTitle").textContent = p.query ? p.query : "New playlist";
-    $("heroSub").textContent = p.query ? "Press Create when the name is right" : "Type a name with the letters below (or your keyboard)";
+    $("heroTitle").textContent = p.query ? p.query : tr("New playlist");
+    $("heroSub").textContent = p.query ? tr("Press Create when the name is right") : tr("Type a name with the letters below (or your keyboard)");
     $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = "";
   };
   async function create() {
     const title = p.query.trim();
     if (!title) return;
     const r = await desktop.tvApiSend("POST", "/playlists", { type: "video", title, smart: 0, uri: itemUri(item.key) }).catch(() => null);
-    toast(r ? `Made "${title}"` : "Couldn't make the playlist");
+    toast(r ? tr("Made \"{name}\"", { name: title }) : tr("Couldn't make the playlist"));
     back(); back();
   }
   return p;
@@ -956,7 +956,7 @@ function playlistPage(pl) {
     const id = it.raw && it.raw.playlistItemID;
     if (!id) return;
     await desktop.tvApiSend("DELETE", `/playlists/${pl.key}/items/${id}`).catch(() => null);
-    toast(`Removed "${it.title}"`);
+    toast(tr("Removed \"{name}\"", { name: it.title }));
     const fresh = playlistPage(pl); fresh.row = p.row; page = fresh; fresh.rendered = false; drawPage(fresh);
   };
   return p;
@@ -1023,15 +1023,15 @@ function searchPage() {
   const erase = () => { p.query = p.query.slice(0, -1); changed(); };
   keysRow.items = [
     ...KEY_CHARS.map((c) => ({ label: c.toUpperCase(), action: () => type(c) })),
-    { label: "Space", wide: true, action: () => type(" ") },
+    { label: tr("Space"), wide: true, action: () => type(" ") },
     { label: "⌫", wide: true, action: erase },
-    { label: "Clear", wide: true, action: () => { p.query = ""; changed(); } },
+    { label: tr("Clear"), wide: true, action: () => { p.query = ""; changed(); } },
   ];
   p.rows = [keysRow];
   p.drawHero = () => {
-    $("heroTitle").textContent = p.query ? p.query : "Search your media";
-    $("heroSub").textContent = p.query ? "" : "Type with the letters below (or your keyboard)";
-    $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = p.results != null ? (p.results ? "" : "Nothing found on your server.") : "";
+    $("heroTitle").textContent = p.query ? p.query : tr("Search your media");
+    $("heroSub").textContent = p.query ? "" : tr("Type with the letters below (or your keyboard)");
+    $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = p.results != null ? (p.results ? "" : tr("Nothing found on your server.")) : "";
     $("heroCast").textContent = "";
     $("artImg").classList.remove("on"); $("bg").style.background = "";
   };
@@ -1065,7 +1065,7 @@ function busy(on) {
   const box = $("message");
   if (box.classList.contains("error")) return;
   box.hidden = busyCount === 0;
-  $("messageText").textContent = busyCount ? "Loading…" : "";
+  $("messageText").textContent = busyCount ? tr("Loading…") : "";
   $("messageButton").hidden = true;
 }
 function showError(text, button, action) {
@@ -1165,15 +1165,15 @@ function applyPrefs(s) {
 async function start(force = false) {
   clearError();
   busy(true);
-  $("messageText").textContent = "Connecting to your Plex server…";
+  $("messageText").textContent = tr("Connecting to your Plex server…");
   try {
     const s = await desktop.tvSession(force);
     if (!s || !s.ok) {
       busy(false);
-      const why = s && s.error === "signin" ? "Sign in to Plex in PC mode first, then come back to TV mode."
-        : s && s.error === "noserver" ? "No Plex server found on your account."
-        : "Couldn't reach your Plex server.";
-      showError(why, "Try again", () => start(true));
+      const why = s && s.error === "signin" ? tr("Sign in to Plex in PC mode first, then come back to TV mode.")
+        : s && s.error === "noserver" ? tr("No Plex server found on your account.")
+        : tr("Couldn't reach your Plex server.");
+      showError(why, tr("Try again"), () => start(true));
       return;
     }
     S = s;
@@ -1199,7 +1199,7 @@ async function start(force = false) {
     showPage(homePageRef);
     drawMenu();
   } catch (err) {
-    showError("Couldn't reach your Plex server.", "Try again", () => start(true));
+    showError(tr("Couldn't reach your Plex server."), tr("Try again"), () => start(true));
   } finally {
     busy(false);
   }

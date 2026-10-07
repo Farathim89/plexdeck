@@ -117,9 +117,9 @@ const Music = (() => {
     $("miniTitle").textContent = t.title;
     $("miniArtist").textContent = t.grandparentTitle || "";
     $("mPlay").innerHTML = audio.paused ? '<svg viewBox="0 0 24 24"><path d="M7 4l14 8-14 8z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
-    $("mQueue").textContent = `${index + 1} of ${queue.length}`;
+    $("mQueue").textContent = tr("{n} of {total}", { n: index + 1, total: queue.length });
     const nextT = queue[index + 1];
-    $("mNext").textContent = nextT ? `Next: ${nextT.title}` : "";
+    $("mNext").textContent = nextT ? tr("Next: {title}", { title: nextT.title }) : "";
     $("music").classList.toggle("lyrics", lyricsOn);
     progress();
   }
@@ -172,8 +172,8 @@ const Music = (() => {
     const box = $("mLyrics");
     lyricLine = -1;
     if (!lyricsOn) return;
-    if (!lyrics) { box.innerHTML = '<p class="lnote">Loading lyrics…</p>'; return; }
-    if (!lyrics.lines.length) { box.innerHTML = '<p class="lnote">No lyrics for this song</p>'; return; }
+    if (!lyrics) { box.innerHTML = `<p class="lnote">${tr("Loading lyrics…")}</p>`; return; }
+    if (!lyrics.lines.length) { box.innerHTML = `<p class="lnote">${tr("No lyrics for this song")}</p>`; return; }
     box.innerHTML = "";
     box.classList.toggle("synced", lyrics.synced);
     for (const l of lyrics.lines) {

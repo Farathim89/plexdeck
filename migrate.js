@@ -51,6 +51,7 @@ const DEFAULTS = {
   themeMusic: true,          // a show's theme tune plays quietly on its page
   screensaver: 5,            // minutes idle before the artwork screensaver (0 = off)
   musicVisualiser: true,     // soft bars that move with the music on Now Playing (TV mode)
+  language: "",              // PlexDeck's own menus: "" = like Windows, else "en", "sv", … (locales/)
 };
 
 function fromOldConfig() {

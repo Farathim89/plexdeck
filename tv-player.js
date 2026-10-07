@@ -129,7 +129,7 @@ const Player = (() => {
   }
 
   const QUALITIES = [
-    { label: "Original (best)", bitrate: 200000, res: null },
+    { label: tr("Original (best)"), bitrate: 200000, res: null },
     { label: "20 Mbps 1080p", bitrate: 20000, res: "1920x1080" },
     { label: "12 Mbps 1080p", bitrate: 12000, res: "1920x1080" },
     { label: "8 Mbps 1080p", bitrate: 8000, res: "1920x1080" },
@@ -141,22 +141,22 @@ const Player = (() => {
   // Playback speed, audio / subtitle sync and subtitle size (the ⋯ button).
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const DELAYS = [-1, -0.5, -0.3, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.3, 0.5, 1];
-  const SUBSCALE = [["Small", 0.8], ["Normal", 1], ["Large", 1.3], ["Huge", 1.6]];
+  const SUBSCALE = [[N_("Small"), 0.8], [N_("Normal"), 1], [N_("Large"), 1.3], [N_("Huge"), 1.6]];
   const fx = { speed: 1, audioDelay: 0, subDelay: 0, subScale: null };
   const setProp = (name, v) => (mpvMode ? mpvV.cmd(["set_property", name, v]) : null);
-  const ms = (s) => (s === 0 ? "In sync" : `${s > 0 ? "+" : ""}${Math.round(s * 1000)} ms`);
+  const ms = (s) => (s === 0 ? tr("In sync") : `${s > 0 ? "+" : ""}${Math.round(s * 1000)} ms`);
   function moreMenu() {
-    const items = [{ label: `Playback speed: ${fx.speed}×`, value: "speed" }];
+    const items = [{ label: tr("Playback speed: {value}", { value: `${fx.speed}×` }), value: "speed" }];
     if (mpvMode) items.push(
-      { label: `Audio sync: ${ms(fx.audioDelay)}`, value: "audio" },
-      { label: `Subtitle sync: ${ms(fx.subDelay)}`, value: "sub" },
-      { label: `Subtitle size: ${fx.subScale ? SUBSCALE.find((x) => x[1] === fx.subScale)[0] : "From settings"}`, value: "size" });
-    openMenu("More", items, (k) => {
-      if (k === "speed") openMenu("Playback speed", SPEEDS.map((s) => ({ label: `${s}×`, value: s, selected: s === fx.speed })), (s) => {
+      { label: tr("Audio sync: {value}", { value: ms(fx.audioDelay) }), value: "audio" },
+      { label: tr("Subtitle sync: {value}", { value: ms(fx.subDelay) }), value: "sub" },
+      { label: tr("Subtitle size: {value}", { value: fx.subScale ? tr(SUBSCALE.find((x) => x[1] === fx.subScale)[0]) : tr("From settings") }), value: "size" });
+    openMenu(tr("More"), items, (k) => {
+      if (k === "speed") openMenu(tr("Playback speed"), SPEEDS.map((s) => ({ label: `${s}×`, value: s, selected: s === fx.speed })), (s) => {
         fx.speed = s; if (mpvMode) setProp("speed", s); else $("video").playbackRate = s; });
-      if (k === "audio") openMenu("Audio sync (+ = later)", DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.audioDelay })), (s) => { fx.audioDelay = s; setProp("audio-delay", s); });
-      if (k === "sub") openMenu("Subtitle sync (+ = later)", DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.subDelay })), (s) => { fx.subDelay = s; setProp("sub-delay", s); });
-      if (k === "size") openMenu("Subtitle size", SUBSCALE.map(([l, v]) => ({ label: l, value: v, selected: v === fx.subScale })), (v) => { fx.subScale = v; setProp("sub-scale", v); });
+      if (k === "audio") openMenu(tr("Audio sync (+ = later)"), DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.audioDelay })), (s) => { fx.audioDelay = s; setProp("audio-delay", s); });
+      if (k === "sub") openMenu(tr("Subtitle sync (+ = later)"), DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.subDelay })), (s) => { fx.subDelay = s; setProp("sub-delay", s); });
+      if (k === "size") openMenu(tr("Subtitle size"), SUBSCALE.map(([l, v]) => ({ label: tr(l), value: v, selected: v === fx.subScale })), (v) => { fx.subScale = v; setProp("sub-scale", v); });
     });
   }
 
@@ -289,7 +289,7 @@ const Player = (() => {
   }
   function readStreams(part) {
     const all = (part && part.Stream) || [];
-    const pick = (s) => ({ id: s.id, index: s.index, key: s.key || null, label: s.extendedDisplayTitle || s.displayTitle || s.language || "Unknown", selected: !!s.selected,
+    const pick = (s) => ({ id: s.id, index: s.index, key: s.key || null, label: s.extendedDisplayTitle || s.displayTitle || s.language || tr("Unknown"), selected: !!s.selected,
       language: (s.language || "").toLowerCase(), languageCode: (s.languageCode || "").toLowerCase(), forced: !!s.forced, sdh: !!s.hearingImpaired });
     streams = { audio: all.filter((s) => s.streamType === 2).map(pick), subtitle: all.filter((s) => s.streamType === 3).map(pick) };
   }
@@ -381,13 +381,13 @@ const Player = (() => {
     if (name === "play") return togglePause();
     if (name === "prev") return playPrev();
     if (name === "next") return nextEp ? playNext() : null;
-    if (name === "subs") return openMenu("Subtitles", [{ label: "Off", value: 0, selected: !streams.subtitle.some((s) => s.selected) },
+    if (name === "subs") return openMenu(tr("Subtitles"), [{ label: tr("Off"), value: 0, selected: !streams.subtitle.some((s) => s.selected) },
       ...streams.subtitle.map((s) => ({ label: s.label, value: s.id, selected: s.selected }))], setSubtitle);
-    if (name === "audio") return openMenu("Audio", streams.audio.map((a) => ({ label: a.label, value: a.id, selected: a.selected })), setAudio);
-    if (name === "quality") return openMenu("Quality", QUALITIES.map((q, i) => ({ label: q.label, value: i, selected: i === quality })), (i) => { quality = i; load(position()); });
+    if (name === "audio") return openMenu(tr("Audio"), streams.audio.map((a) => ({ label: a.label, value: a.id, selected: a.selected })), setAudio);
+    if (name === "quality") return openMenu(tr("Quality"), QUALITIES.map((q, i) => ({ label: q.label, value: i, selected: i === quality })), (i) => { quality = i; load(position()); });
     if (name === "more") return moreMenu();
     if (name === "mini") return setMini(true);
-    if (name === "chapters") return openMenu("Chapters", (meta.Chapter || []).map((c, i) => ({ label: `${c.tag || `Chapter ${i + 1}`}  ·  ${fmt(c.startTimeOffset / 1000)}`, value: c.startTimeOffset / 1000, selected: false })), (t) => seekTo(t));
+    if (name === "chapters") return openMenu(tr("Chapters"), (meta.Chapter || []).map((c, i) => ({ label: `${c.tag || tr("Chapter {n}", { n: i + 1 })}  ·  ${fmt(c.startTimeOffset / 1000)}`, value: c.startTimeOffset / 1000, selected: false })), (t) => seekTo(t));
   }
   // Audio / subtitles: the same per-file choice the audio & subtitle tool makes, then restart here.
   async function setAudio(id) {
@@ -494,7 +494,7 @@ const Player = (() => {
       const key = `${cur.type}-${cur.startTimeOffset}`;
       if (skipKey !== key) { skipKey = key; skipShownAt = Date.now(); }
       $("pSkip").hidden = false;
-      $("pSkip").textContent = cur.type === "intro" ? "Skip Intro" : "Skip Credits";
+      $("pSkip").textContent = cur.type === "intro" ? tr("Skip Intro") : tr("Skip Credits");
       const auto = cur.type === "intro" ? prefs.autoSkipIntro : prefs.autoSkipCredits;
       const delay = (cur.type === "intro" ? prefs.skipIntroDelay : prefs.skipCreditsDelay) || 0;
       if (auto && !skipped.has(key) && Date.now() - skipShownAt >= delay * 1000) { skipped.add(key); seekTo(cur.endTimeOffset / 1000); }
@@ -513,11 +513,11 @@ const Player = (() => {
     $("pUpNextImg").src = img;
     $("pUpNext").hidden = false;
     let left = 10;
-    $("pUpNextCount").textContent = `Playing in ${left}`;
+    $("pUpNextCount").textContent = tr("Playing in {n}", { n: left });
     clearInterval(upNextTimer);
     upNextTimer = setInterval(() => {
       left--;
-      $("pUpNextCount").textContent = `Playing in ${left}`;
+      $("pUpNextCount").textContent = tr("Playing in {n}", { n: left });
       if (left <= 0) { clearInterval(upNextTimer); playNext(); }
     }, 1000);
   }

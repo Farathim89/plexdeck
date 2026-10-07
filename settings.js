@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // PlexDeck settings overlay: every control has data-key = the setting it changes.
-const desktop = window.ppDesktop;
+const desktop = window.ppDesktop;   // tr(): PlexDeck's language, from i18n-dom.js
 let settings = {};
 
 function suffix(key, v) {
   if (key === "textSize") return `${Math.round(v)}%`;
   if (key === "defaultVolume") return `${Math.round(v)}%`;
-  return v === 0 ? "at once" : `${v} s`;
+  return v === 0 ? tr("at once") : tr("{n} s", { n: v });
+}
+
+// Languages: "Automatic" (like Windows) plus every language file the app has.
+function renderLanguages() {
+  const sel = document.getElementById("language");
+  if (sel.options.length || !settings.languages) return;
+  sel.append(new Option(tr("Automatic (like Windows)"), ""));
+  for (const l of settings.languages) sel.append(new Option(l.name, l.code));
 }
 
 function render() {
+  renderLanguages();
   for (const el of document.querySelectorAll("[data-key]")) {
     const key = el.dataset.key;
     const v = settings[key];
@@ -24,7 +33,7 @@ function render() {
   renderThemes();
   const sw = document.querySelector('[data-key="startWithWindows"]');
   sw.disabled = !settings.packaged;
-  document.getElementById("swNote").textContent = settings.packaged ? "(in the tray, ready to play)" : "(installed app only)";
+  document.getElementById("swNote").textContent = settings.packaged ? tr("(in the tray, ready to play)") : tr("(installed app only)");
   document.getElementById("version").textContent = settings.version || "";
   document.getElementById("engine").textContent = `Electron ${settings.electron} · Chromium ${settings.chrome}`;
   document.getElementById("imported").hidden = !settings.importedOldSettings;
@@ -96,7 +105,7 @@ document.querySelectorAll('[data-action="plex"]').forEach((b) => b.addEventListe
 const backupStatus = document.getElementById("backupStatus");
 for (const [action, call] of [["export", () => desktop.exportSettings()], ["import", () => desktop.importSettings()]]) {
   document.querySelector(`[data-action="${action}"]`).addEventListener("click", async () => {
-    const msg = await call().catch(() => "Something went wrong.");
+    const msg = await call().catch(() => tr("Something went wrong."));
     if (!msg) return;   // cancelled
     backupStatus.textContent = msg;
     backupStatus.hidden = false;

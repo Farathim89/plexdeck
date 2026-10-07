@@ -68,6 +68,8 @@ A built-in player (your server converts the video) is there as a fallback.
 - Tray with play/pause controls (music and video), start with Windows, custom title bar, remembered window
 - **Updates** — the installed app downloads and installs new versions itself (it asks
   first); the portable one tells you when there's a new version
+- **Languages** — PlexDeck's own menus in English, Svenska, Deutsch, Español and Français
+  (follows Windows, or pick one in Settings → Appearance); Plex's pages follow your Plex language
 - **Settings backup** — export / import your PlexDeck settings (Settings → About);
   your sign-in and server address are never in the file
 - Works fine with a Windows contrast theme on
@@ -109,6 +111,17 @@ npm start
 ```
 
 `npm run dist` builds the installer and the portable exe into `dist/`.
+
+## Translating
+
+PlexDeck's texts live in `locales/<language>.json`, keyed by the English text
+(`"Settings": "Inställningar"`). Anything a file doesn't have stays English.
+
+1. Run `node scripts/i18n-extract.js` — it writes `locales/template.json` with every text
+   and shows how complete each language is (`--verbose` lists what's missing).
+2. Copy `template.json` to e.g. `locales/it.json`, set `"_name": "Italiano"` and fill in
+   the values. Keep `{placeholders}` and `<b>tags</b>` as they are.
+3. Pick the language in Settings → Appearance (or let it follow Windows) and open a pull request.
 
 ## Credits
 

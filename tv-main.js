@@ -15,6 +15,7 @@
 
 const { WebContentsView, ipcMain, net, safeStorage, app, session: electronSession } = require("electron");
 const fs = require("fs");
+const i18n = require("./i18n");
 const path = require("path");
 const crypto = require("crypto");
 
@@ -56,6 +57,7 @@ function plexHeaders(token) {
     "X-Plex-Product": PRODUCT,
     "X-Plex-Device-Name": "PlexDeck TV",
     "X-Plex-Platform": "Windows",
+    "X-Plex-Language": i18n.current().lang,   // the server's own row titles ("Continue Watching") in that language
   };
 }
 async function fetchJson(url, token, timeoutMs = 8000, method = "GET") {

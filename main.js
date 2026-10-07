@@ -19,6 +19,9 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { DEFAULTS, fromOldConfig } = require("./migrate");
+const i18n = require("./i18n");
+const tr = i18n.t;
+const N_ = (s) => s;   // marks a text that is translated later, where it is shown
 const tv = require("./tv-main");
 const mpv = require("./mpv-main");
 
@@ -65,21 +68,21 @@ const APP_URL = "https://app.plex.tv/desktop/";
 // tint over Plex's page background (the blur that follows the artwork).
 // `solid` = a plain background instead of the artwork blur.
 const THEMES = {
-  plex:      { label: "Plex",      title: "#141414", fg: "#e5e5e5", hover: "#2c2c2c", accent: "#e5a00d", surface: ["#000000", 0] },
-  midnight:  { label: "Midnight",  title: "#0e1420", fg: "#e3e8f2", hover: "#263045", accent: "#5aa9ff",
+  plex:      { label: N_("Plex"),      title: "#141414", fg: "#e5e5e5", hover: "#2c2c2c", accent: "#e5a00d", surface: ["#000000", 0] },
+  midnight:  { label: N_("Midnight"),  title: "#0e1420", fg: "#e3e8f2", hover: "#263045", accent: "#5aa9ff",
                tint: "rgba(14, 30, 64, 0.55)", modal: "#141b2a", menu: "#1a2233", surface: ["#0b1a3a", 45] },
-  oled:      { label: "OLED black", title: "#000000", fg: "#e5e5e5", hover: "#1f1f1f", accent: "#e5a00d",
+  oled:      { label: N_("OLED black"), title: "#000000", fg: "#e5e5e5", hover: "#1f1f1f", accent: "#e5a00d",
                solid: "#000000", modal: "#0d0d0d", menu: "#141414", surface: ["#000000", 55] },
-  forest:    { label: "Forest",    title: "#0f1612", fg: "#e2ebe4", hover: "#26342b", accent: "#74d68a",
+  forest:    { label: N_("Forest"),    title: "#0f1612", fg: "#e2ebe4", hover: "#26342b", accent: "#74d68a",
                tint: "rgba(14, 44, 26, 0.55)", modal: "#141c17", menu: "#1c2620", surface: ["#0b2a18", 45] },
-  mocha:     { label: "Mocha",     title: "#15110e", fg: "#eee5dd", hover: "#322822", accent: "#e6a85c",
+  mocha:     { label: N_("Mocha"),     title: "#15110e", fg: "#eee5dd", hover: "#322822", accent: "#e6a85c",
                tint: "rgba(48, 28, 14, 0.45)", modal: "#1c1714", menu: "#2a221d", surface: ["#2a170a", 40] },
-  amethyst:  { label: "Amethyst",  title: "#141220", fg: "#e9e5f5", hover: "#2f2a45", accent: "#b58cff",
+  amethyst:  { label: N_("Amethyst"),  title: "#141220", fg: "#e9e5f5", hover: "#2f2a45", accent: "#b58cff",
                tint: "rgba(40, 22, 72, 0.55)", modal: "#1b1828", menu: "#27233a", surface: ["#1d1038", 45] },
-  crimson:   { label: "Crimson",   title: "#180d0f", fg: "#f2e4e6", hover: "#3a2226", accent: "#ff5c6c",
+  crimson:   { label: N_("Crimson"),   title: "#180d0f", fg: "#f2e4e6", hover: "#3a2226", accent: "#ff5c6c",
                tint: "rgba(70, 12, 22, 0.5)", modal: "#1f1214", menu: "#2b191c", surface: ["#2e0a12", 45] },
   // Easier to see: pure black, white text, yellow highlights.
-  highcontrast: { label: "High contrast", title: "#000000", fg: "#ffffff", hover: "#3a3a3a", accent: "#ffd400",
+  highcontrast: { label: N_("High contrast"), title: "#000000", fg: "#ffffff", hover: "#3a3a3a", accent: "#ffd400",
                solid: "#000000", modal: "#000000", menu: "#000000", contrastText: true, surface: ["#000000", 75] },
 };
 const themeId = () => (THEMES[config.theme] ? config.theme : "plex");
@@ -160,6 +163,11 @@ function setSetting(key, value) {
   writeJson(dataFile("config.json"), config);
   onSettingChanged(key);
 }
+
+// PlexDeck's language: the setting, else Windows' language (see i18n.js).
+function useLanguage() { i18n.use(config.language, app.getPreferredSystemLanguages()); }
+ipcMain.on("i18n:get", (e) => { e.returnValue = i18n.current(); });
+ipcMain.handle("i18n:languages", () => i18n.languages());
 
 // ---- remember window size / position --------------------------------------
 function loadWindowState() {
@@ -307,6 +315,18 @@ function prefsForPage() {
 }
 function onSettingChanged(key) {
   const all = webContents.getAllWebContents().filter((c) => !c.isDestroyed());
+  if (key === "language") {
+    useLanguage();
+    // Our own pages start again in the new language (not the player's controls while
+    // something plays); Plex's pages get the texts for what we draw on them.
+    all.forEach((c) => {
+      const url = c.getURL();
+      if (url.startsWith("file:") && !/[?&]osd=1/.test(url)) c.reload();
+      else c.send("i18n:changed", i18n.current());
+    });
+    updateTrayTooltip();
+    sendUpdateToTitleBar();
+  }
   if (key === "textSize") all.forEach(applyZoom);
   if (key === "plexColours" || key === "fontFamily" || key === "theme") all.forEach(applyPageCss);
   if (key === "theme") applyWindowColors();
@@ -385,19 +405,19 @@ async function showTrayMenu() {
   if (s.active) {
     if (s.title) items.push({ label: (s.title + (s.artist ? " — " + s.artist : "")).slice(0, 60), enabled: false });
     items.push(
-      { label: s.playing ? "Pause" : "Play", click: () => playerCommand("toggle") },
-      { label: "Back 10 seconds", click: () => playerCommand("back") },
-      { label: "Forward 30 seconds", click: () => playerCommand("forward") },
+      { label: s.playing ? tr("Pause") : tr("Play"), click: () => playerCommand("toggle") },
+      { label: tr("Back 10 seconds"), click: () => playerCommand("back") },
+      { label: tr("Forward 30 seconds"), click: () => playerCommand("forward") },
       { type: "separator" },
     );
   } else {
-    items.push({ label: "Nothing playing", enabled: false }, { type: "separator" });
+    items.push({ label: tr("Nothing playing"), enabled: false }, { type: "separator" });
   }
   items.push(
-    { label: "Show PlexDeck", click: showWindow },
-    { label: "PlexDeck settings…", click: () => { showWindow(); openSettings(); } },
+    { label: tr("Show PlexDeck"), click: showWindow },
+    { label: tr("PlexDeck settings…"), click: () => { showWindow(); openSettings(); } },
     { type: "separator" },
-    { label: "Quit", click: () => app.quit() },
+    { label: tr("Quit"), click: () => app.quit() },
   );
   tray.popUpContextMenu(Menu.buildFromTemplate(items));
 }
@@ -511,8 +531,8 @@ function createWindow() {
     if (!config.trayHintShown) {
       tray.displayBalloon({
         iconType: "info",
-        title: "PlexDeck is still running",
-        content: "It's in the tray, so music keeps playing. Right-click the icon for controls or Quit.",
+        title: tr("PlexDeck is still running"),
+        content: tr("It's in the tray, so music keeps playing. Right-click the icon for controls or Quit."),
       });
       config = { ...config, trayHintShown: true };
       writeJson(dataFile("config.json"), config);
@@ -558,9 +578,9 @@ function createWindow() {
     if (!isMainFrame || code === -3) return;   // -3 = aborted (normal)
     hideSplash();
     const html = `<body style="background:${PLEX_BG};color:#ddd;font:15px Segoe UI;display:grid;place-items:center;height:100vh;margin:0">
-      <div style="text-align:center"><h2 style="color:#e5a00d">Can't reach Plex</h2>
+      <div style="text-align:center"><h2 style="color:#e5a00d">${tr("Can't reach Plex")}</h2>
       <p>${String(desc).replace(/[<>&]/g, "")} (${code})</p><p>${String(url).replace(/[<>&]/g, "")}</p>
-      <p>Check your internet connection, then press <b>F5</b> to try again.</p></div></body>`;
+      <p>${tr("Check your internet connection, then press <b>F5</b> to try again.")}</p></div></body>`;
     contents.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
   });
 
@@ -608,8 +628,9 @@ function publicSettings() {
     importedOldSettings: !!config.importedOldSettings,
     // For the theme swatches: title bar, page and accent colour of each.
     themes: Object.entries(THEMES).map(([id, t]) => ({
-      id, label: t.label, title: t.title, accent: t.accent, page: t.solid || t.modal || PLEX_BG,
+      id, label: tr(t.label), title: t.title, accent: t.accent, page: t.solid || t.modal || PLEX_BG,
     })),
+    languages: i18n.languages(),
     packaged: app.isPackaged,
     version: app.getVersion(),
     electron: process.versions.electron,
@@ -663,53 +684,53 @@ function closeSettings() {
 // server is (the Plex sign-in and profile tokens aren't settings, so they never are either).
 const NOT_EXPORTED = new Set(["source", "serverUrl"]);
 const SETTING_NAMES = {
-  autoSkipIntro: "Skip intros automatically", skipIntroDelay: "Intro skip delay", autoSkipCredits: "Skip credits automatically",
-  skipCreditsDelay: "Credits skip delay", textSize: "Text size", fontFamily: "Font", plexColours: "Plex colours",
-  keyboardNav: "Arrow-key navigation", controller: "Game controller", startMaximized: "Start maximised", theme: "Theme",
-  closeToTray: "Keep running in the tray", startWithWindows: "Start with Windows", startMode: "Start in", autoMode: "Switch mode by itself",
-  pcPlayerEngine: "PC mode player", playerEngine: "TV mode player", hdr: "HDR", passthrough: "Surround passthrough",
-  matchRefresh: "Match refresh rate", defaultVolume: "Volume", hwDecode: "Hardware decoding", subSize: "Subtitle size",
-  subColor: "Subtitle colour", subPosition: "Subtitle position", subBackground: "Subtitle background",
-  preferredAudioLang: "Audio language", autoSubtitles: "Subtitles on by themselves", preferredSubtitleLang: "Subtitle language",
-  preferNonSdh: "Prefer subtitles without SDH", themeMusic: "Theme music", screensaver: "Screensaver",
-  musicVisualiser: "Music visualiser",
+  autoSkipIntro: N_("Skip intros automatically"), skipIntroDelay: N_("Intro skip delay"), autoSkipCredits: N_("Skip credits automatically"),
+  skipCreditsDelay: N_("Credits skip delay"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
+  keyboardNav: N_("Arrow-key navigation"), controller: N_("Game controller"), startMaximized: N_("Start maximised"), theme: N_("Theme"),
+  closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"),
+  pcPlayerEngine: N_("PC mode player"), playerEngine: N_("TV mode player"), hdr: N_("HDR"), passthrough: N_("Surround passthrough"),
+  matchRefresh: N_("Match refresh rate"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
+  subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
+  preferredAudioLang: N_("Audio language"), autoSubtitles: N_("Subtitles on by themselves"), preferredSubtitleLang: N_("Subtitle language"),
+  preferNonSdh: N_("Prefer subtitles without SDH"), themeMusic: N_("Theme music"), screensaver: N_("Screensaver"), language: N_("Language"),
+  musicVisualiser: N_("Music visualiser"),
 };
-const showValue = (k, v) => (k === "theme" && THEMES[v] ? THEMES[v].label : typeof v === "boolean" ? (v ? "on" : "off") : v === "" ? "(default)" : String(v));
+const showValue = (k, v) => (k === "theme" && THEMES[v] ? tr(THEMES[v].label) : typeof v === "boolean" ? (v ? tr("on") : tr("off")) : v === "" ? tr("(default)") : String(v));
 async function exportSettings() {
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: "Export PlexDeck settings", defaultPath: path.join(app.getPath("documents"), "PlexDeck settings.json"),
-    filters: [{ name: "PlexDeck settings", extensions: ["json"] }],
+    title: tr("Export PlexDeck settings"), defaultPath: path.join(app.getPath("documents"), "PlexDeck settings.json"),
+    filters: [{ name: tr("PlexDeck settings"), extensions: ["json"] }],
   });
   if (canceled || !filePath) return null;
   const settings = Object.fromEntries(Object.keys(DEFAULTS).filter((k) => !NOT_EXPORTED.has(k)).map((k) => [k, config[k]]));
   try {
     fs.writeFileSync(filePath, JSON.stringify({ app: "PlexDeck", version: app.getVersion(), exported: new Date().toISOString(), settings }, null, 2));
-    return `Saved to ${filePath}`;
+    return tr("Saved to {file}", { file: filePath });
   } catch (err) {
-    return `Couldn't save: ${err.message}`;
+    return tr("Couldn't save: {error}", { error: err.message });
   }
 }
 async function importSettings() {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: "Import PlexDeck settings", defaultPath: app.getPath("documents"), properties: ["openFile"],
-    filters: [{ name: "PlexDeck settings", extensions: ["json"] }],
+    title: tr("Import PlexDeck settings"), defaultPath: app.getPath("documents"), properties: ["openFile"],
+    filters: [{ name: tr("PlexDeck settings"), extensions: ["json"] }],
   });
   if (canceled || !filePaths || !filePaths[0]) return null;
   const data = readJson(filePaths[0], null);
-  if (!data || data.app !== "PlexDeck" || !data.settings || typeof data.settings !== "object") return "That file isn't a PlexDeck settings file.";
+  if (!data || data.app !== "PlexDeck" || !data.settings || typeof data.settings !== "object") return tr("That file isn't a PlexDeck settings file.");
   // Only known settings of the right kind, and only the ones that change something.
   const changes = Object.entries(data.settings).filter(([k, v]) =>
     k in DEFAULTS && !NOT_EXPORTED.has(k) && typeof v === typeof DEFAULTS[k] && v !== config[k] && (k !== "theme" || THEMES[v]));
-  if (!changes.length) return "Nothing to change: these are the settings you already have.";
-  const lines = changes.map(([k, v]) => `${SETTING_NAMES[k] || k}: ${showValue(k, config[k])} → ${showValue(k, v)}`);
+  if (!changes.length) return tr("Nothing to change: these are the settings you already have.");
+  const lines = changes.map(([k, v]) => `${SETTING_NAMES[k] ? tr(SETTING_NAMES[k]) : k}: ${showValue(k, config[k])} → ${showValue(k, v)}`);
   const { response } = await dialog.showMessageBox(win, {
-    type: "question", title: "Import settings", message: `Change ${changes.length} setting${changes.length === 1 ? "" : "s"}?`,
-    detail: lines.slice(0, 20).join("\n") + (lines.length > 20 ? `\n…and ${lines.length - 20} more` : ""),
-    buttons: ["Import", "Cancel"], defaultId: 0, cancelId: 1,
+    type: "question", title: tr("Import settings"), message: changes.length === 1 ? tr("Change 1 setting?") : tr("Change {n} settings?", { n: changes.length }),
+    detail: lines.slice(0, 20).join("\n") + (lines.length > 20 ? "\n" + tr("…and {n} more", { n: lines.length - 20 }) : ""),
+    buttons: [tr("Import"), tr("Cancel")], defaultId: 0, cancelId: 1,
   });
   if (response !== 0) return null;
   for (const [k, v] of changes) setSetting(k, v);
-  return `Imported ${changes.length} setting${changes.length === 1 ? "" : "s"}.`;
+  return changes.length === 1 ? tr("Imported 1 setting.") : tr("Imported {n} settings.", { n: changes.length });
 }
 ipcMain.handle("settings:export", (e) => (fromLocalPage(e) ? exportSettings() : null));
 ipcMain.handle("settings:import", (e) => (fromLocalPage(e) ? importSettings() : null));
@@ -759,8 +780,8 @@ async function downloadUpdate() {
     updateState = "idle";
     sendUpdateToTitleBar();
     const { response } = await dialog.showMessageBox(win, {
-      type: "warning", title: "Update", message: "Couldn't download the update",
-      detail: "You can download it from GitHub instead.", buttons: ["Open download page", "Close"], defaultId: 0, cancelId: 1,
+      type: "warning", title: tr("Update"), message: tr("Couldn't download the update"),
+      detail: tr("You can download it from GitHub instead."), buttons: [tr("Open download page"), tr("Close")], defaultId: 0, cancelId: 1,
     });
     if (response === 0) openUpdatePage();
   }
@@ -768,9 +789,9 @@ async function downloadUpdate() {
 async function askToRestart() {
   const v = latestRelease ? latestRelease.version : "";
   const { response } = await dialog.showMessageBox(win, {
-    type: "info", title: "Update ready", message: `PlexDeck ${v} is ready to install`,
-    detail: "Restart now to finish. Watching something? Choose Later: it installs when you quit PlexDeck.",
-    buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1,
+    type: "info", title: tr("Update ready"), message: tr("PlexDeck {version} is ready to install", { version: v }),
+    detail: tr("Restart now to finish. Watching something? Choose Later: it installs when you quit PlexDeck."),
+    buttons: [tr("Restart now"), tr("Later")], defaultId: 0, cancelId: 1,
   });
   if (response === 0) restartToUpdate();
 }
@@ -787,9 +808,9 @@ async function onUpdateClick() {
   if (!canSelfUpdate) return openUpdatePage();
   const v = latestRelease ? latestRelease.version : "";
   const { response } = await dialog.showMessageBox(win, {
-    type: "info", title: "Update available", message: `PlexDeck ${v} is available`,
-    detail: `You have ${app.getVersion()}. It downloads in the background, then asks before restarting.`,
-    buttons: ["Download & install", "What's new", "Later"], defaultId: 0, cancelId: 2,
+    type: "info", title: tr("Update available"), message: tr("PlexDeck {version} is available", { version: v }),
+    detail: tr("You have {current}. It downloads in the background, then asks before restarting.", { current: app.getVersion() }),
+    buttons: [tr("Download & install"), tr("What's new"), tr("Later")], defaultId: 0, cancelId: 2,
   });
   if (response === 0) downloadUpdate();
   if (response === 1) openUpdatePage();
@@ -802,10 +823,14 @@ function isNewer(a, b) {
 }
 function updatePill() {
   const v = latestRelease ? latestRelease.version : "";
-  if (updateState === "downloading") return { label: `Downloading ${updatePercent}%`, tip: `Downloading PlexDeck ${v}…` };
-  if (updateState === "ready") return { label: "Restart to update", tip: `PlexDeck ${v} is downloaded. Click to restart and install it.` };
+  if (updateState === "downloading") return { label: tr("Downloading {percent}%", { percent: updatePercent }), tip: tr("Downloading PlexDeck {version}…", { version: v }) };
+  if (updateState === "ready") return { label: tr("Restart to update"), tip: tr("PlexDeck {version} is downloaded. Click to restart and install it.", { version: v }) };
   if (!latestRelease) return null;
-  return { label: `Update ${v}`, tip: `PlexDeck ${v} is out (you have ${app.getVersion()}). Click to ${canSelfUpdate ? "install it" : "download it"}.` };
+  return {
+    label: tr("Update {version}", { version: v }),
+    tip: canSelfUpdate ? tr("PlexDeck {version} is out (you have {current}). Click to install it.", { version: v, current: app.getVersion() })
+      : tr("PlexDeck {version} is out (you have {current}). Click to download it.", { version: v, current: app.getVersion() }),
+  };
 }
 function sendUpdateToTitleBar() {
   if (!win || win.isDestroyed()) return;
@@ -825,26 +850,26 @@ async function checkForUpdates(manual) {
         if (canSelfUpdate || updateState !== "idle") onUpdateClick();
         else {
           const { response } = await dialog.showMessageBox(win, {
-            type: "info", title: "Update available", message: `PlexDeck ${version} is available`,
-            detail: `You have ${app.getVersion()}. Download the new version from GitHub?`,
-            buttons: ["Download", "Later"], defaultId: 0, cancelId: 1,
+            type: "info", title: tr("Update available"), message: tr("PlexDeck {version} is available", { version }),
+            detail: tr("You have {current}. Download the new version from GitHub?", { current: app.getVersion() }),
+            buttons: [tr("Download"), tr("Later")], defaultId: 0, cancelId: 1,
           });
           if (response === 0) openUpdatePage();
         }
       } else if (config.updateNotified !== version && Notification.isSupported()) {
         config = { ...config, updateNotified: version };
         writeJson(dataFile("config.json"), config);
-        const n = new Notification({ title: "PlexDeck update available", body: `Version ${version} is out (you have ${app.getVersion()}).`, icon: ICON });
+        const n = new Notification({ title: tr("PlexDeck update available"), body: tr("Version {version} is out (you have {current}).", { version, current: app.getVersion() }), icon: ICON });
         n.on("click", () => { showWindow(); onUpdateClick(); });
         n.show();
       }
     } else if (updateState === "idle") {
       latestRelease = null;
       sendUpdateToTitleBar();
-      if (manual) dialog.showMessageBox(win, { type: "info", title: "Up to date", message: "PlexDeck is up to date", detail: `You have the newest version, ${app.getVersion()}.`, buttons: ["OK"] });
+      if (manual) dialog.showMessageBox(win, { type: "info", title: tr("Up to date"), message: tr("PlexDeck is up to date"), detail: tr("You have the newest version, {current}.", { current: app.getVersion() }), buttons: [tr("OK")] });
     }
   } catch {
-    if (manual) dialog.showMessageBox(win, { type: "warning", title: "Couldn't check", message: "Couldn't check for updates", detail: "GitHub couldn't be reached. Check your internet connection and try again.", buttons: ["OK"] });
+    if (manual) dialog.showMessageBox(win, { type: "warning", title: tr("Couldn't check"), message: tr("Couldn't check for updates"), detail: tr("GitHub couldn't be reached. Check your internet connection and try again."), buttons: [tr("OK")] });
   }
 }
 function startUpdateChecks() {
@@ -855,13 +880,13 @@ ipcMain.on("titlebar:open-update", (e) => { if (fromLocalPage(e)) onUpdateClick(
 async function showAbout() {
   const { response } = await dialog.showMessageBox(win, {
     type: "info",
-    title: "About PlexDeck",
+    title: tr("About PlexDeck"),
     message: `PlexDeck ${app.getVersion()}`,
-    detail: "An unofficial Windows app for Plex, by Farathim.\n" +
-      "Free software under the GNU GPL v3 or later. Plays video with mpv (GPL).\n" +
-      "Not made by or affiliated with Plex, Inc. Plex and the Plex web app belong to Plex, Inc.\n\n" +
+    detail: tr("An unofficial Windows app for Plex, by Farathim.") + "\n" +
+      tr("Free software under the GNU GPL v3 or later. Plays video with mpv (GPL).") + "\n" +
+      tr("Not made by or affiliated with Plex, Inc. Plex and the Plex web app belong to Plex, Inc.") + "\n\n" +
       `Electron ${process.versions.electron} · Chromium ${process.versions.chrome}`,
-    buttons: ["OK", "PlexDeck on GitHub"],
+    buttons: [tr("OK"), tr("PlexDeck on GitHub")],
     defaultId: 0,
     cancelId: 0,
   });
@@ -875,83 +900,83 @@ const shortcut = (accelerator) => ({ accelerator, registerAccelerator: false });
 function buildMenu() {
   return Menu.buildFromTemplate([
     {
-      label: "App",
+      label: tr("App"),
       submenu: [
-        { label: "Home", ...shortcut("Alt+Home"), click: goHome },
-        { label: "PlexDeck settings…", ...shortcut("Ctrl+,"), click: openSettings },
-        { label: "Plex settings…", click: openPlexSettings },
-        { label: "Audio & subtitle tool…", click: () => openTrackTool() },
+        { label: tr("Home"), ...shortcut("Alt+Home"), click: goHome },
+        { label: tr("PlexDeck settings…"), ...shortcut("Ctrl+,"), click: openSettings },
+        { label: tr("Plex settings…"), click: openPlexSettings },
+        { label: tr("Audio & subtitle tool…"), click: () => openTrackTool() },
         { type: "separator" },
         {
-          label: "Check for updates automatically", type: "checkbox", checked: autoUpdateCheck(),
+          label: tr("Check for updates automatically"), type: "checkbox", checked: autoUpdateCheck(),
           click: (item) => { config = { ...config, updateCheck: item.checked }; writeJson(dataFile("config.json"), config); if (item.checked) checkForUpdates(false); },
         },
         {
-          label: "Keep running in the tray when closed", type: "checkbox", checked: !!config.closeToTray,
+          label: tr("Keep running in the tray when closed"), type: "checkbox", checked: !!config.closeToTray,
           click: (item) => setSetting("closeToTray", item.checked),
         },
         {
-          label: app.isPackaged ? "Start with Windows" : "Start with Windows (installed app only)",
+          label: app.isPackaged ? tr("Start with Windows") : tr("Start with Windows (installed app only)"),
           type: "checkbox", enabled: app.isPackaged, checked: !!config.startWithWindows,
           click: (item) => setSetting("startWithWindows", item.checked),
         },
         { type: "separator" },
-        { label: "Reload", ...shortcut("F5"), click: () => wc().reload() },
+        { label: tr("Reload"), ...shortcut("F5"), click: () => wc().reload() },
         { type: "separator" },
-        { label: "Exit", click: () => app.quit() },
+        { label: tr("Exit"), click: () => app.quit() },
       ],
     },
     {
-      label: "Edit",
+      label: tr("Edit"),
       submenu: [
-        { label: "Undo", ...shortcut("Ctrl+Z"), click: () => wc().undo() },
-        { label: "Redo", ...shortcut("Ctrl+Y"), click: () => wc().redo() },
+        { label: tr("Undo"), ...shortcut("Ctrl+Z"), click: () => wc().undo() },
+        { label: tr("Redo"), ...shortcut("Ctrl+Y"), click: () => wc().redo() },
         { type: "separator" },
-        { label: "Cut", ...shortcut("Ctrl+X"), click: () => wc().cut() },
-        { label: "Copy", ...shortcut("Ctrl+C"), click: () => wc().copy() },
-        { label: "Paste", ...shortcut("Ctrl+V"), click: () => wc().paste() },
-        { label: "Select all", ...shortcut("Ctrl+A"), click: () => wc().selectAll() },
+        { label: tr("Cut"), ...shortcut("Ctrl+X"), click: () => wc().cut() },
+        { label: tr("Copy"), ...shortcut("Ctrl+C"), click: () => wc().copy() },
+        { label: tr("Paste"), ...shortcut("Ctrl+V"), click: () => wc().paste() },
+        { label: tr("Select all"), ...shortcut("Ctrl+A"), click: () => wc().selectAll() },
       ],
     },
     {
-      label: "View",
+      label: tr("View"),
       submenu: [
-        { label: "Bigger", ...shortcut("Ctrl+="), click: () => zoom(1) },
-        { label: "Smaller", ...shortcut("Ctrl+-"), click: () => zoom(-1) },
-        { label: "Normal size", ...shortcut("Ctrl+0"), click: () => zoom(0) },
+        { label: tr("Bigger"), ...shortcut("Ctrl+="), click: () => zoom(1) },
+        { label: tr("Smaller"), ...shortcut("Ctrl+-"), click: () => zoom(-1) },
+        { label: tr("Normal size"), ...shortcut("Ctrl+0"), click: () => zoom(0) },
         { type: "separator" },
         {
           // Ticks, not radio buttons (Windows ticks the first item of each radio group).
-          label: "Theme",
+          label: tr("Theme"),
           submenu: Object.entries(THEMES).map(([id, t]) => ({
-            label: t.label, type: "checkbox", checked: themeId() === id, click: () => setSetting("theme", id),
+            label: tr(t.label), type: "checkbox", checked: themeId() === id, click: () => setSetting("theme", id),
           })),
         },
         { type: "separator" },
-        { label: "Full screen", ...shortcut("F11"), click: toggleFullScreen },
+        { label: tr("Full screen"), ...shortcut("F11"), click: toggleFullScreen },
       ],
     },
     {
-      label: "Navigate",
+      label: tr("Navigate"),
       submenu: [
-        { label: "Back", ...shortcut("Alt+Left"), click: () => navigate(-1) },
-        { label: "Forward", ...shortcut("Alt+Right"), click: () => navigate(1) },
-        { label: "Home", ...shortcut("Alt+Home"), click: goHome },
+        { label: tr("Back"), ...shortcut("Alt+Left"), click: () => navigate(-1) },
+        { label: tr("Forward"), ...shortcut("Alt+Right"), click: () => navigate(1) },
+        { label: tr("Home"), ...shortcut("Alt+Home"), click: goHome },
       ],
     },
     {
-      label: "Help",
+      label: tr("Help"),
       submenu: [
-        { label: "Plex support", click: () => openExternal("https://support.plex.tv/") },
-        { label: "Open this page in your browser", click: () => openExternal(wc().getURL()) },
+        { label: tr("Plex support"), click: () => openExternal("https://support.plex.tv/") },
+        { label: tr("Open this page in your browser"), click: () => openExternal(wc().getURL()) },
         { type: "separator" },
-        { label: "Report a problem…", click: () => openExternal(`${REPO_URL}/issues/new/choose`) },
-        { label: "PlexDeck on GitHub", click: () => openExternal(REPO_URL) },
-        { label: "Check for updates…", click: () => checkForUpdates(true) },
+        { label: tr("Report a problem…"), click: () => openExternal(`${REPO_URL}/issues/new/choose`) },
+        { label: tr("PlexDeck on GitHub"), click: () => openExternal(REPO_URL) },
+        { label: tr("Check for updates…"), click: () => checkForUpdates(true) },
         { type: "separator" },
-        { label: "Developer tools", ...shortcut("Ctrl+Shift+I"), click: toggleDevTools },
+        { label: tr("Developer tools"), ...shortcut("Ctrl+Shift+I"), click: toggleDevTools },
         { type: "separator" },
-        { label: "About PlexDeck", click: showAbout },
+        { label: tr("About PlexDeck"), click: showAbout },
       ],
     },
   ]);
@@ -996,7 +1021,7 @@ const LOOK_SIZES = [0.9, 1, 1.15, 1.3, 1.5];
 function looksState() {
   return {
     theme: themeId(), textSize: Number(config.textSize) || 1,
-    themes: Object.entries(THEMES).map(([id, t]) => ({ id, label: t.label, title: t.title, accent: t.accent, page: t.solid || t.modal || PLEX_BG })),
+    themes: Object.entries(THEMES).map(([id, t]) => ({ id, label: tr(t.label), title: t.title, accent: t.accent, page: t.solid || t.modal || PLEX_BG })),
     sizes: LOOK_SIZES.map((f) => ({ f, percent: Math.round(f * 100) })),
   };
 }
@@ -1044,6 +1069,7 @@ app.on("second-instance", () => {
 app.whenReady().then(() => {
   if (!gotLock) return;
   config = loadConfig();
+  useLanguage();
   hardenSession();
   Menu.setApplicationMenu(null);   // no Windows menu bar — the menus live in our title bar
   refreshStartWithWindows();

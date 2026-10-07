@@ -24,7 +24,10 @@
     "files": [
       "LICENSE",
       "build/icon.ico",
+      "i18n-dom.js",
+      "i18n.js",
       "loading.html",
+      "locales/*.json",
       "main.js",
       "migrate.js",
       "mpv-main.js",
@@ -47,7 +50,8 @@
       "tv.html",
       "tv.js",
       "vendor/hls.LICENSE",
-      "vendor/hls.min.js"
+      "vendor/hls.min.js",
+      "!locales/template.json"
     ],
     "extraResources": [
       {

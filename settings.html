@@ -29,12 +29,15 @@
             <label class="row"><span>…after</span><span class="slider"><input type="range" min="0" max="30" data-key="skipIntroDelay" /><output></output></span></label>
             <label class="row"><span>Auto-skip credits</span><input type="checkbox" data-key="autoSkipCredits" /></label>
             <label class="row"><span>…after</span><span class="slider"><input type="range" min="0" max="30" data-key="skipCreditsDelay" /><output></output></span></label>
-            <p class="note">PlexDeck presses Plex's own <b>Skip Intro</b> / <b>Skip Credits</b> button once it has been on screen this long, so you still get a few seconds to watch. Your server needs intro/credit markers (Plex makes them for most TV).</p>
+            <p class="note" data-i18n>PlexDeck presses Plex's own <b>Skip Intro</b> / <b>Skip Credits</b> button once it has been on screen this long, so you still get a few seconds to watch. Your server needs intro/credit markers (Plex makes them for most TV).</p>
             <p class="note">Quality, subtitles, audio language and auto-play next episode are in Plex's own settings.</p>
             <button type="button" class="secondary" data-action="plex">Open Plex settings</button>
           </div>
 
           <div class="pane" id="appearance">
+            <h2>Language</h2>
+            <label class="row"><span>Language of PlexDeck's own menus</span><select data-key="language" id="language"></select></label>
+            <p class="note">Plex's own pages use the language you picked in Plex.</p>
             <h2>Theme</h2>
             <div class="themes" id="themes"></div>
             <h2>Look</h2>
@@ -62,7 +65,7 @@
             <label class="row"><span>Screensaver after (TV mode)</span>
               <select data-key="screensaver" data-number="1"><option value="0">Never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
             <label class="row"><span>Switch by itself (controller → TV, mouse → PC)</span><input type="checkbox" data-key="autoMode" /></label>
-            <p class="note">TV mode is a controller-first layout like Plex's TV apps. Switch any time with the <b>PC | TV</b> buttons in the title bar or <b>F10</b>.</p>
+            <p class="note" data-i18n>TV mode is a controller-first layout like Plex's TV apps. Switch any time with the <b>PC | TV</b> buttons in the title bar or <b>F10</b>.</p>
             <h2>Picture &amp; sound (native player)</h2>
             <label class="row"><span>HDR on HDR screens <small>(Windows HDR on)</small></span><input type="checkbox" data-key="hdr" /></label>
             <label class="row"><span>Surround passthrough to your receiver</span>
@@ -76,13 +79,13 @@
             <label class="row"><span>Video decoding</span>
               <select data-key="hwDecode"><option value="auto">Automatic (graphics card)</option><option value="d3d11">Direct3D 11</option><option value="off">Software (most compatible)</option></select></label>
             <h2>Subtitles &amp; languages (native player)</h2>
-            <label class="row"><span>Subtitle size</span><select data-key="subSize"><option>Small</option><option>Normal</option><option>Large</option><option>Huge</option></select></label>
-            <label class="row"><span>Subtitle colour</span><select data-key="subColor"><option>White</option><option>Yellow</option><option>Cyan</option><option>Green</option><option>Gray</option></select></label>
-            <label class="row"><span>Subtitle position</span><select data-key="subPosition"><option>Bottom</option><option>Raised</option></select></label>
+            <label class="row"><span>Subtitle size</span><select data-key="subSize"><option value="Small">Small</option><option value="Normal">Normal</option><option value="Large">Large</option><option value="Huge">Huge</option></select></label>
+            <label class="row"><span>Subtitle colour</span><select data-key="subColor"><option value="White">White</option><option value="Yellow">Yellow</option><option value="Cyan">Cyan</option><option value="Green">Green</option><option value="Gray">Gray</option></select></label>
+            <label class="row"><span>Subtitle position</span><select data-key="subPosition"><option value="Bottom">Bottom</option><option value="Raised">Raised</option></select></label>
             <label class="row"><span>Dark box behind subtitles</span><input type="checkbox" data-key="subBackground" /></label>
-            <label class="row"><span>Preferred audio language</span><select data-key="preferredAudioLang"><option>Any</option><option>English</option><option>Japanese</option><option>Swedish</option><option>Spanish</option><option>French</option><option>German</option><option>Italian</option><option>Korean</option><option>Chinese</option></select></label>
+            <label class="row"><span>Preferred audio language</span><select data-key="preferredAudioLang"><option value="Any">Any</option><option value="English">English</option><option value="Japanese">Japanese</option><option value="Swedish">Swedish</option><option value="Spanish">Spanish</option><option value="French">French</option><option value="German">German</option><option value="Italian">Italian</option><option value="Korean">Korean</option><option value="Chinese">Chinese</option></select></label>
             <label class="row"><span>Turn on subtitles automatically</span><input type="checkbox" data-key="autoSubtitles" /></label>
-            <label class="row"><span>Subtitle language</span><select data-key="preferredSubtitleLang"><option>English</option><option>Swedish</option><option>Japanese</option><option>Spanish</option><option>French</option><option>German</option></select></label>
+            <label class="row"><span>Subtitle language</span><select data-key="preferredSubtitleLang"><option value="English">English</option><option value="Swedish">Swedish</option><option value="Japanese">Japanese</option><option value="Spanish">Spanish</option><option value="French">French</option><option value="German">German</option></select></label>
             <label class="row"><span>Prefer subtitles without SDH / CC</span><input type="checkbox" data-key="preferNonSdh" /></label>
             <p class="note">Picture &amp; sound settings take effect the next time a video starts. Styled (ASS) subtitles keep their own look.</p>
             <label class="row"><span>PC mode player</span>
@@ -102,13 +105,13 @@
             <label class="row"><span>Keep running in the tray when closed</span><input type="checkbox" data-key="closeToTray" /></label>
             <label class="row"><span>Start with Windows <small id="swNote">(in the tray, ready to play)</small></span><input type="checkbox" data-key="startWithWindows" /></label>
             <p class="note">With the tray on, ✕ hides the window and music keeps playing. Click the tray icon to come back; right-click it for Play/Pause, skip and Quit.</p>
-            <p class="note">Shortcuts: <b>Ctrl + / − / 0</b> text size · <b>F11</b> full screen · <b>Alt ← / →</b> back / forward · <b>F5</b> reload · <b>Ctrl ,</b> these settings.</p>
+            <p class="note" data-i18n>Shortcuts: <b>Ctrl + / − / 0</b> text size · <b>F11</b> full screen · <b>Alt ← / →</b> back / forward · <b>F5</b> reload · <b>Ctrl ,</b> these settings.</p>
           </div>
 
           <div class="pane" id="controls">
             <h2>Navigation</h2>
             <label class="row"><span>Arrow-key navigation</span><input type="checkbox" data-key="keyboardNav" /></label>
-            <p class="note">Arrow keys move an orange ring between posters and buttons; <b>Enter</b> opens. In the player the arrows seek and change volume as usual.</p>
+            <p class="note" data-i18n>Arrow keys move an orange ring between posters and buttons; <b>Enter</b> opens. In the player the arrows seek and change volume as usual.</p>
             <label class="row"><span>Game controller (PS4 / PS5 / Xbox)</span><input type="checkbox" data-key="controller" /></label>
             <table class="keys">
               <tr><td>D-pad / left stick</td><td>Move · in the player: seek / volume</td></tr>
@@ -127,8 +130,8 @@
 
           <div class="pane" id="plex">
             <h2>What PlexDeck shows</h2>
-            <label class="row radio"><input type="radio" name="source" value="app" data-key="source" /><span><b>Everything Plex has</b> (app.plex.tv): your libraries plus Discover, Watchlist, Live TV, free Movies &amp; TV.</span></label>
-            <label class="row radio"><input type="radio" name="source" value="server" data-key="source" /><span><b>Just my server</b>: opens your server's own web app directly. Works on your home network without internet.</span></label>
+            <label class="row radio"><input type="radio" name="source" value="app" data-key="source" /><span data-i18n><b>Everything Plex has</b> (app.plex.tv): your libraries plus Discover, Watchlist, Live TV, free Movies &amp; TV.</span></label>
+            <label class="row radio"><input type="radio" name="source" value="server" data-key="source" /><span data-i18n><b>Just my server</b>: opens your server's own web app directly. Works on your home network without internet.</span></label>
             <label class="row"><span>Server address</span><input type="text" data-key="serverUrl" placeholder="http://192.168.1.10:32400" spellcheck="false" /></label>
             <p class="note">Libraries, Home rows, pinned libraries and their order are managed in Plex itself (hover a library → ⋯ → Pin / Manage).</p>
             <button type="button" class="secondary" data-action="plex">Open Plex settings</button>
@@ -150,6 +153,7 @@
         </div>
       </div>
     </section>
+    <script src="i18n-dom.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

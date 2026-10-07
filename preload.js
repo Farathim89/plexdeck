@@ -9,6 +9,17 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
+// ---- PlexDeck's language (see i18n.js): the app hands each page its texts -------
+let I18N = { lang: "en", dict: {} };
+try { I18N = ipcRenderer.sendSync("i18n:get") || I18N; } catch {}
+const tr = (key, vars) => {
+  const s = String(I18N.dict[key] || key);
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)) : s;
+};
+// Picked another language: the app reloads our own pages; the rest (Plex pages, the
+// player's controls) use the new texts the next time they draw ours.
+ipcRenderer.on("i18n:changed", (_e, v) => { I18N = v || I18N; });
+
 // ---- reading a game controller ----------------------------------------------
 // "standard" mapping (Xbox, and PS4/PS5 when Windows reports them properly):
 //   0 Cross/A, 1 Circle/B, 4 L1, 5 R1, 6 L2, 7 R2, 8 Share/Back, 9 Options/Start, 12-15 D-pad.
@@ -55,6 +66,9 @@ function padState() {
 
 if (location.protocol === "file:") {
   contextBridge.exposeInMainWorld("ppDesktop", {
+    // language
+    t: tr, lang: I18N.lang,
+    languages: () => ipcRenderer.invoke("i18n:languages"),
     // title bar
     showMenu: (index, x, y) => ipcRenderer.invoke("titlebar:menu", { index, x, y }),
     getTitle: () => ipcRenderer.invoke("titlebar:get-title"),
@@ -161,11 +175,11 @@ function plexExtras() {
   let looks = null;
   const esc2 = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   function renderLooks(p) {
-    p.innerHTML = `<h3>Theme</h3><div class="g">${looks.themes.map((t) =>
+    p.innerHTML = `<h3>${tr("Theme")}</h3><div class="g">${looks.themes.map((t) =>
       `<button class="t ${t.id === looks.theme ? "on" : ""}" data-k="theme" data-id="${t.id}">
         <div class="pv" style="background:${t.page}"><i style="background:${t.title}"></i><b style="background:${t.accent}"></b><u></u></div>
         <span>${esc2(t.label)}</span></button>`).join("")}</div>
-      <h3>Text size</h3><div class="sz">${looks.sizes.map((z) =>
+      <h3>${tr("Text size")}</h3><div class="sz">${looks.sizes.map((z) =>
       `<button class="s ${Math.abs(z.f - looks.textSize) < 0.001 ? "on" : ""}" data-k="text" data-id="${z.f}">
         <b style="font-size:${Math.round(13 * z.f)}px">Aa</b><span>${z.percent}%</span></button>`).join("")}</div>
       <button class="more" data-k="settings">More in PlexDeck settings…</button>`;
@@ -214,8 +228,8 @@ function plexExtras() {
     b.id = BRUSH_ID;
     b.type = "button";
     b.className = like.className;
-    b.setAttribute("aria-label", "Theme & text size");
-    b.title = "Theme & text size";
+    b.setAttribute("aria-label", tr("Theme & text size"));
+    b.title = tr("Theme & text size");
     b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18.4 2.6a2 2 0 012.9 2.9L13 13.8l-2.8-2.8z"/><path d="M10.2 11a3.4 3.4 0 00-4.8 0C4 12.4 4.8 14.3 3 16.4c2.9.9 6.3 1 7.9-.6a3.4 3.4 0 00-.7-4.8z"/></svg>';
     b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); toggleLooks(); });
     // Into the row of top-bar icons, just before the icon (group) we found.

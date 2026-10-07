@@ -9,11 +9,11 @@ const startKey = new URLSearchParams(location.search).get("key");
 
 // Fields, top to bottom. options: [{ label, value }]
 const F = {
-  library: { label: "Library", options: [], index: 0 },
-  title: { label: "Show / movie", options: [], index: 0 },
-  scope: { label: "Apply to", options: [], index: 0 },
-  audio: { label: "Audio track", options: [{ label: "No change", value: null }], index: 0 },
-  subs: { label: "Subtitles", options: [{ label: "No change", value: null }], index: 0 },
+  library: { label: tr("Library"), options: [], index: 0 },
+  title: { label: tr("Show / movie"), options: [], index: 0 },
+  scope: { label: tr("Apply to"), options: [], index: 0 },
+  audio: { label: tr("Audio track"), options: [{ label: tr("No change"), value: null }], index: 0 },
+  subs: { label: tr("Subtitles"), options: [{ label: tr("No change"), value: null }], index: 0 },
 };
 const ORDER = ["library", "title", "scope", "audio", "subs"];
 let focus = 0;                       // 0..4 fields, 5 = Apply
@@ -69,7 +69,7 @@ async function loadTitles(selectKey) {
   const lib = val("library");
   F.title.options = []; draw();
   if (!lib) return;
-  status("Loading titles…");
+  status(tr("Loading titles…"));
   const items = mc(await desktop.tvApi(`/library/sections/${lib.key}/all`, { sort: "titleSort" })).Metadata || [];
   F.title.options = items.map((m) => ({ label: m.year ? `${m.title} (${m.year})` : m.title, value: { key: m.ratingKey, type: m.type, title: m.title } }));
   F.title.index = Math.max(0, F.title.options.findIndex((o) => String(o.value.key) === String(selectKey)));
@@ -82,12 +82,12 @@ async function loadScopes(selectKey) {
   F.scope.options = [];
   if (!t) return draw();
   if (t.type === "movie") {
-    F.scope.options = [{ label: "This movie", value: { type: "movie", key: t.key } }];
+    F.scope.options = [{ label: tr("This movie"), value: { type: "movie", key: t.key } }];
   } else {
     const seasons = mc(await desktop.tvApi(`/library/metadata/${t.key}/children`)).Metadata || [];
     F.scope.options = [
-      ...(episodeScope && episodeScope.show === t.key ? [{ label: `This episode only (${episodeScope.label})`, value: { type: "episode", key: episodeScope.key } }] : []),
-      { label: "The whole show (all seasons)", value: { type: "show", key: t.key } },
+      ...(episodeScope && episodeScope.show === t.key ? [{ label: tr("This episode only ({episode})", { episode: episodeScope.label }), value: { type: "episode", key: episodeScope.key } }] : []),
+      { label: tr("The whole show (all seasons)"), value: { type: "show", key: t.key } },
       ...seasons.filter((s) => s.type === "season").map((s) => ({ label: s.title, value: { type: "season", key: s.ratingKey } })),
     ];
   }
@@ -96,24 +96,24 @@ async function loadScopes(selectKey) {
 }
 async function loadTracks() {
   const scope = val("scope");
-  F.audio.options = [{ label: "No change", value: null }];
-  F.subs.options = [{ label: "No change", value: null }, { label: "Off (no subtitles)", value: "off" }];
+  F.audio.options = [{ label: tr("No change"), value: null }];
+  F.subs.options = [{ label: tr("No change"), value: null }, { label: tr("Off (no subtitles)"), value: "off" }];
   F.audio.index = F.subs.index = 0;
   $("preview").textContent = "—";
   draw();
   if (!scope) return;
-  status("Reading the tracks…");
+  status(tr("Reading the tracks…"));
   const sampleKey = await Tracks.sample(scope);
-  if (!sampleKey) { status("No episodes here."); return; }
+  if (!sampleKey) { status(tr("No episodes here.")); return; }
   const s = await Tracks.streams(sampleKey);
   const meta = (mc(await desktop.tvApi(`/library/metadata/${sampleKey}`)).Metadata || [])[0];
   $("sampleName").textContent = meta ? (meta.type === "episode" ? `${meta.grandparentTitle} S${meta.parentIndex}·E${meta.index}` : meta.title) : "this title";
   F.audio.options.push(...s.audio.map((a) => ({ label: Tracks.audioLabel(a), value: a })));
   F.subs.options.push(...s.subtitle.map((x) => ({ label: Tracks.subLabel(x), value: x })));
-  const lines = ["<b>Audio</b>", ...(s.audio.length ? s.audio.map((a, i) => `${i + 1}. ${esc(Tracks.audioLabel(a))}${a.default ? '<span class="tag">default</span>' : ""}`) : ["None"]),
-    "<b>Subtitles</b>", ...(s.subtitle.length ? s.subtitle.map((x, i) => `${i + 1}. ${esc(Tracks.subLabel(x))}${x.forced ? '<span class="tag">FORCED</span>' : ""}${x.sdh ? '<span class="tag">SDH</span>' : ""}`) : ["None"])];
+  const lines = [`<b>${esc(tr("Audio"))}</b>`, ...(s.audio.length ? s.audio.map((a, i) => `${i + 1}. ${esc(Tracks.audioLabel(a))}${a.default ? `<span class="tag">${esc(tr("default"))}</span>` : ""}`) : [esc(tr("None"))]),
+    `<b>${esc(tr("Subtitles"))}</b>`, ...(s.subtitle.length ? s.subtitle.map((x, i) => `${i + 1}. ${esc(Tracks.subLabel(x))}${x.forced ? `<span class="tag">${esc(tr("FORCED"))}</span>` : ""}${x.sdh ? '<span class="tag">SDH</span>' : ""}`) : [esc(tr("None"))])];
   $("preview").innerHTML = lines.join("<br>");
-  status("");
+  status(tr(""));
   draw();
 }
 
@@ -121,19 +121,19 @@ async function loadTracks() {
 async function apply() {
   const audio = val("audio"), sub = val("subs"), scope = val("scope");
   if (busy || !scope) return;
-  if (!audio && !sub) return status("Choose an audio and/or subtitle track first.");
+  if (!audio && !sub) return status(tr("Choose an audio and/or subtitle track first."));
   busy = true; draw();
   $("bar").hidden = false; $("barFill").style.width = "0%";
-  status("Applying…");
+  status(tr("Applying…"));
   try {
     const r = await Tracks.apply(scope, audio, sub, (d, t) => {
       $("barFill").style.width = `${Math.round((d / t) * 100)}%`;
       status(`Applying… ${d} / ${t}`);
     });
     await loadTracks();   // show the new ✓ marks
-    status(`Done — updated ${r.changed} of ${r.total}. Plex now plays these with your chosen tracks.`);
+    status(tr("Done — updated {n} of {total}. Plex now plays these with your chosen tracks.", { n: r.changed, total: r.total }));
   } catch {
-    status("Something went wrong talking to your Plex server.");
+    status(tr("Something went wrong talking to your Plex server."));
   } finally {
     busy = false; draw();
     setTimeout(() => { $("bar").hidden = true; }, 1500);
@@ -221,7 +221,7 @@ $("backdrop").addEventListener("click", () => desktop.close());
 (async () => {
   draw();
   const s = await desktop.tvSession();
-  if (!s || !s.ok) { status("Sign in to Plex first."); return; }
+  if (!s || !s.ok) { status(tr("Sign in to Plex first.")); return; }
   let libId = null, titleKey = null, scopeKey = null;
   if (startKey) {
     const m = (mc(await desktop.tvApi(`/library/metadata/${startKey}`)).Metadata || [])[0];
