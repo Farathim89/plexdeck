@@ -260,3 +260,23 @@ html:has(body.osd-mode) { background: transparent; }
 #message.toast { background: transparent; place-content: end center; padding-bottom: 80px; pointer-events: none; }
 #message.toast .spinner { display: none; }
 #message.toast #messageText { background: rgba(20,20,20,.94); border-radius: 30px; padding: 14px 30px; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+
+/* ---- mini player (PC mode, native player) -------------------------------- */
+body.mini #stage { display: none; }
+#pMini { position: fixed; inset: 0; cursor: grab; user-select: none; }
+#pMini[hidden] { display: none; }
+#pMini.dragging { cursor: grabbing; }
+#pMini::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.55));
+  opacity: 0; transition: opacity .2s; pointer-events: none; }
+#pMini:hover::before, #pMini.paused::before { opacity: 1; }
+#pMini button { border: 0; background: rgba(0,0,0,.45); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0;
+  opacity: 0; transition: opacity .2s, background .15s; }
+#pMini:hover button, #pMini.paused button { opacity: 1; }
+#pMini button:hover { background: rgba(255,255,255,.22); }
+#pMini svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mm-top { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.mm-top button { width: 32px; height: 32px; border-radius: 50%; }
+.mm-play { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; }
+.mm-play svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
+.mm-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.2); }
+.mm-bar i { display: block; height: 100%; width: 0; background: var(--accent); }

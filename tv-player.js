@@ -28,6 +28,9 @@ const Player = (() => {
   let skipShownAt = 0, skipKey = null, skipped = new Set();
   let mpvMode = false;        // playing through the native player (mpv)
   let mpvV = null;
+  // Started from PC mode (there's a mini player there, to keep watching while you browse).
+  const FROM_PC = new URLSearchParams(location.search).get("pc") === "1";
+  let mini = false;
   const video = () => (mpvMode ? mpvV : $("video"));
 
   // mpv, made to look like a <video> element to the rest of the player.
@@ -43,6 +46,8 @@ const Player = (() => {
       else if (m.prop === "paused-for-cache") fire(m.value ? "waiting" : "playing");
       else if (m.prop === "track-list") st.tracks = m.value || [];
       else if (m.prop === "eof-reached") { if (m.value) fire("ended"); }
+      else if (m.prop === "playlist-pos") onPlaylistPos(m.value);
+      else if (m.event === "mini") showMini(!!m.value);
       else if (m.event === "file-loaded") fire("loaded");
       else if (m.event === "mpv-exit") fire("error");
     });
@@ -86,6 +91,34 @@ const Player = (() => {
     else if (s.key) await mpvV.cmd(["sub-add", `${ctx.S.uri}${s.key}?X-Plex-Token=${ctx.S.token}`, "select"]);
     else { const t = tracks.find((t) => t.type === "sub" && t["ff-index"] === s.index); if (t) await mpvV.cmd(["set_property", "sid", t.id]); }
   }
+  // Windows' media controls (and the keyboard's Next / Previous keys) only offer Next and
+  // Previous when mpv's playlist has something there: put placeholders around the current
+  // video, and when Windows moves to one, play the real next / previous episode instead.
+  const PLACEHOLDER = "av://lavfi:color=c=black:s=16x16";
+  let plExpected = null, plFor = null, fileLoaded = false, neighboursKnown = false;
+  async function syncPlaylist() {
+    if (!mpvMode || !meta || !fileLoaded || !neighboursKnown || plFor === meta.ratingKey) return;
+    plFor = meta.ratingKey;
+    plExpected = null;
+    await mpvV.cmd(["playlist-clear"]);
+    let pos = 0;
+    if (prevEp) { await mpvV.cmd(["loadfile", PLACEHOLDER, "insert-at", 0]); pos = 1; }
+    if (nextEp) await mpvV.cmd(["loadfile", PLACEHOLDER, "append"]);
+    plExpected = pos;
+  }
+  function onPlaylistPos(p) {
+    if (plExpected == null || p == null || p < 0 || p === plExpected || !active) return;
+    const forward = p > plExpected;
+    plExpected = null;
+    if (forward && nextEp) playNext();
+    else if (!forward && prevEp) { timeline("stopped"); open({ key: prevEp.ratingKey }, { resume: false }); }
+  }
+  // What Windows' media overlay shows.
+  function mediaTitle(m) {
+    if (m.type === "episode") return `${m.grandparentTitle} — S${m.parentIndex} · E${m.index}  ${m.title}`;
+    return m.year ? `${m.title} (${m.year})` : m.title;
+  }
+
   async function mpvLoad(offset) {
     const part = meta.Media && meta.Media[0] && meta.Media[0].Part && meta.Media[0].Part[0];
     if (!part) return fail();
@@ -224,6 +257,7 @@ const Player = (() => {
   async function open(item, { resume = false, at = null, native = false } = {}) {
     if (native && !mpvV) mpvV = MpvVideo();
     if (native) { mpvMode = true; wireEvents(mpvV); }
+    plExpected = null; plFor = null;   // our own file change mustn't count as Next / Previous
     active = true;
     $("player").hidden = false;
     $("pSpinner").hidden = false;
@@ -233,7 +267,11 @@ const Player = (() => {
     meta = m;
     scrobbled = false; skipped = new Set(); nextEp = null; upNextShown = false; upNextCancelled = false;
     prefsApplied = false;
-    if (mpvMode) { if (fx.speed !== 1) setProp("speed", fx.speed); }
+    fileLoaded = false; neighboursKnown = false; prevEp = null;
+    if (mpvMode) {
+      if (fx.speed !== 1) setProp("speed", fx.speed);
+      setProp("force-media-title", mediaTitle(m));
+    }
     const part = m.Media && m.Media[0] && m.Media[0].Part && m.Media[0].Part[0];
     partId = part ? part.id : null;
     readStreams(part);
@@ -243,7 +281,7 @@ const Player = (() => {
     $("pSub").textContent = ep ? `S${m.parentIndex} • E${m.index}  ·  ${m.title}` : [m.year, m.contentRating].filter(Boolean).join("  ·  ");
     const start = at != null ? at : resume && m.viewOffset ? m.viewOffset / 1000 : 0;
     load(start);
-    if (ep) findNext();
+    if (ep) findNext(); else { neighboursKnown = true; syncPlaylist(); }
     btn = BUTTONS.indexOf("play"); zone = 1;
     showControls(false);
     clearInterval(tlTimer);
@@ -262,6 +300,8 @@ const Player = (() => {
       nextEp = i >= 0 ? leaves[i + 1] || null : null;
       prevEp = i > 0 ? leaves[i - 1] : null;
     } catch {}
+    neighboursKnown = true;
+    syncPlaylist();
   }
   let prevEp = null;
   function close(changed = true) {
@@ -323,6 +363,7 @@ const Player = (() => {
     });
     $("bChapters").hidden = !(meta && meta.Chapter && meta.Chapter.length);
     document.querySelector('.pb[data-b="quality"]').hidden = mpvMode;
+    $("bMini").hidden = !(mpvMode && FROM_PC);
     $("bPrev").classList.toggle("off", !(meta && meta.type === "episode"));
     $("bNext").classList.toggle("off", !nextEp);
   }
@@ -345,6 +386,7 @@ const Player = (() => {
     if (name === "audio") return openMenu("Audio", streams.audio.map((a) => ({ label: a.label, value: a.id, selected: a.selected })), setAudio);
     if (name === "quality") return openMenu("Quality", QUALITIES.map((q, i) => ({ label: q.label, value: i, selected: i === quality })), (i) => { quality = i; load(position()); });
     if (name === "more") return moreMenu();
+    if (name === "mini") return setMini(true);
     if (name === "chapters") return openMenu("Chapters", (meta.Chapter || []).map((c, i) => ({ label: `${c.tag || `Chapter ${i + 1}`}  ·  ${fmt(c.startTimeOffset / 1000)}`, value: c.startTimeOffset / 1000, selected: false })), (t) => seekTo(t));
   }
   // Audio / subtitles: the same per-file choice the audio & subtitle tool makes, then restart here.
@@ -361,6 +403,67 @@ const Player = (() => {
     streams.subtitle.forEach((s) => { s.selected = s.id === id; });
     if (mpvMode) return mpvApplyTracks();
     load(position());
+  }
+
+  // ---- mini player (PC mode) -----------------------------------------------------------------
+  // The video shrinks to a corner of the window and Plex is yours again; the app moves the
+  // layers, this page just swaps the TV controls for small ones.
+  function setMini(on) {
+    if (!mpvMode || !FROM_PC) return;
+    if (on) { hideControls(); if (menu) { menu = null; $("pMenu").hidden = true; } }
+    window.ppDesktop.nativeMini(on);
+  }
+  function showMini(on) {
+    mini = on;
+    document.body.classList.toggle("mini", on);
+    $("pMini").hidden = !on;
+    if (!on) showControls();
+    drawMini();
+  }
+  function drawMini() {
+    if (!mini) return;
+    const d = duration();
+    $("pMiniFill").style.width = `${d ? Math.min(100, (position() / d) * 100) : 0}%`;
+    const paused = video().paused;
+    $("pMini").classList.toggle("paused", paused);
+    document.querySelector("#pMini .mm-play").innerHTML = paused ? ICONS.play : ICONS.pause;
+  }
+  function wireMini() {
+    const box = $("pMini");
+    box.querySelectorAll("button").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const m = b.dataset.m;
+      if (m === "play") togglePause();
+      else if (m === "full") setMini(false);
+      else if (m === "close") close();
+      else if (m === "size") window.ppDesktop.nativeMiniSize();
+      drawMini();
+    }));
+    // Drag it anywhere; let go and it snaps to the nearest corner. Double-click = full size.
+    let drag = null;
+    box.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button")) return;
+      drag = { x: e.screenX, y: e.screenY, moved: false };
+      box.setPointerCapture(e.pointerId);
+    });
+    box.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const dx = e.screenX - drag.x, dy = e.screenY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+      drag.moved = true;
+      box.classList.add("dragging");
+      drag.x = e.screenX; drag.y = e.screenY;
+      window.ppDesktop.nativeMiniDrag(dx, dy);
+    });
+    const end = () => {
+      if (!drag) return;
+      if (drag.moved) window.ppDesktop.nativeMiniDrop();
+      drag = null;
+      box.classList.remove("dragging");
+    };
+    box.addEventListener("pointerup", end);
+    box.addEventListener("pointercancel", end);
+    box.addEventListener("dblclick", (e) => { if (!e.target.closest("button")) setMini(false); });
   }
 
   // ---- side menu (subtitles, audio, quality, chapters) ------------------------------------
@@ -423,6 +526,11 @@ const Player = (() => {
   // ---- input ---------------------------------------------------------------------------------
   function act(name) {
     if (!active) return false;
+    if (mini) {
+      if (name === "Back") setMini(false);
+      else if (name === "OK") { togglePause(); drawMini(); }
+      return true;
+    }
     if (menu) {
       if (name === "Up") menu.focus = Math.max(0, menu.focus - 1);
       else if (name === "Down") menu.focus = Math.min(menu.options.length - 1, menu.focus + 1);
@@ -478,6 +586,7 @@ const Player = (() => {
     if (name === "quality") return mpvMode;
     if (name === "next") return !nextEp;
     if (name === "prev") return !(meta && meta.type === "episode");
+    if (name === "mini") return !(mpvMode && FROM_PC);
     return false;
   }
 
@@ -487,6 +596,9 @@ const Player = (() => {
     if (wired.has(v)) return;
     wired.add(v);
     v.addEventListener("loaded", async () => {
+      if ((await mpvV.cmd(["get_property", "path"])) === PLACEHOLDER) return;   // only passing through
+      fileLoaded = true;
+      syncPlaylist();
       mpvApplyTracks();
       const fps = await mpvV.cmd(["get_property", "container-fps"]);
       if (fps) window.ppDesktop.nativeFps(fps);
@@ -498,8 +610,9 @@ const Player = (() => {
       timeline("playing");
     });
     v.addEventListener("waiting", () => { $("pSpinner").hidden = false; });
-    v.addEventListener("pause", () => { draw(); showControls(false); });
-    v.addEventListener("timeupdate", () => { if (controls) draw(); markerCheck(); });
+    v.addEventListener("pause", () => { draw(); drawMini(); if (!mini) showControls(false); });
+    v.addEventListener("playing", drawMini);
+    v.addEventListener("timeupdate", () => { if (controls) draw(); drawMini(); markerCheck(); });
     v.addEventListener("ended", () => { if (nextEp && !upNextCancelled) playNext(); else close(); });
   }
   function init(c) {
@@ -507,6 +620,7 @@ const Player = (() => {
     wireEvents($("video"));
     document.querySelectorAll("#pButtons .pb").forEach((el) => el.addEventListener("click", () => { btn = BUTTONS.indexOf(el.dataset.b); pressButton(el.dataset.b); }));
     $("pSkip").addEventListener("click", () => act("OK"));
+    wireMini();
   }
 
   return { init, open, close, act, isActive: () => active };

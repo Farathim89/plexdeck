@@ -56,6 +56,8 @@ jobs:
           name: PlexDeck
           path: |
             dist/PlexDeck-*.exe
+            dist/PlexDeck-Setup-*.exe.blockmap
+            dist/latest.yml
             dist/SHA256SUMS.txt
 
       - name: Draft release (tags only)
@@ -66,5 +68,6 @@ jobs:
         run: |
           gh release view "${{ github.ref_name }}" 2>$null
           if ($LASTEXITCODE -eq 0) { Write-Host "A release for this tag already exists - leaving it alone."; exit 0 }
-          $files = @(Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object FullName) + "dist/SHA256SUMS.txt"
+          # latest.yml + the .blockmap: what installed copies read to update themselves.
+          $files = @(Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object FullName) + @(Get-ChildItem dist -Filter "PlexDeck-Setup-*.exe.blockmap" | ForEach-Object FullName) + "dist/latest.yml", "dist/SHA256SUMS.txt"
           gh release create "${{ github.ref_name }}" @files --draft --title "PlexDeck ${{ github.ref_name }}" --generate-notes

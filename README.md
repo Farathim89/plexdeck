@@ -50,6 +50,10 @@ DTS / TrueHD, styled subtitles — without the server converting anything. In bo
 - Skip Intro / Credits (optionally automatic after a delay you choose), Up Next,
   chapters, audio & subtitle tracks, playback speed, audio / subtitle sync
 - subtitle size, colour, position and background; preferred audio & subtitle languages
+- **mini player** (PC mode): keep watching in a corner of the window while you browse —
+  drag it to another corner, three sizes, double-click for full size
+- shows up in Windows' media overlay; the keyboard's media keys (play/pause, next,
+  previous episode) work even when PlexDeck isn't in front
 
 A built-in player (your server converts the video) is there as a fallback.
 
@@ -61,7 +65,11 @@ A built-in player (your server converts the video) is there as a fallback.
 - **Audio & subtitle tool** — set the exact audio / subtitle track for a whole show,
   season or movie at once (like PASTA).
 - Controller support (PS4 / PS5 / Xbox), arrow-key navigation, mouse back/forward buttons
-- Tray with music controls, start with Windows, custom title bar, remembered window
+- Tray with play/pause controls (music and video), start with Windows, custom title bar, remembered window
+- **Updates** — the installed app downloads and installs new versions itself (it asks
+  first); the portable one tells you when there's a new version
+- **Settings backup** — export / import your PlexDeck settings (Settings → About);
+  your sign-in and server address are never in the file
 - Works fine with a Windows contrast theme on
 
 ## Download
@@ -74,6 +82,8 @@ Grab the latest from [Releases](https://github.com/Farathim89/plexdeck/releases)
 
 Sign in to Plex on first start. PlexDeck checks GitHub for new versions and shows an
 **Update** button in the title bar when one is out (Help → *Check for updates…* checks now).
+The installed app updates itself with one click; for the portable one, download the new
+`.exe` and put it next to your `plexdeck-data` folder.
 
 ### "Windows protected your PC"?
 

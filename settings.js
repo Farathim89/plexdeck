@@ -92,6 +92,16 @@ document.querySelectorAll("nav button").forEach((btn) => btn.addEventListener("c
   document.querySelectorAll(".pane").forEach((p) => p.classList.toggle("active", p.id === btn.dataset.pane));
 }));
 document.querySelectorAll('[data-action="plex"]').forEach((b) => b.addEventListener("click", () => desktop.openPlexSettings()));
+// Settings backup: the app shows the file dialogs (and asks before importing).
+const backupStatus = document.getElementById("backupStatus");
+for (const [action, call] of [["export", () => desktop.exportSettings()], ["import", () => desktop.importSettings()]]) {
+  document.querySelector(`[data-action="${action}"]`).addEventListener("click", async () => {
+    const msg = await call().catch(() => "Something went wrong.");
+    if (!msg) return;   // cancelled
+    backupStatus.textContent = msg;
+    backupStatus.hidden = false;
+  });
+}
 document.getElementById("close").addEventListener("click", () => desktop.close());
 document.getElementById("backdrop").addEventListener("click", () => desktop.close());
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") desktop.close(); });

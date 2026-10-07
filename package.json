@@ -1,7 +1,7 @@
 {
   "name": "plexdeck",
   "productName": "PlexDeck",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "PlexDeck: an unofficial Windows app for Plex, with a TV mode for controllers, a native mpv player, themes and more",
   "main": "main.js",
   "scripts": {
@@ -14,7 +14,8 @@
   "author": "Farathim",
   "devDependencies": {
     "electron": "32.3.3",
-    "electron-builder": "25.1.8"
+    "electron-builder": "25.1.8",
+    "hls.js": "^1.7.3"
   },
   "build": {
     "appId": "com.farathim.plexplayer",
@@ -86,10 +87,18 @@
     },
     "portable": {
       "artifactName": "PlexDeck-Portable-${version}.exe"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Farathim89",
+        "repo": "plexdeck",
+        "releaseType": "release"
+      }
+    ]
   },
   "dependencies": {
-    "hls.js": "^1.7.3"
+    "electron-updater": "^6.8.9"
   },
   "license": "GPL-3.0-or-later",
   "homepage": "https://github.com/Farathim89/plexdeck",

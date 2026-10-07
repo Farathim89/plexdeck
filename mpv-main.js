@@ -20,6 +20,9 @@ let d = null;           // from main.js: win(), contentBounds(), preload, tvView
 let host = null;        // the window mpv draws into
 let osd = null;         // our controls, on top
 let origin = "tv";      // where playback started: "tv" or "pc"
+let mini = false;       // PC mode: playing small in a corner while you browse
+let lastFps = 0;        // the video's frame rate (refresh-rate matching after the mini player)
+const now = { paused: false, title: "" };   // for the tray menu
 let proc = null, pipe = null, pipeName = null, buf = "", reqId = 0;
 const pending = new Map();
 
@@ -35,14 +38,47 @@ function mpvPath() {
 const available = () => !!mpvPath();
 
 // ---- the two layers --------------------------------------------------------------
+// Mini player: 16:9 in a corner of the window, three sizes; corner and size are remembered.
+const MINI_WIDTHS = [320, 480, 640];
+const CORNERS = ["br", "bl", "tr", "tl"];
+function miniPrefs() {
+  const m = d.config().miniPlayer || {};
+  return { corner: CORNERS.includes(m.corner) ? m.corner : "br", size: [0, 1, 2].includes(m.size) ? m.size : 1 };
+}
+function miniBounds() {
+  const b = d.contentBounds(), m = miniPrefs(), pad = 16;
+  const width = Math.max(240, Math.min(MINI_WIDTHS[m.size], Math.round(b.width * 0.6)));
+  const height = Math.round((width * 9) / 16);
+  return {
+    x: m.corner.includes("r") ? b.x + b.width - width - pad : b.x + pad,
+    y: m.corner.includes("b") ? b.y + b.height - height - pad : b.y + pad,
+    width, height,
+  };
+}
 function place() {
   if (!host) return;
-  const b = d.contentBounds();
+  const b = mini ? miniBounds() : d.contentBounds();
   host.setBounds(b);
   if (osd) osd.setBounds(b);
 }
+function setMini(on) {
+  if (!host || origin !== "pc" || mini === !!on) return;
+  mini = !!on;
+  place();
+  toOsd({ event: "mini", value: mini });
+  if (mini) {
+    // Browsing again: Plex gets the keyboard; the screen goes back to its own refresh rate.
+    if (d.config().matchRefresh) refresh.restore();
+    d.win().focus();
+    d.plexContents().focus();
+  } else {
+    osd.focus();
+    if (d.config().matchRefresh && lastFps) refresh.match(lastFps).then(() => setTimeout(place, 1500));
+  }
+}
 function createLayers() {
   const win = d.win();
+  mini = false;
   host = new BrowserWindow({
     parent: win, frame: false, show: false, skipTaskbar: true, resizable: false, movable: false,
     minimizable: false, maximizable: false, focusable: false, backgroundColor: "#000000", hasShadow: false,
@@ -91,7 +127,10 @@ function onLine(line) {
   let m;
   try { m = JSON.parse(line); } catch { return; }
   if (m.request_id && pending.has(m.request_id)) { pending.get(m.request_id)(m); pending.delete(m.request_id); return; }
-  if (m.event === "property-change") toOsd({ prop: m.name, value: m.data });
+  if (m.event === "property-change") {
+    if (m.name === "pause") now.paused = !!m.data;
+    toOsd({ prop: m.name, value: m.data });
+  }
   else if (m.event === "end-file") toOsd({ event: "end-file", reason: m.reason });
   else if (m.event === "file-loaded") toOsd({ event: "file-loaded" });
 }
@@ -100,9 +139,12 @@ function connectPipe(tries = 0) {
   c.on("connect", () => {
     pipe = c;
     pipeReadyResolve();
-    for (const [i, prop] of ["time-pos", "pause", "duration", "paused-for-cache", "track-list", "eof-reached"].entries()) {
+    for (const [i, prop] of ["time-pos", "pause", "duration", "paused-for-cache", "track-list", "eof-reached", "playlist-pos"].entries()) {
       send(["observe_property", i + 1, prop]);
     }
+    // Windows' media controls and the keyboard's media keys (mpv shows up in Windows' media
+    // overlay by itself). Next / Previous go through mpv's playlist, see tv-player.js.
+    for (const [key, cmd] of [["PLAY", "set pause no"], ["PAUSE", "set pause yes"], ["PLAYPAUSE", "cycle pause"]]) send(["keybind", key, cmd]);
   });
   c.on("data", (chunk) => {
     buf += chunk.toString("utf8");
@@ -141,15 +183,18 @@ function open(item) {
   const args = [
     `--wid=${wid}`, `--input-ipc-server=${pipeName}`, "--idle=yes", "--force-window=yes",
     "--no-osc", "--osd-level=0", "--no-input-default-bindings", "--input-vo-keyboard=no", "--no-input-cursor",
-    "--cursor-autohide=always", "--hwdec=auto-safe", "--keep-open=yes", "--cache=yes",
+    "--cursor-autohide=always", "--hwdec=auto-safe", "--keep-open=always", "--cache=yes", "--media-controls=yes",
     "--demuxer-max-bytes=200MiB", "--audio-display=no", "--no-terminal", "--sub-auto=no",
     ...settingsArgs(d.config()),
   ];
+  now.paused = false; now.title = ""; lastFps = 0;
   proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
   proc.on("exit", () => { proc = null; pipe = null; if (osd) toOsd({ event: "mpv-exit" }); });
   host.showInactive();
   // What to play goes along in the address, so the controls have it as soon as they're ready.
-  osd.loadFile(path.join(__dirname, "tv.html"), { query: { osd: "1", key: String(item.key || ""), resume: item.resume ? "1" : "0", at: item.at != null ? String(item.at) : "" } });
+  osd.loadFile(path.join(__dirname, "tv.html"), { query: {
+    osd: "1", key: String(item.key || ""), resume: item.resume ? "1" : "0", at: item.at != null ? String(item.at) : "", pc: origin === "pc" ? "1" : "0",
+  } });
   osd.webContents.once("did-finish-load", () => { osd.show(); osd.focus(); });
   setTimeout(() => connectPipe(), 200);
   return true;
@@ -169,8 +214,10 @@ function init(deps) {
   ipcMain.handle("native:available", () => available());
   // The controls tell us the video's frame rate once it's loaded.
   ipcMain.on("native:fps", async (e, fps) => {
-    if (!fromOsd(e) || !d.config().matchRefresh || !(fps > 10 && fps < 130)) return;
-    await refresh.match(Number(fps));
+    if (!fromOsd(e) || !(fps > 10 && fps < 130)) return;
+    lastFps = Number(fps);
+    if (!d.config().matchRefresh || mini) return;
+    await refresh.match(lastFps);
     setTimeout(place, 1500);   // the window may move while the screen switches
   });
   // Track preferences for the controls (languages).
@@ -194,11 +241,35 @@ function init(deps) {
   });
   ipcMain.handle("native:pc-enabled", (e) => e.sender === d.plexContents() && d.config().pcPlayerEngine !== "plex" && available());
   // Commands from our controls, passed to mpv as they are (only these ones).
-  const ALLOWED = new Set(["loadfile", "set_property", "get_property", "seek", "sub-add", "cycle", "stop"]);
+  const ALLOWED = new Set(["loadfile", "set_property", "get_property", "seek", "sub-add", "cycle", "stop", "playlist-clear"]);
   ipcMain.handle("native:cmd", async (e, command) => {
     if (!fromOsd(e) || !Array.isArray(command) || !ALLOWED.has(command[0])) return null;
+    if (command[0] === "set_property" && command[1] === "force-media-title") now.title = String(command[2] || "");
     const r = await send(command);
     return r ? r.data ?? null : null;
+  });
+  // Mini player (PC mode): on / off, a bigger or smaller size, and dragging it to another corner.
+  ipcMain.on("native:mini", (e, on) => { if (fromOsd(e)) setMini(on); });
+  ipcMain.on("native:mini-size", (e) => {
+    if (!fromOsd(e) || !mini) return;
+    const m = miniPrefs();
+    d.saveConfig({ miniPlayer: { ...m, size: (m.size + 1) % MINI_WIDTHS.length } });
+    place();
+  });
+  ipcMain.on("native:mini-drag", (e, { dx, dy } = {}) => {
+    if (!fromOsd(e) || !mini || !Number.isFinite(dx) || !Number.isFinite(dy)) return;
+    const b = host.getBounds();
+    const moved = { ...b, x: Math.round(b.x + dx), y: Math.round(b.y + dy) };
+    host.setBounds(moved);
+    osd.setBounds(moved);
+  });
+  ipcMain.on("native:mini-drop", (e) => {
+    if (!fromOsd(e) || !mini) return;
+    // Snap to the corner nearest to where it was dropped.
+    const b = host.getBounds(), c = d.contentBounds();
+    const right = b.x + b.width / 2 > c.x + c.width / 2, bottom = b.y + b.height / 2 > c.y + c.height / 2;
+    d.saveConfig({ miniPlayer: { ...miniPrefs(), corner: `${bottom ? "b" : "t"}${right ? "r" : "l"}` } });
+    place();
   });
   // Our controls closed the player: back to TV mode.
   ipcMain.on("native:close", (e, changed) => {
@@ -218,4 +289,11 @@ function init(deps) {
   app.on("before-quit", () => { if (proc) stop(); });
 }
 
-module.exports = { init, available, stop, isOpen: () => !!host };
+// The tray menu: what's playing, and play/pause / back / forward.
+function state() { return { active: true, playing: !now.paused, title: now.title, artist: "" }; }
+function command(cmd) {
+  const c = { toggle: ["cycle", "pause"], back: ["seek", -10, "relative"], forward: ["seek", 30, "relative"] }[cmd];
+  if (c && pipe) send(c);
+}
+
+module.exports = { init, available, stop, isOpen: () => !!host, state, command };

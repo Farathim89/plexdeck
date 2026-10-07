@@ -76,3 +76,4 @@ select:focus, input[type="text"]:focus, button:focus-visible, input:focus-visibl
 .keys { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
 .keys td { padding: 6px 0; border-bottom: 1px solid #2c2c2c; color: var(--dim); }
 .keys td:first-child { color: var(--fg); width: 40%; }
+.backup { display: flex; gap: 10px; }
