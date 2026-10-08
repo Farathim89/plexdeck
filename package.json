@@ -1,14 +1,14 @@
 {
   "name": "plexdeck",
   "productName": "PlexDeck",
-  "version": "5.3.0",
+  "version": "5.3.1",
   "description": "PlexDeck: an unofficial Windows app for Plex, with a TV mode for controllers, a native mpv player, themes and more",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win",
     "dist:setup": "electron-builder --win nsis",
-    "dist:portable": "electron-builder --win portable",
+    "dist:portable": "electron-builder --win zip",
     "vendor-mpv": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vendor-mpv.ps1"
   },
   "author": "Farathim",
@@ -71,8 +71,9 @@
       "icon": "build/icon.ico",
       "target": [
         "nsis",
-        "portable"
-      ]
+        "zip"
+      ],
+      "artifactName": "PlexDeck-Portable-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -88,9 +89,6 @@
       "include": "build/installer.nsh",
       "artifactName": "PlexDeck-Setup-${version}.exe",
       "license": "LICENSE"
-    },
-    "portable": {
-      "artifactName": "PlexDeck-Portable-${version}.exe"
     },
     "publish": [
       {

@@ -46,7 +46,7 @@ jobs:
       - name: Checksums
         shell: pwsh
         run: |
-          Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object {
+          Get-ChildItem dist -File | Where-Object { $_.Name -match '^PlexDeck-.*\.(exe|zip)$' } | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
           } | Set-Content dist/SHA256SUMS.txt
           Get-Content dist/SHA256SUMS.txt
@@ -56,6 +56,7 @@ jobs:
           name: PlexDeck
           path: |
             dist/PlexDeck-*.exe
+            dist/PlexDeck-*.zip
             dist/PlexDeck-Setup-*.exe.blockmap
             dist/latest.yml
             dist/SHA256SUMS.txt
@@ -69,5 +70,5 @@ jobs:
           gh release view "${{ github.ref_name }}" 2>$null
           if ($LASTEXITCODE -eq 0) { Write-Host "A release for this tag already exists - leaving it alone."; exit 0 }
           # latest.yml + the .blockmap: what installed copies read to update themselves.
-          $files = @(Get-ChildItem dist -Filter "PlexDeck-*.exe" | ForEach-Object FullName) + @(Get-ChildItem dist -Filter "PlexDeck-Setup-*.exe.blockmap" | ForEach-Object FullName) + "dist/latest.yml", "dist/SHA256SUMS.txt"
+          $files = @(Get-ChildItem dist -File | Where-Object { $_.Name -match '^PlexDeck-.*\.(exe|zip)$' } | ForEach-Object FullName) + @(Get-ChildItem dist -Filter "PlexDeck-Setup-*.exe.blockmap" | ForEach-Object FullName) + "dist/latest.yml", "dist/SHA256SUMS.txt"
           gh release create "${{ github.ref_name }}" @files --draft --title "PlexDeck ${{ github.ref_name }}" --generate-notes

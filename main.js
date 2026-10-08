@@ -26,13 +26,20 @@ const tv = require("./tv-main");
 const mpv = require("./mpv-main");
 
 // Settings folder: next to the .exe for the portable build (plexdeck-data), %APPDATA%\PlexDeck when installed.
+// Portable = the folder version (PlexDeck.exe with no uninstaller next to it — everything,
+// settings included, stays in that folder), or the older single-file .exe, which unpacks
+// itself to Temp and says where it really is in PORTABLE_EXECUTABLE_DIR.
 // Versions before 5.0 were called PlexPlayer: carry their settings over once (the
 // sign-in lives in "Local State" / "Local Storage" / "Network", so copy all but caches).
-if (process.env.PORTABLE_EXECUTABLE_DIR) {
-  const dir = process.env.PORTABLE_EXECUTABLE_DIR;
+const exeDir = path.dirname(process.execPath);
+const PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR
+  || (app.isPackaged && !fs.existsSync(path.join(exeDir, "Uninstall PlexDeck.exe")) ? exeDir : null);
+if (PORTABLE_DIR) {
+  const dir = PORTABLE_DIR;
   const oldDir = path.join(dir, "plexplayer-data"), newDir = path.join(dir, "plexdeck-data");
   try { if (!fs.existsSync(newDir) && fs.existsSync(oldDir)) fs.renameSync(oldDir, newDir); } catch {}
   app.setPath("userData", newDir);
+  app.setPath("crashDumps", path.join(newDir, "Crashpad"));   // crash reports stay in the folder too
 } else {
   const newDir = app.getPath("userData");
   const oldDir = path.join(app.getPath("appData"), "PlexPlayer");
@@ -746,7 +753,7 @@ let latestRelease = null;   // { version, url } when GitHub has a newer version
 const autoUpdateCheck = () => config.updateCheck !== false;
 // The installed app updates itself (download, then install on restart or quit). The portable
 // .exe can't replace itself, so it opens the download page instead.
-const canSelfUpdate = app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR;
+const canSelfUpdate = app.isPackaged && !PORTABLE_DIR;
 let updateState = "idle";  // "idle" | "downloading" | "ready"
 let updatePercent = 0;
 let updater = null;

@@ -176,6 +176,8 @@ function open(item) {
   if (!exe) return false;
   if (proc) stop();
   resetPipeReady();
+  const mpvDir = path.join(app.getPath("userData"), "mpv");
+  try { fs.mkdirSync(path.join(mpvDir, "cache"), { recursive: true }); } catch {}
   createLayers();
   const hwnd = host.getNativeWindowHandle();
   const wid = process.arch === "x64" ? hwnd.readBigUInt64LE(0).toString() : String(hwnd.readUInt32LE(0));
@@ -185,6 +187,10 @@ function open(item) {
     "--no-osc", "--osd-level=0", "--no-input-default-bindings", "--input-vo-keyboard=no", "--no-input-cursor",
     "--cursor-autohide=always", "--hwdec=auto-safe", "--keep-open=always", "--cache=yes", "--media-controls=yes",
     "--demuxer-max-bytes=200MiB", "--audio-display=no", "--no-terminal", "--sub-auto=no",
+    // mpv's own settings and caches live in PlexDeck's data folder (for the portable
+    // version: inside its folder), not in %APPDATA% / %LOCALAPPDATA%\mpv.
+    `--config-dir=${mpvDir}`, `--gpu-shader-cache-dir=${path.join(mpvDir, "cache")}`, `--icc-cache-dir=${path.join(mpvDir, "cache")}`,
+    `--watch-later-dir=${path.join(mpvDir, "watch_later")}`,
     ...settingsArgs(d.config()),
   ];
   now.paused = false; now.title = ""; lastFps = 0;

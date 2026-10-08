@@ -81,13 +81,17 @@ A built-in player (your server converts the video) is there as a fallback.
 Grab the latest from [Releases](https://github.com/Farathim89/plexdeck/releases):
 
 - `PlexDeck-Setup-<version>.exe` — installer (Start Menu & desktop shortcuts, uninstaller)
-- `PlexDeck-Portable-<version>.exe` — no install; settings are kept in a `plexdeck-data`
-  folder next to it
+- `PlexDeck-Portable-<version>.zip` — no install: unzip it to a folder of its own and run
+  `PlexDeck.exe`. Everything stays in that folder (settings in `plexdeck-data` next to it),
+  nothing goes to Temp or AppData — you can carry it on a USB stick
 
 Sign in to Plex on first start. PlexDeck checks GitHub for new versions and shows an
 **Update** button in the title bar when one is out (Help → *Check for updates…* checks now).
-The installed app updates itself with one click; for the portable one, download the new
-`.exe` and put it next to your `plexdeck-data` folder.
+The installed app updates itself with one click; for the portable one, unzip the new
+version over the old folder (your `plexdeck-data` folder stays as it is).
+
+Coming from the older single-file `PlexDeck-Portable-x.exe`? Unzip the new version into its
+folder and move your `plexdeck-data` folder in next to `PlexDeck.exe`.
 
 ### "Windows protected your PC"?
 
