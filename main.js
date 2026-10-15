@@ -62,6 +62,13 @@ app.userAgentFallback = app.userAgentFallback
 
 // Started by Windows at sign-in ("Start with Windows") → go straight to the tray.
 const startHidden = process.argv.includes("--hidden");
+// Started by a TV front end (Windows Media Center's Plex tile): "--fullscreen" and/or "--tv"
+// (TV mode). Also when PlexDeck already runs: then they arrive with the second start.
+function applyStartFlags(argv, ready = true) {
+  if (!win) return;
+  if (argv.includes("--fullscreen") && !win.isFullScreen()) win.setFullScreen(true);
+  if (argv.includes("--tv") && ready) tv.setMode("tv", { remember: false });
+}
 
 const ICON = path.join(__dirname, "build", "icon.ico");
 const PRELOAD = path.join(__dirname, "preload.js");
@@ -536,6 +543,7 @@ function createWindow() {
   win.once("ready-to-show", () => {
     if (startHidden) return;   // started with Windows → stay in the tray
     win.show();
+    applyStartFlags(process.argv, false);
     focusInUse();
   });
   // ✕ hides to the tray (music keeps playing) unless you're quitting or turned it off.
@@ -1185,11 +1193,12 @@ app.on("web-contents-created", (_e, contents) => {
   });
 });
 
-app.on("second-instance", () => {
+app.on("second-instance", (_ev, argv) => {
   if (!win) return;
   if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
+  applyStartFlags(argv || []);
 });
 
 app.whenReady().then(() => {
@@ -1212,7 +1221,11 @@ app.whenReady().then(() => {
     setConfig: (patch) => { config = { ...config, ...patch }; writeJson(dataFile("config.json"), config); },
     plexReady: () => plexReady,
   });
-  win.webContents.once("did-finish-load", () => { tv.startMode(); sendUpdateToTitleBar(); });
+  win.webContents.once("did-finish-load", () => {
+    tv.startMode();
+    if (!startHidden && process.argv.includes("--tv")) tv.setMode("tv", { remember: false });
+    sendUpdateToTitleBar();
+  });
   mpv.init({
     config: () => config,
     saveConfig: (patch) => { config = { ...config, ...patch }; writeJson(dataFile("config.json"), config); },
