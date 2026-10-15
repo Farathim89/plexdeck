@@ -79,9 +79,12 @@ function setMini(on) {
 function createLayers() {
   const win = d.win();
   mini = false;
+  // mpv draws into this layer through its own child window. Chromium also puts its drawing
+  // surface in here as a child window, on top of mpv's: transparent, so it doesn't cover the
+  // picture with black (the sound played but the screen stayed black).
   host = new BrowserWindow({
     parent: win, frame: false, show: false, skipTaskbar: true, resizable: false, movable: false,
-    minimizable: false, maximizable: false, focusable: false, backgroundColor: "#000000", hasShadow: false,
+    minimizable: false, maximizable: false, focusable: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
   });
   osd = new BrowserWindow({
     parent: host, frame: false, show: false, skipTaskbar: true, resizable: false, movable: false,
@@ -194,8 +197,10 @@ function open(item) {
     ...settingsArgs(d.config()),
   ];
   now.paused = false; now.title = ""; lastFps = 0;
-  proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
-  proc.on("exit", () => { proc = null; pipe = null; if (osd) toOsd({ event: "mpv-exit" }); });
+  const child = proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
+  // Only if it's still the current mpv: the previous one closes a moment after the next one
+  // starts, and must not make us forget the new one (then it never got stopped, and played on).
+  child.on("exit", () => { if (proc !== child) return; proc = null; pipe = null; if (osd) toOsd({ event: "mpv-exit" }); });
   host.showInactive();
   // What to play goes along in the address, so the controls have it as soon as they're ready.
   osd.loadFile(path.join(__dirname, "tv.html"), { query: {
@@ -302,4 +307,6 @@ function command(cmd) {
   if (c && pipe) send(c);
 }
 
-module.exports = { init, available, stop, isOpen: () => !!host, state, command };
+// The player's controls, when they should have the keyboard / controller (not in the mini player).
+const controls = () => (osd && !osd.isDestroyed() && !mini ? osd : null);
+module.exports = { init, available, stop, isOpen: () => !!host, state, command, controls };

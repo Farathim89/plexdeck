@@ -36,7 +36,11 @@ addEventListener("resize", fit);
 fit();
 
 // ---- clock ----------------------------------------------------------------------
-function tick() { $("clock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+function tick() {
+  const t = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  $("clock").textContent = t;
+  if ($("pClock")) $("pClock").textContent = t;
+}
 setInterval(tick, 10000); tick();
 
 // ---- server data ----------------------------------------------------------------
@@ -81,6 +85,12 @@ function norm(m) {
     seasonKey: ep ? m.parentRatingKey : season ? m.ratingKey : null,
     genres: (m.Genre || []).map((g) => g.tag).slice(0, 3),
     cast: (m.Role || []).map((r) => r.tag).slice(0, 3),
+    directors: (m.Director || []).map((d) => d.tag).slice(0, 2),
+    // critic / audience scores, like Plex shows them (Rotten Tomatoes, IMDb, TMDB)
+    rates: (m.Rating && m.Rating.length ? m.Rating.map((r) => [r.value, r.image]) : [[m.rating, m.ratingImage], [m.audienceRating, m.audienceRatingImage]])
+      .filter(([v, i]) => v != null && i).map(([v, i]) => ({ v: Number(v), i })),
+    // the title as artwork (Plex's clear logo), like the new Plex
+    logo: ((m.Image || []).find((x) => x.type === "clearLogo") || {}).url || "",
     blur: m.UltraBlurColors || null,
     childCount: m.childCount,
     square: ["artist", "album", "track", "photo", "photoalbum"].includes(t),
@@ -96,7 +106,10 @@ const watched = (it) => ["artist", "album", "track", "photo", "photoalbum", "pla
 let artToken = 0;
 function showHero(it) {
   if (!it) return;
-  $("heroTitle").textContent = it.title || "";
+  const logoSrc = it.logo && S && lastPrefs.heroTitle !== "text" ? `${S.uri}${it.logo}${it.logo.includes("?") ? "&" : "?"}X-Plex-Token=${S.token}` : "";
+  $("heroTitle").classList.toggle("logo", !!logoSrc);
+  if (logoSrc) $("heroTitle").innerHTML = `<img src="${esc(logoSrc)}" alt="${esc(it.title || "")}">`;
+  else $("heroTitle").textContent = it.title || "";
   $("heroSub").textContent = it.sub || "";
   const meta = [];
   if (it.type === "episode") {
@@ -104,27 +117,52 @@ function showHero(it) {
     if (it.date) meta.push(fmtDate(it.date));
   } else if (it.year) meta.push(it.year);
   if (it.duration) meta.push(fmtDuration(it.duration));
-  if (it.rating) meta.push(it.rating);
+  if (it.details && it.genres.length) meta.push(it.genres.join(", "));
   if (it.type === "show" && it.childCount) meta.push(it.childCount > 1 ? tr("{n} seasons", { n: it.childCount }) : tr("1 season"));
   let chips = "";
   if (it.offset && it.duration) chips = `<span class="chip"><i class="ring"></i>${esc(tr("{time} left", { time: fmtDuration(it.duration - it.offset) }))}</span>`;
   else if (watched(it)) chips = `<span class="chip">✓ ${esc(tr("Watched"))}</span>`;
-  $("heroMeta").innerHTML = meta.map((x) => `<span>${esc(x)}</span>`).join("") + chips;
-  $("heroLine").textContent = it.genres.join(", ");
+  $("heroMeta").innerHTML = meta.map((x) => `<span>${esc(x)}</span>`).join("") + (it.rating ? `<span class="cr">${esc(it.rating)}</span>` : "") + chips;
+  $("heroLine").textContent = it.details ? "" : "";
+  $("heroRates").innerHTML = it.details ? (it.rates || []).map(rateHtml).join("") : "";
   $("heroSummary").textContent = it.summary;
-  $("heroCast").textContent = it.cast.join(", ");
+  // details pages say who directed it (like Plex); rows show the cast
+  $("heroCast").textContent = it.details && it.directors && it.directors.length ? tr("Directed by {names}", { names: it.directors.join(", ") }) : it.cast.join(", ");
   setArt(it);
+}
+// "rrggbb" darkened to `k` of its brightness → "#rrggbb"
+function shadeHex(hex, k) {
+  const n = parseInt(String(hex || "202020").replace("#", "").slice(0, 6), 16) || 0x202020;
+  const ch = (s) => Math.round(((n >> s) & 255) * k).toString(16).padStart(2, "0");
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
+// A score with its source's mark: Rotten Tomatoes (tomato / splat, popcorn), IMDb, TMDB.
+function rateHtml({ v, i }) {
+  const pct = `${Math.round(v * 10)}%`;
+  if (/rottentomatoes/.test(i)) {
+    const audience = /upright|spilled/.test(i), bad = /rotten|spilled/.test(i);
+    const mark = audience ? `<i class="rt-pop ${bad ? "bad" : ""}"></i>` : `<i class="rt-tom ${bad ? "bad" : ""}"></i>`;
+    return `<span class="rate">${mark}${pct}</span>`;
+  }
+  if (/imdb/.test(i)) return `<span class="rate"><b class="rt-imdb">IMDb</b>${Number(v).toFixed(1)}</span>`;
+  if (/themoviedb/.test(i)) return `<span class="rate"><b class="rt-tmdb">TMDB</b>${Number(v).toFixed(1)}</span>`;
+  return `<span class="rate">${pct}</span>`;
 }
 function setArt(it) {
   const my = ++artToken;
   const im = $("artImg");
   const src = img(it.art, 1340, 780);
+  // Plex's colours for the artwork: the page is tinted with them and the picture fades into
+  // that tint (not into black), like Plex's TV app.
   if (it.blur) {
     const c = it.blur;
-    $("bg").style.background = `linear-gradient(135deg, #${c.topLeft} 0%, #${c.bottomRight} 100%)`;
-    $("bg").style.filter = "brightness(.42) saturate(1.1)";
+    $("bg").style.background = `linear-gradient(135deg, ${shadeHex(c.topLeft, .5)} 0%, ${shadeHex(c.bottomLeft || c.topLeft, .42)} 55%, ${shadeHex(c.bottomRight, .55)} 100%)`;
+    $("bg").style.filter = "";
+    stage.style.setProperty("--tint", shadeHex(c.topLeft, .5));
+    stage.style.setProperty("--tint2", shadeHex(c.bottomLeft || c.topLeft, .42));
   } else {
     $("bg").style.background = ""; $("bg").style.filter = "";
+    stage.style.removeProperty("--tint"); stage.style.removeProperty("--tint2");
   }
   if (!src) { im.classList.remove("on"); return; }
   if (im.dataset.src === src) return;
@@ -151,47 +189,135 @@ const ICON = {
   live: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 3l4 4 4-4"/></svg>',
   discover: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>',
+  settings: '<svg class="solid" viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 000-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 00-1.7-1L15 3h-4l-.4 2.7a7.3 7.3 0 00-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 000 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 001.7 1L11 21h4l.4-2.7a7.3 7.3 0 001.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 113.5-3.5 3.5 3.5 0 01-3.5 3.5z" fill-rule="evenodd"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.5M3.5 12h.5M3.5 18h.5"/></svg>',
+  more: '<svg class="solid" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  plexmark: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.6 6.5h2.8l3.6 5.5-3.6 5.5H9.6l3.6-5.5z"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
+  lists: '<svg class="solid" viewBox="0 0 24 24"><path d="M8 3h11a1 1 0 011 1v17l-6.5-4L7 21V4a1 1 0 011-1z" opacity=".55"/><path d="M5 6h10a1 1 0 011 1v15l-5.5-3.5L5 22V7a1 1 0 011-1z" transform="translate(-1 -1)"/></svg>',
+  bookmark: '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.3L12 17.5 6.5 20.4l1-6.3L3 9.7l6.2-.9z"/></svg>',
+  dots: '<svg class="solid" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  sort: '<svg viewBox="0 0 24 24"><path d="M4 6h9M4 11h6M4 16h4M17 4v16M14 17l3 3 3-3"/></svg>',
+  burger: '<svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>',
+  switchuser: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M16 4.5h5M19 2.5l2 2-2 2M21 11h-5M18 9l-2 2 2 2"/></svg>',
+  tv: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>',
+  globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  skip: '<svg viewBox="0 0 24 24"><path d="M5 5l9 7-9 7zM17 5v14"/></svg>',
+  gamepad: '<svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 014 4v1a4 4 0 01-7 2.6L14 14h-4l-1 1.6A4 4 0 012 13v-1a4 4 0 014-4zM7 11v3M5.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>',
+  checked: '<svg class="solid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.4 14.2l-4.2-4.2 1.4-1.4 2.8 2.8 6-6 1.4 1.4z"/></svg>',
+  audio: '<svg class="solid" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm4 4v6h2l3 2.5V6.5L9 9zm8 .5v5h1.5v-5z"/></svg>',
+  subs: '<svg class="solid" viewBox="0 0 24 24"><path d="M3 5h18v14H3zm3 7v2h5v-2zm7 0v2h5v-2zm-7 3.5v1h12v-1z"/></svg>',
   music: '<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
   playlist: '<svg viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M16 14v6l5-3z"/></svg>',
   tracks: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M13 15h4M7 11h10"/></svg>',
 };
 
-// ---- the side menu -------------------------------------------------------------------
-function buildMenu() {
-  menuItems = [
-    { id: "profile", label: S && S.user ? tr("{name} · switch", { name: S.user.name }) : tr("Switch user"), icon: "user", open: () => { currentMenuId = "profile"; stack.length = 0; showPage(profilesPage()); closeMenu(); } },
+// ---- the side menu (like Plex's) ------------------------------------------------------
+// You at the top (picture + name: Switch user / Theme / Settings), Search, Home, Watchlist, your
+// libraries, Playlists, Live TV, Movies & Shows on Plex, More, Settings. Left on an entry selects
+// its ⋮, which opens its Actions (Unpin from sidebar, Reorder, Scan Library Files). Unpinned
+// entries live under More. Order and pins are kept per Plex user on this PC.
+let menuHandle = false;   // the ⋮ beside the focused entry has focus
+let reorder = null;       // { before: [ids] } while moving an entry
+let moreMode = false;     // the menu shows More's list
+const userKey = (k) => `${k}:${(S && S.user && S.user.name) || ""}`;
+const readList = (k) => { try { const v = JSON.parse(localStorage.getItem(userKey(k)) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
+const writeList = (k, v) => { try { localStorage.setItem(userKey(k), JSON.stringify(v)); } catch {} };
+const FIXED = new Set(["profile", "mylists", "search", "home", "more", "back"]);   // can't be moved or unpinned
+const LIB_ORDER = { movie: 0, show: 1, artist: 2, photo: 3 };
+function allEntries() {
+  return [
+    { id: "profile", label: S && S.user ? S.user.name : tr("Switch user"), icon: "user", me: true, pin: true, open: () => openProfile() },
     ...(Music.isActive() ? [{ id: "nowplaying", label: tr("Now playing"), icon: "music", open: () => { closeMenu(); Music.showScreen(); } }] : []),
-    { id: "looks", label: tr("Theme"), icon: "brush", open: () => { currentMenuId = "looks"; stack.length = 0; showPage(looksPage()); closeMenu(); } },
-    { id: "search", label: tr("Search"), icon: "search", open: () => { currentMenuId = "search"; stack.length = 0; showPage(searchPage()); } },
-    { id: "home", label: tr("Home"), icon: "home", live: true, open: () => showPage(homePage()) },
-    { id: "livetv", label: tr("Live TV"), icon: "live", live: true, open: () => showPage(providerPage("epg")) },
-    { id: "discover", label: tr("Discover"), icon: "discover", live: true, open: () => showPage(providerPage("discover")) },
-    { id: "watchlist", label: tr("Watchlist"), icon: "watchlist", live: true, open: () => showPage(watchlistPage()) },
-    { id: "playlists", label: tr("Playlists"), icon: "playlist", live: true, open: () => showPage(listPage(tr("Playlists"), "/playlists", null, { playlistType: "video" })) },
-    ...sections.map((s) => ({
-      id: `lib-${s.key}`, label: s.title, live: true,
-      icon: s.type === "show" ? "show" : s.type === "artist" ? "artist" : s.type === "photo" ? "photo" : "movie",
-      open: () => showPage(libraryPage(s)),
+    { id: "mylists", label: tr("My Lists"), icon: "lists", live: true, open: () => menuPage("mylists", myListsPage) },
+    { id: "search", label: tr("Search"), icon: "search", pin: true, open: () => { currentMenuId = "search"; stack.length = 0; showPage(searchPage()); } },
+    { id: "home", label: tr("Home"), icon: "home", pin: true, live: true, open: () => menuPage("home", homePage) },
+    ...sections.map((sec, i) => ({
+      id: `lib-${sec.key}`, label: sec.title, live: true, lib: sec, sec: i === 0 ? tr("Libraries") : "",
+      icon: sec.type === "show" ? "show" : sec.type === "artist" ? "music" : sec.type === "photo" ? "photo" : "movie",
+      open: () => menuPage(`lib-${sec.key}`, () => libraryPage(sec)),
     })),
+    { id: "livetv", label: tr("Live TV"), icon: "live", live: true, sec: tr("On Plex"), open: () => menuPage("livetv", () => providerPage("epg")) },
+    { id: "discover", label: tr("Discover"), icon: "discover", live: true, open: () => menuPage("discover", () => providerPage("discover")) },
   ];
-  const keep = menuItems.length && menuItems[menuIndex] ? menuItems[menuIndex].id : null;
-  $("menuItems").innerHTML = menuItems.map((m, i) => `<div class="mi" data-i="${i}">${ICON[m.icon]}<span>${esc(m.label)}</span></div>`).join("");
+}
+function buildMenu() {
+  if (moreMode) return buildMore();
+  const hidden = readList("tvMenuHidden");
+  let items = allEntries().filter((m) => !hidden.includes(m.id));
+  // your order (Reorder): saved ids first in that order, new entries where they'd normally be
+  const saved = readList("tvMenuOrder");
+  if (saved.length) {
+    const movable = items.filter((m) => !FIXED.has(m.id));
+    const out = saved.map((id) => movable.find((m) => m.id === id)).filter(Boolean);
+    movable.forEach((m, i) => { if (!out.includes(m)) out.splice(Math.min(i, out.length), 0, m); });
+    const head = items.filter((m) => FIXED.has(m.id) || m.id === "nowplaying");
+    items = [...head, ...out.filter((m) => m.id !== "nowplaying")];
+  }
+  const onPlex = items.findIndex((m) => m.id === "livetv" || m.id === "discover");
+  const more = { id: "more", label: tr("More"), icon: "more", open: () => openMore() };
+  if (onPlex >= 0) items.splice(onPlex, 0, more); else items.push(more);
+  // the first of "On Plex" carries the section title (Live TV may be unpinned)
+  items.forEach((m) => { if (m.lib) m.sec = ""; });
+  const firstLib = items.find((m) => m.lib);
+  if (firstLib) firstLib.sec = tr("Libraries");
+  const firstPlex = items.find((m) => m.id === "livetv" || m.id === "discover");
+  if (firstPlex) firstPlex.sec = tr("On Plex");
+  menuItems = items;
+  renderMenu();
+}
+// More: everything you can put in the sidebar (pinned or not); its Actions pin / unpin.
+function openMore() {
+  moreMode = true; menuHandle = false;
+  buildMore();
+  menuIndex = Math.min(1, menuItems.length - 1);
   drawMenu();
 }
+function buildMore() {
+  const hidden = readList("tvMenuHidden");
+  const all = allEntries().filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying");
+  menuItems = [
+    { id: "back", label: tr("BACK"), icon: "back", open: () => closeMore() },
+    ...all.filter((m) => hidden.includes(m.id)).map((m) => ({ ...m, unpinned: true })),
+    ...all.filter((m) => !hidden.includes(m.id)),
+  ];
+  renderMenu();
+}
+function closeMore() {
+  moreMode = false; menuHandle = false;
+  buildMenu();
+  menuIndex = Math.max(0, menuItems.findIndex((m) => m.id === "more"));
+  drawMenu();
+}
+function renderMenu() {
+  const face = () => (S && S.user && S.user.thumb ? `<img class="mi-face" src="${esc(S.user.thumb)}" alt="">`
+    : `<div class="mi-face">${esc(((S && S.user && S.user.name) || "?").slice(0, 1).toUpperCase())}</div>`);
+  $("menuItems").innerHTML = menuItems.map((m, i) => `<div class="mi ${m.me ? "me" : ""} ${m.pin ? "pin" : ""} ${m.sec ? "sec" : ""}" data-i="${i}" data-sec="${esc(m.sec || "")}">${m.me ? face() : ICON[m.icon] || ""}`
+    + `<span>${esc(m.label)}${m.sub ? `<small>${esc(m.sub)}</small>` : ""}</span>${m.me ? `<i class="chev">${ICON.chev}</i>` : ""}</div>`).join("");
+  drawMenu();
+}
+const hasActions = (m) => m && !FIXED.has(m.id) && m.id !== "nowplaying";
 function drawMenu() {
   document.body.classList.toggle("menu-open", menuOpen);
+  document.body.classList.toggle("menu-more", moreMode);
   const list = $("menuItems");
   $("profile").hidden = true;
+  $("menuHint").textContent = "";
   [...list.children].forEach((el, i) => {
-    el.classList.toggle("focus", menuOpen && i === menuIndex);
+    el.classList.toggle("focus", menuOpen && !menuHandle && i === menuIndex);
+    el.classList.toggle("moving", menuOpen && !!reorder && i === menuIndex);
     el.classList.toggle("current", menuItems[i].id === currentMenuId);
   });
   // Long menus scroll: keep the selected entry (and one more) on screen.
   const sel = list.children[menuOpen ? menuIndex : Math.max(0, menuItems.findIndex((m) => m.id === currentMenuId))];
-  if (sel) {
+  if (!menuOpen) { menuScroll = 0; list.style.transform = ""; list.style.clipPath = ""; }
+  else if (sel) {
     const stageH = innerHeight / (innerWidth / 1920);
-    const viewH = stageH - list.offsetTop - 30;
+    const viewH = stageH - list.offsetTop - 24;
     const itemH = sel.offsetHeight + 8;
     let shift = menuScroll;
     if (sel.offsetTop - shift < itemH) shift = Math.max(0, sel.offsetTop - itemH);
@@ -199,41 +325,342 @@ function drawMenu() {
     shift = Math.max(0, Math.min(shift, list.scrollHeight - viewH));
     menuScroll = shift;
     list.style.transform = `translateY(${-shift}px)`;
-    list.style.clipPath = `inset(${shift}px -40px -4000px -40px)`;   // entries scrolled up vanish under the profile
+    list.style.clipPath = `inset(${shift}px -40px -4000px -40px)`;
   }
+  // the ⋮ beside the focused entry (white when it has the focus)
+  const dots = $("menuDots");
+  const m = menuItems[menuIndex];
+  dots.hidden = !(menuOpen && !reorder && hasActions(m) && sel);
+  if (!dots.hidden) {
+    dots.style.top = `${list.offsetTop + sel.offsetTop - menuScroll}px`;
+    dots.style.height = `${sel.offsetHeight}px`;
+    dots.classList.toggle("focus", menuHandle);
+  }
+  drawProfPanel();
   if (page) page.draw();   // positions follow the menu width
 }
 let liveTimer = null;
 function menuMove(delta) {
+  menuHandle = false; panels = [];
   const next = Math.max(0, Math.min(menuItems.length - 1, menuIndex + delta));
-  if (next === menuIndex) return;
+  if (next === menuIndex) { drawMenu(); return; }
   menuIndex = next;
   drawMenu();
-  // Like the TV app: libraries load live behind the menu as you move.
+  // Like the new Plex: moving through the sidebar only moves; OK opens the page.
   clearTimeout(liveTimer);
-  const m = menuItems[menuIndex];
-  if (m.live && m.id !== currentMenuId) liveTimer = setTimeout(() => { if (menuItems[menuIndex] === m) { currentMenuId = m.id; stack.length = 0; m.open(); drawMenu(); } }, 380);
 }
 function openMenu() {
-  menuOpen = true;
+  if (page && page.noMenu) return;   // full-screen pages (who's watching, PIN), like Plex's own
+  menuOpen = true; menuHandle = false;
   const i = menuItems.findIndex((m) => m.id === currentMenuId);
-  menuIndex = i >= 0 ? i : 1;
+  menuIndex = i >= 0 ? i : menuItems.findIndex((m) => m.id === "home");
   drawMenu();
 }
-function closeMenu() { menuOpen = false; drawMenu(); }
+function closeMenu() {
+  if (reorder) cancelReorder();
+  if (moreMode) { moreMode = false; buildMenu(); }
+  menuHandle = false; menuOpen = false; profPanel = null; panels = [];
+  drawMenu();
+}
 function menuOk() {
   clearTimeout(liveTimer);
   const m = menuItems[menuIndex];
+  if (menuHandle) return menuActions(m);
+  if (moreMode && m.id !== "back") { moreMode = false; buildMenu(); }
   if (!m.live) { m.open(); if (m.id === "search") closeMenu(); return; }
   if (m.id !== currentMenuId) { currentMenuId = m.id; stack.length = 0; m.open(); }
   closeMenu();
 }
 function menuBack() {
-  // Back in the menu: Home; on Home it stays put.
+  if (menuHandle) { menuHandle = false; drawMenu(); return; }
+  if (moreMode) return closeMore();
+  // Back in the sidebar: the focus jumps to Home (nothing opens until OK); Back on Home opens the Home page.
   const home = menuItems.findIndex((m) => m.id === "home");
-  if (currentMenuId !== "home") { menuIndex = home; currentMenuId = "home"; stack.length = 0; menuItems[home].open(); }
-  else menuIndex = home;
+  if (menuIndex !== home) { menuIndex = home; drawMenu(); return; }
+  // on Home: Back again opens the Home page
+  if (currentMenuId !== "home") { currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); }
+  closeMenu();
+}
+// Keys while the menu is open that aren't plain up / down: the ⋮ handle and Reorder.
+function menuKey(name) {
+  if (reorder) {
+    if (name === "Up" || name === "Down") {
+      const to = menuIndex + (name === "Up" ? -1 : 1);
+      const ok = (i) => i >= 0 && i < menuItems.length && !FIXED.has(menuItems[i].id) && menuItems[i].id !== "nowplaying";
+      if (ok(to)) { [menuItems[menuIndex], menuItems[to]] = [menuItems[to], menuItems[menuIndex]]; menuIndex = to; renderMenu(); }
+    } else if (name === "OK") { writeList("tvMenuOrder", menuItems.filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying").map((m) => m.id)); reorder = null; drawMenu(); }
+    else if (name === "Back") cancelReorder();
+    return true;
+  }
+  if (name === "Right" && menuItems[menuIndex] && menuItems[menuIndex].me) { openProfile(); return true; }
+  if (name === "Left" && !menuHandle && hasActions(menuItems[menuIndex])) { menuHandle = true; drawMenu(); return true; }
+  if (name === "Right" && menuHandle) { menuHandle = false; drawMenu(); return true; }
+  return false;
+}
+function cancelReorder() {
+  const id = menuItems[menuIndex] && menuItems[menuIndex].id;
+  reorder = null;
+  buildMenu();
+  menuIndex = Math.max(0, menuItems.findIndex((m) => m.id === id));
   drawMenu();
+}
+// Actions for a sidebar entry (the ⋮): full screen, like Plex's.
+function menuActions(m) {
+  menuHandle = false; drawMenu();
+  const label = m.label;
+  const opts = [];
+  const hidden = readList("tvMenuHidden");
+  if (hidden.includes(m.id)) {
+    opts.push({ label: tr("Pin to sidebar"), desc: tr("Show '{name}' in the sidebar menu again.", { name: label }),
+      action: () => { writeList("tvMenuHidden", hidden.filter((x) => x !== m.id)); buildMenu(); } });
+  } else {
+    opts.push({ label: tr("Unpin from sidebar"), desc: tr("Don't display '{name}' in the sidebar menu. You can still access and re-pin this item via the 'More' option in the sidebar.", { name: label }),
+      action: () => {
+        writeList("tvMenuHidden", [...hidden, m.id]);
+        if (currentMenuId === m.id) { currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); }
+        buildMenu(); menuIndex = Math.min(menuIndex, menuItems.length - 1); drawMenu();
+      } });
+  }
+  if (m.lib) opts.push({ label: tr("Scan Library Files"), desc: tr("Request an update for the content of {name}.", { name: label }),
+    action: () => api(`/library/sections/${m.lib.key}/refresh`).then(() => toast(tr("Scanning {name}…", { name: label }))).catch(() => toast(tr("Couldn't start the scan"))) });
+  if (!moreMode) opts.push({ label: tr("Reorder"), desc: tr("Allows you to move '{name}' within the home sidebar. Up and Down will change the position, back cancels the move and OK saves the new position.", { name: label }),
+    action: () => { reorder = { id: m.id }; drawMenu(); } });
+  Dialog.open({ layout: "side", title: `${tr("Actions")} • ${label}`, icon: m.icon, items: opts });
+}
+
+// ---- My Lists: your Watchlist and your playlists (like Plex's) ---------------------------
+function myListsPage() {
+  const p = makePage({});
+  loadInto(p, async () => {
+    const [wl, pls] = await Promise.all([
+      desktop.tvWatchlist().catch(() => null),
+      api("/playlists", { playlistType: "video" }).catch(() => null),
+    ]);
+    const rows = [];
+    const w = (mc(wl).Metadata || []).map((m) => ({ ...norm(m), cloud: true }));
+    if (w.length) rows.push({ kind: "posters", title: tr("Watchlist"), col: 0, items: w });
+    const l = (mc(pls).Metadata || []).map(norm);
+    if (l.length) rows.push({ kind: "posters", title: tr("Playlists"), col: 0, items: l });
+    return rows.length ? rows : [{ kind: "posters", title: tr("Nothing on your lists yet"), col: 0, items: [] }];
+  });
+  return p;
+}
+
+// ---- your profile (the top entry): full screen like Plex's ------------------------------
+// ---- your profile and Settings: panels beside the sidebar (like the new Plex) -------------
+// panels = a stack; each { title, rows: () => [...], i }. Rows: { label, sub, value, toggle, header,
+// face, action }. The first panel (your profile's) shows as soon as your name has focus.
+let panels = [];
+let profPanel = null;   // true while a panel has the focus
+const ONOFF = (v) => (v ? tr("On") : tr("Off"));
+const secs = (v) => (v === 0 ? tr("at once") : v === 1 ? tr("1 second") : tr("{n} seconds", { n: v }));
+const LANGS = ["Any", "English", "Japanese", "Swedish", "German", "French", "Spanish", "Italian", "Korean", "Chinese"];
+const steps = (from, to, by, fmt) => { const o = []; for (let n = from; n <= to; n += by) o.push({ v: n, l: fmt(n) }); return o; };
+function setPref(key, value) { lastPrefs = { ...lastPrefs, [key]: value }; desktop.setSetting(key, value); drawProfPanel(); }
+// a setting as a row: a switch, or a list you pick from (opens as the next panel)
+function prefRow(label, key, options, sub, custom = null) {
+  if (options === "toggle") return { label, sub, toggle: () => !!lastPrefs[key], action: () => setPref(key, !lastPrefs[key]) };
+  const list = () => (typeof options === "function" ? options() : options);
+  const cur = () => list().find((o) => o.v === lastPrefs[key]);
+  const shown = () => (cur() ? cur().l : custom && lastPrefs[key] != null ? secs(lastPrefs[key]) : "");
+  return { label, sub, value: shown, action: () => pushPanel({
+    title: label, focus: cur() ? list().indexOf(cur()) : custom ? list().length : 0,
+    rows: () => [
+      ...list().map((o) => ({ label: o.l, radio: () => lastPrefs[key] === o.v, action: () => { setPref(key, o.v); popPanel(); } })),
+      // any number of seconds: ← / → in a box, OK saves
+      ...(custom ? [{ label: tr("Custom…"), radio: () => !cur(), value: () => (!cur() ? secs(lastPrefs[key]) : ""), action: () => pushPanel({
+        title: label, stepper: { key, min: custom.min, max: custom.max, v: Number(lastPrefs[key]) || custom.min },
+        rows: (pn) => [{ label: tr("← / →  change   ·   OK  save"), box: () => secs(pn.stepper.v), action: () => { setPref(key, pn.stepper.v); popPanel(); popPanel(); } }],
+      }) }] : []),
+    ],
+  }) };
+}
+const PROFILE_PANEL = () => ({ rows: () => [
+  { icon: "switchuser", label: tr("Switch Profile"), action: () => { closeMenu(); openUserPicker(); } },
+  { icon: "plexmark", label: tr("Server"), action: () => pushPanel({ title: tr("Server"), rows: () => [
+    { label: tr("Server"), value: () => (S && S.serverName) || "" },
+    { label: tr("Reconnect"), sub: tr("Connect to {name} again (finds its fastest address).", { name: (S && S.serverName) || tr("your server") }), action: () => { closeMenu(); start(true); } },
+  ] }) },
+  { icon: "settings", label: tr("Settings"), action: () => pushPanel(SETTINGS_PANEL()) },
+] });
+const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
+  { label: tr("Account"), action: () => pushPanel({ title: tr("Account"), rows: () => [
+    { label: tr("Username"), value: () => (S && S.user && S.user.name) || "" },
+    prefRow(tr("Language"), "language", () => [{ v: "", l: tr("Automatic (like Windows)") }, ...(lastPrefs.languages || []).map((l) => ({ v: l.code, l: l.name }))]),
+    prefRow(tr("Ask Who's Watching at Start"), "askUserAtStart", "toggle"),
+    { label: tr("Plex Account Settings"), sub: tr("Opens in PC mode"), action: () => desktop.tvOpenPc("#!/settings/account") },
+  ] }) },
+  { label: tr("Plex Home"), action: () => pushPanel({ title: tr("Plex Home"), intro: tr("Plex home allows you to create a group of family and friends who share devices in the same home and manage access to media on a per-account basis."),
+    load: async (pn) => { pn.users = (await desktop.tvHomeUsers().catch(() => null)) || []; },
+    rows: (pn) => (pn.users || []).map((u) => ({ label: u.title, sub: u.admin ? tr("Admin") : u.restricted ? tr("Managed Account") : "", face: u.thumb,
+      action: () => { closeMenu(); openUserPicker({ focusUser: u.title }); } })) }) },
+  { label: tr("Experience"), action: () => pushPanel({ title: tr("Experience"), rows: () => [
+    { label: tr("Theme"), value: () => { const t = (lastPrefs.themes || []).find((x) => x.id === lastPrefs.theme); return t ? tr(t.label || t.name || "") : ""; },
+      action: () => pushPanel({ title: tr("Theme"), rows: () => (lastPrefs.themes || []).map((t) => ({ label: tr(t.label || t.name || t.id), radio: () => lastPrefs.theme === t.id, action: () => { setPref("theme", t.id); popPanel(); } })) }) },
+    prefRow(tr("Title Style"), "heroTitle", [{ v: "logo", l: tr("Logo artwork") }, { v: "text", l: tr("Text") }]),
+    prefRow(tr("Theme Music"), "themeMusic", "toggle"),
+    prefRow(tr("Music Visualiser"), "musicVisualiser", "toggle"),
+    prefRow(tr("Screensaver"), "screensaver", [0, 2, 5, 10, 20].map((n) => ({ v: n, l: n ? tr("{n} minutes", { n }) : tr("Never") }))),
+    prefRow(tr("Start In"), "startMode", [{ v: "last", l: tr("The mode I used last") }, { v: "pc", l: tr("PC mode") }, { v: "tv", l: tr("TV mode") }]),
+    prefRow(tr("Switch Mode by Itself"), "autoMode", "toggle", tr("Controller → TV mode, mouse → PC mode")),
+  ] }) },
+  { label: tr("Player Experience"), action: () => pushPanel({ title: tr("Player Experience"), rows: () => [
+    prefRow(tr("Auto Play"), "autoPlay", "toggle", tr('Play "Up Next" videos automatically')),
+    prefRow(tr("Auto Play Countdown"), "autoPlayCountdown", [2, 5, 10, 15, 20, 30].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 120 }),
+    prefRow(tr("Passout Protection"), "passoutHours", [{ v: 0, l: tr("Off") }, ...[1, 2, 3, 4].map((n) => ({ v: n, l: n === 1 ? tr("After 1 hour") : tr("After {n} hours", { n }) }))]),
+    prefRow(tr("Rewind Video on Resume"), "rewindOnResume", [{ v: 0, l: tr("None") }, ...[2, 5, 10, 15, 30].map((n) => ({ v: n, l: secs(n) }))], null, { min: 0, max: 300 }),
+    prefRow(tr("Skip Intros"), "autoSkipIntro", [{ v: false, l: tr("Manual") }, { v: true, l: tr("Automatic") }]),
+    prefRow(tr("Skip Intros After"), "skipIntroDelay", [0, 2, 5, 10, 15, 20, 30].map((n) => ({ v: n, l: secs(n) })), null, { min: 0, max: 120 }),
+    prefRow(tr("Skip Credits"), "autoSkipCredits", [{ v: false, l: tr("Manual") }, { v: true, l: tr("Automatic") }]),
+    prefRow(tr("Skip Credits After"), "skipCreditsDelay", [0, 2, 5, 10, 15, 20, 30].map((n) => ({ v: n, l: secs(n) })), null, { min: 0, max: 120 }),
+    prefRow(tr("Seek Back Time"), "jumpBack", [2, 5, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 600 }),
+    prefRow(tr("Seek Forward Time"), "jumpForward", [2, 5, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 600 }),
+    prefRow(tr("Player"), "playerEngine", [{ v: "mpv", l: tr("Native (mpv)") }, { v: "builtin", l: tr("Built-in") }]),
+  ] }) },
+  { label: tr("Video & Audio"), action: () => pushPanel({ title: tr("Video & Audio"), rows: () => [
+    { header: tr("Video") },
+    prefRow(tr("HDR"), "hdr", "toggle"),
+    prefRow(tr("Refresh Rate Switching"), "matchRefresh", "toggle"),
+    prefRow(tr("Hardware Decoding"), "hwDecode", [{ v: "auto", l: tr("Automatic") }, { v: "d3d11", l: "Direct3D 11" }, { v: "off", l: tr("Software") }]),
+    { header: tr("Audio") },
+    prefRow(tr("Passthrough"), "passthrough", [{ v: "off", l: tr("Off") }, { v: "dolby-dts", l: "Dolby Digital / DTS" }, { v: "all", l: tr("All (TrueHD, Atmos, DTS-HD)") }]),
+    prefRow(tr("Volume"), "defaultVolume", steps(0, 100, 10, (n) => `${n}%`)),
+    prefRow(tr("Audio Language"), "preferredAudioLang", LANGS.map((x) => ({ v: x, l: tr(x) }))),
+  ] }) },
+  { label: tr("Subtitles"), action: () => pushPanel({ title: tr("Subtitles"), rows: () => [
+    prefRow(tr("Subtitle Color"), "subColor", ["White", "Yellow", "Cyan", "Green", "Gray"].map((x) => ({ v: x, l: tr(x) }))),
+    prefRow(tr("Subtitle Position"), "subPosition", [{ v: "Bottom", l: tr("Bottom") }, { v: "Raised", l: tr("Raised") }]),
+    prefRow(tr("Subtitle Size"), "subSize", ["Small", "Normal", "Large", "Huge"].map((x) => ({ v: x, l: tr(x) }))),
+    prefRow(tr("Subtitle Background"), "subBackground", "toggle"),
+    prefRow(tr("Subtitles Automatically"), "autoSubtitles", "toggle"),
+    prefRow(tr("Subtitle Language"), "preferredSubtitleLang", LANGS.slice(1).map((x) => ({ v: x, l: tr(x) }))),
+    prefRow(tr("Prefer Subtitles Without SDH"), "preferNonSdh", "toggle"),
+  ] }) },
+  { label: tr("Advanced"), action: () => pushPanel({ title: tr("Advanced"), rows: () => [
+    prefRow(tr("What PlexDeck Shows"), "source", [{ v: "app", l: tr("Everything Plex has") }, { v: "server", l: tr("Just my server") }]),
+    prefRow(tr("Game Controller"), "controller", "toggle"),
+    prefRow(tr("Start Maximised"), "startMaximized", "toggle"),
+    prefRow(tr("Keep Running in the Tray"), "closeToTray", "toggle"),
+    { label: tr("All PlexDeck Settings"), sub: tr("Backup, fonts and more (PC view)"), action: () => { closeMenu(); desktop.tvSettings(); } },
+    { label: tr("Plex Web Settings"), sub: tr("Opens in PC mode"), action: () => desktop.tvOpenPc("#!/settings/web/general") },
+  ] }) },
+  { label: tr("About"), action: () => pushPanel({ title: tr("About"), rows: () => [
+    { header: tr("Device") },
+    { label: tr("App Name"), sub: "PlexDeck (TV mode)" },
+    { label: tr("Version"), sub: lastPrefs.version || "" },
+    { label: tr("Server"), sub: (S && S.serverName) || "" },
+  ] }) },
+] });
+function openProfile() { clearTimeout(liveTimer); panels = [{ ...PROFILE_PANEL(), i: 0 }]; profPanel = true; drawMenu(); }
+function pushPanel(pn) {
+  const p2 = { ...pn, i: pn.focus || 0 };
+  panels.push(p2);
+  if (p2.load) p2.load(p2).then(() => { if (panels.includes(p2)) drawProfPanel(); });
+  skipHeaders(p2, 1);
+  drawProfPanel();
+}
+function popPanel() {
+  panels.pop();
+  if (!panels.length) profPanel = null;
+  drawMenu();
+}
+const selectable = (r) => r && !r.header && (r.action || r.toggle || r.radio);
+function skipHeaders(pn, dir) {
+  const rows = pn.rows(pn);
+  let i = pn.i;
+  while (rows[i] && !selectable(rows[i]) && i + dir >= 0 && i + dir < rows.length) i += dir;
+  if (selectable(rows[i])) pn.i = i;
+}
+function drawProfPanel() {
+  const box = $("profPanel");
+  const onMe = menuItems[menuIndex] && menuItems[menuIndex].me;
+  if (menuOpen && onMe && !menuHandle && !panels.length) panels = [{ ...PROFILE_PANEL(), i: 0 }];
+  if (!(menuOpen && (profPanel || onMe) && !menuHandle) || !panels.length) { box.hidden = true; if (!menuOpen) panels = []; return; }
+  box.hidden = false;
+  const pn = panels[panels.length - 1];
+  const rows = pn.rows(pn);
+  const val = (x) => (typeof x === "function" ? x() : x);
+  box.classList.toggle("wide", panels.length > 1);
+  box.innerHTML = (pn.title ? `<h2>${esc(pn.title)}</h2>` : "") + (pn.intro ? `<p class="intro">${esc(pn.intro)}</p>` : "")
+    + `<div class="pplist">` + rows.map((r, i) => {
+      if (r.header) return `<h3>${esc(r.header)}</h3>`;
+      const focus = profPanel && i === pn.i ? "focus" : "";
+      const lead = r.face ? `<img class="pface" src="${esc(/^https?:/.test(r.face) ? r.face : img(r.face, 96, 96))}" alt="">` : r.icon ? ICON[r.icon] || "" : "";
+      if (r.box) return `<div class="pp stepbox ${focus}"><span class="t">${esc(r.label)}</span><span class="box">‹  ${esc(val(r.box))}  ›</span></div>`;
+      const right = r.toggle ? `<i class="sw ${val(r.toggle) ? "on" : ""}"></i>` : r.radio ? `<i class="rd ${val(r.radio) ? "on" : ""}"></i>` : r.value ? `<span class="v">${esc(val(r.value))}</span>` : "";
+      return `<div class="pp ${focus} ${selectable(r) ? "" : "info"}">${lead}<span class="t">${esc(r.label)}${r.sub ? `<small>${esc(val(r.sub))}</small>` : ""}</span>${right}</div>`;
+    }).join("") + `</div>`;
+  // keep the focused row in view
+  const list = box.querySelector(".pplist"), el = list && list.querySelector(".pp.focus");
+  if (el) { const top = el.offsetTop - list.offsetTop, h = list.clientHeight; if (top + el.offsetHeight > h + list.scrollTop - 20 || top < list.scrollTop) list.scrollTop = Math.max(0, top - h / 2); }
+}
+let stepHeld = 0, stepAt = 0;
+function profPanelAct(name) {
+  const pn = panels[panels.length - 1];
+  if (!pn) { profPanel = null; drawMenu(); return; }
+  if (pn.stepper && (name === "Left" || name === "Right")) {
+    const st = pn.stepper, now = Date.now();
+    stepHeld = now - stepAt < 200 ? stepHeld + 1 : 0; stepAt = now;   // held: bigger steps
+    const by = stepHeld > 20 ? 10 : stepHeld > 8 ? 5 : 1;
+    st.v = Math.max(st.min, Math.min(st.max, st.v + (name === "Left" ? -by : by)));
+    drawProfPanel();
+    return;
+  }
+  const rows = pn.rows(pn);
+  if (name === "Up" || name === "Down") {
+    const d = name === "Up" ? -1 : 1;
+    let i = pn.i + d;
+    while (rows[i] && !selectable(rows[i])) i += d;
+    if (rows[i]) pn.i = i;
+  } else if (name === "OK") { const r = rows[pn.i]; if (r && r.action) r.action(); return; }
+  else if (name === "Back" || name === "Left") { if (panels.length > 1) { panels.pop(); drawProfPanel(); return; } profPanel = null; }
+  drawMenu();
+}
+
+// ---- full-screen choices (profile, Actions, ⋯ menus), like Plex's ----------------------
+// layout "side": picture/icon + name + the focused choice's description on the left, choices on the right.
+// layout "list": a title and the choices in the middle. OK picks, Back closes.
+const Dialog = (() => {
+  let cur = null;
+  function open(o) { cur = { ...o, i: o.focus || 0 }; $("dlg").hidden = false; draw(); }
+  function close() { cur = null; $("dlg").hidden = true; }
+  function draw() {
+    const o = cur;
+    $("dlg").className = o.layout === "list" ? "list" : "side";
+    $("dlgTitle").textContent = o.title || "";
+    const icon = $("dlgIcon");
+    if (o.face) icon.innerHTML = `<img src="${esc(o.face)}" alt="">`;
+    else if (o.name && !o.icon) icon.innerHTML = `<div class="face">${esc(o.name.slice(0, 1).toUpperCase())}</div>`;
+    else icon.innerHTML = ICON[o.icon] || "";
+    $("dlgName").textContent = o.name || "";
+    $("dlgDesc").textContent = (o.items[o.i] && o.items[o.i].desc) || "";
+    $("dlgList").innerHTML = o.items.map((it, i) => `<div class="dl ${i === o.i ? "focus" : ""}">${esc(it.label)}</div>`).join("");
+  }
+  function act(name) {
+    const o = cur;
+    if (name === "Up") o.i = Math.max(0, o.i - 1);
+    else if (name === "Down") o.i = Math.min(o.items.length - 1, o.i + 1);
+    else if (name === "OK") { const it = o.items[o.i]; close(); if (it) it.action(); return; }
+    else if (name === "Back") { close(); if (o.onBack) o.onBack(); return; }
+    else return;
+    draw();
+  }
+  return { open, close, act, isOpen: () => !!cur };
+})();
+
+// Pages opened from the menu are kept: going back to one shows it at once, where you left it,
+// and it refreshes quietly behind the scenes.
+const pageCache = new Map();
+function menuPage(id, make) {
+  const kept = pageCache.get(id);
+  if (kept) {
+    showPage(kept);
+    if (kept.refresh) kept.refresh(); else if (kept.reload) kept.reload();
+    return;
+  }
+  const p = make();
+  pageCache.set(id, p);
+  showPage(p);
 }
 
 // ---- pages: rows of items ----------------------------------------------------------
@@ -249,7 +676,8 @@ function makePage({ rows = [], tabs = null, heroItem = null, pinned = true, onTa
   };
   return p;
 }
-function cardHtml(it, kind) {
+function cardHtml(it, kind, grid = false) {
+  if (kind === "set") return `<div class="card stile"><div class="img">${ICON[it.icon] || ICON.tv}</div><div class="label">${esc(it.title)}</div><div class="label small">${esc(it.value || "")}</div></div>`;
   if (kind === "people") {
     const face = it.thumb ? `<img src="${esc(/^https?:/.test(it.thumb) ? it.thumb : img(it.thumb, 240, 240))}" alt="" loading="lazy">` : `<div class="fallback">${esc((it.title || "?").slice(0, 1))}</div>`;
     return `<div class="card person"><div class="img">${face}</div><div class="label">${esc(it.title)}</div><div class="label small">${esc(it.role || "")}</div></div>`;
@@ -267,23 +695,31 @@ function cardHtml(it, kind) {
     return `<div class="card wide"><div class="img">${still}${badge}${prog}</div></div>`;
   }
   const prog = it.offset && it.duration ? `<div class="progress"><i data-w="${Math.min(100, (it.offset / it.duration) * 100)}"></i></div>` : "";
-  const badge = watched(it) ? `<div class="badge">✓</div>` : "";
+  const left = (it.type === "show" || it.type === "season") && it.leafCount ? it.leafCount - (it.viewedLeafCount || 0) : 0;
+  const badge = watched(it) ? `<div class="badge">✓</div>` : left > 0 ? `<div class="badge">${left}</div>` : "";
   const art = it.poster ? `<img src="${esc(img(it.poster, 330, it.square ? 330 : 495))}" alt="" loading="lazy">` : `<div class="fallback">${esc(it.title)}</div>`;
+  // library grids: title and year under the poster (collections: how many items), like Plex
+  if (grid && kind === "posters") {
+    const second = it.type === "collection" ? (it.childCount != null ? tr("{n} items", { n: it.childCount }) : "") : (it.year || "");
+    return `<div class="card g ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(it.title)}</div><div class="label small">${esc(second)}</div></div>`;
+  }
   const label = it.labelBelow || (it.square ? it.title : "");
   return `<div class="card ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(label)}</div></div>`;
 }
 function buttonHtml(b) {
-  return `<div class="btn ${b.on ? "on" : ""}">${ICON[b.icon] || ""}<span>${esc(b.label)}</span></div>`;
+  return `<div class="btn ${b.on ? "on" : ""} ${b.named ? "named" : ""}">${ICON[b.icon] || ""}<span>${esc(b.label)}</span></div>`;
 }
 function renderRows(p) {
   const box = $("rows");
   box.innerHTML = p.rows.map((r, i) => {
-    if (r.kind === "buttons") return `<div class="row" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div></div>`;
+    if (r.kind === "buttons") return `<div class="row brow" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div>`
+      + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "") + `</div>`;
+    if (r.kind === "options" && r.fixed) return `<div class="row fixedph" data-r="${i}"></div>`;
     if (r.kind === "options") return `<div class="row" data-r="${i}"><div class="buttons opts">${r.items.map((b) => `<div class="btn opt"><span>${esc(b.label)}</span></div>`).join("")}</div></div>`;
     if (r.kind === "track") { const t = r.items[0]; return `<div class="row trkrow" data-r="${i}"><div class="trk"><span class="n">${esc(t.n)}</span><span class="t">${esc(t.title)}</span><span class="d">${esc(t.len)}</span></div></div>`; }
     if (r.kind === "keys") return `<div class="row" data-r="${i}"><div class="strip keys">${r.items.map((k) => `<div class="key ${k.wide ? "wide" : ""}">${esc(k.label)}</div>`).join("")}</div></div>`;
     const title = r.title ? `<h3>${esc(r.title)}</h3>` : "";
-    return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind)).join("")}</div></div>`;
+    return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
   }).join("");
   box.querySelectorAll(".progress i").forEach((i) => { i.style.width = `${i.dataset.w}%`; });
   p.rows.forEach((r, ri) => r.items.forEach((it, ci) => {
@@ -295,9 +731,25 @@ function renderRows(p) {
     el.querySelector(".sw-acc").style.background = it.swatch.accent;
   }));
   $("tabs").innerHTML = p.tabs ? p.tabs.items.map((t) => `<div class="tab">${esc(t.label)}</div>`).join("") : "";
+  // a library's filter bar stays put above the grid (like Plex)
+  const fixed = p.rows.find((r) => r.kind === "options" && r.fixed);
+  $("libBar").hidden = !fixed;
+  document.body.classList.toggle("lib-bar", !!fixed);
+  $("libBar").innerHTML = fixed ? `<div class="buttons opts">${fixed.items.map((b) => b.iconOnly
+    ? `${fixed.count ? `<span class="count">${esc(fixed.count)}</span>` : ""}<div class="btn opt icon">${ICON[b.icon] || ""}</div>`
+    : `${b.before ? `<span class="by">${esc(b.before)}</span>` : ""}<div class="btn opt ${b.plain ? "plain" : ""}">${b.sortIcon ? ICON.sort : ""}<span>${esc(b.label)}</span></div>`).join("")}</div>` : "";
   p.rendered = true;
 }
 function drawPage(p) {
+  // Still loading and nothing to show yet: leave what's on screen until the rows arrive.
+  if (p.pending && !p.rows.length) return;
+  if (!p.isPicker) { document.body.classList.remove("who-mode"); $("who").hidden = true; }
+  document.body.classList.toggle("no-menu", !!p.noMenu);
+  document.body.classList.toggle("details", !!(p.heroItem && p.heroItem.details));
+  // library grids (Library / Collections / Categories tabs) have no hero, like Plex
+  document.body.classList.toggle("no-hero", !!(p.noHero && p.noHero()));
+  $("ovMenu").hidden = !p.overflow;
+  $("ovMenu").classList.toggle("focus", !!p.ovFocus && !menuOpen);
   if (!p.rendered) renderRows(p);
   const all = p.allRows();
   const rowEls = [...$("rows").children];
@@ -308,16 +760,16 @@ function drawPage(p) {
   });
   // focus marks
   p.rows.forEach((r, ri) => {
-    const el = rowEls[ri];
+    const el = r.fixed ? $("libBar") : rowEls[ri];
     if (!el) return;
     const items = r.kind === "track" ? el.querySelectorAll(".trk") : r.kind === "buttons" || r.kind === "options" ? el.querySelectorAll(".btn") : r.kind === "keys" ? el.querySelectorAll(".key") : el.querySelectorAll(".card");
-    const isFocusRow = !menuOpen && all[p.row] === r;
+    const isFocusRow = !menuOpen && !p.ovFocus && !p.azFocus && all[p.row] === r;
     items.forEach((c, ci) => c.classList.toggle("focus", isFocusRow && ci === r.col));
     el.classList.toggle("dim", !isFocusRow);
     // keep the focused card in view: the row slides left once you pass the middle
     if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track") {
-      const step = r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : 248;
-      const contentX = menuOpen ? 400 : 112;
+      const step = r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248;
+      const contentX = 128;
       const visible = Math.floor((1920 - contentX - 120) / step);
       const shift = Math.max(0, Math.min(r.col - (visible - 2), r.items.length - visible)) * step;
       el.querySelector(".strip").style.transform = `translateX(${-Math.max(0, shift)}px)`;
@@ -338,6 +790,7 @@ function drawPage(p) {
   else if (p.drawHero) p.drawHero();
   // near the end of what's loaded (library grid): load more
   if (p.loadMore && contentRow >= p.rows.length - 3) p.loadMore();
+  if (p.after) p.after(); else $("azBar").hidden = true;
 }
 function showPage(p, { push = false } = {}) {
   if (push && page) stack.push(page);
@@ -360,10 +813,10 @@ function move(dir) {
   const r = all[page.row];
   if (!r) return;
   if (dir === "Left") {
-    if (r.col > 0) { r.col--; if (r === page.tabs) switchTab(); }
+    if (r.col > 0) r.col--;   // tabs open with OK, like Plex
     else if (r.kind !== "buttons" || r.col === 0) openMenu();
   } else if (dir === "Right") {
-    if (r.col < r.items.length - 1) { r.col++; if (r === page.tabs) switchTab(); }
+    if (r.col < r.items.length - 1) r.col++;
   } else {
     const next = page.row + (dir === "Down" ? 1 : -1);
     if (next >= 0 && next < all.length && all[next].items.length) page.row = next;
@@ -398,9 +851,11 @@ function ok() {
 }
 function back() {
   if (menuOpen) return menuBack();
+  // Who's watching (no menu there): Back goes Home.
+  if (page && page.noMenu && !stack.length) { const h = menuItems.find((m) => m.id === "home"); currentMenuId = "home"; h.open(); drawMenu(); return; }
   if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); return; }
   if (!page) return openMenu();
-  // On Home / a library: first back to the top row, then the menu.
+  // On a page: first back to the top row, then the sidebar.
   const first = page.tabs ? 1 : 0;
   if (page.row > first) { page.row = first; page.draw(); return; }
   openMenu();
@@ -430,7 +885,7 @@ async function playItem(it, resume) {
   if (lastPrefs.playerEngine !== "builtin" && await desktop.nativeAvailable()) { nativePlaying = true; desktop.nativePlay({ key: it.key, resume: !!resume }); return; }
   Player.open(it, { resume: !!resume });
 }
-desktop.onNativeFailed((it) => { if (it && it.key) Player.open(it, { resume: !!it.resume }); });
+desktop.onNativeFailed((it) => { nativePlaying = false; if (it && it.key) Player.open(it, { resume: !!it.resume }); });
 async function setWatched(it, on) {
   await api(on ? "/:/scrobble" : "/:/unscrobble", { key: it.key, identifier: "com.plexapp.plugins.library" }).catch(() => {});
 }
@@ -439,11 +894,23 @@ async function setWatched(it, on) {
 function hubRows(hubs) {
   return hubs.filter((h) => h.Metadata && h.Metadata.length).map((h) => ({
     kind: "posters", title: h.title, col: 0,
-    items: h.Metadata.map(norm).map((it) => ({ ...it, labelBelow: it.type === "episode" ? `S${it.seasonNo} · E${it.epNo}` : "" })),
+    items: h.Metadata.map(norm).map((it) => ({ ...it, labelBelow: "" })),
   }));
 }
 function homePage() {
   const p = makePage({});
+  // the ⋮ by the clock (Up from the top row), like Plex: Manage Home Screen
+  p.overflow = true;
+  p.onAct = (name) => {
+    if (!p.ovFocus) {
+      if (name === "Up" && p.row === 0) { p.ovFocus = true; p.draw(); return true; }
+      return false;
+    }
+    if (name === "OK") { manageHome(); return true; }
+    if (name === "Down" || name === "Back") { p.ovFocus = false; p.draw(); return true; }
+    if (name === "Left") { p.ovFocus = false; openMenu(); return true; }
+    return true;
+  };
   loadInto(p, async () => {
     const [cont, hubs] = await Promise.all([
       api("/hubs/continueWatching", { count: 30 }).catch(() => null),
@@ -458,6 +925,13 @@ function homePage() {
   return p;
 }
 
+function manageHome() {
+  Dialog.open({
+    layout: "side", title: tr("Manage Home Screen"), icon: "plexmark",
+    items: [{ label: tr("Reset All Customizations"), desc: tr("Restore the default sidebar: its order and the entries you unpinned."),
+      action: () => { writeList("tvMenuOrder", []); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } }],
+  });
+}
 // Rows of 7 posters (a grid you move through like rows).
 function gridRows(items, title) {
   const rows = [];
@@ -480,70 +954,221 @@ const SORTS = [
   { label: tr("Release date"), v: "originallyAvailableAt:desc" }, { label: tr("Year"), v: "year:desc" },
   { label: tr("Rating"), v: "rating:desc" }, { label: tr("Recently watched"), v: "lastViewedAt:desc" },
 ];
-const SHOWS = [{ label: tr("All"), q: {} }, { label: tr("Unwatched"), q: { unwatched: 1 } }, { label: tr("In progress"), q: { inProgress: 1 } }];
+const SHOWS = [{ label: tr("All"), q: {} }, { label: tr("Unwatched Only"), q: { unwatched: 1 } }, { label: tr("In progress"), q: { inProgress: 1 } }];
 function libraryPage(sec) {
-  const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Library") }, { label: tr("Collections") }, { label: tr("Categories") }], col: 0, selected: 0 };
+  const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Browse") }, { label: tr("Collections") }, { label: tr("Categories") }], col: 0, selected: 0 };
   const p = makePage({ tabs });
+  p.noHero = () => tabs.selected > 0;
   let sort = 0, show = 0;
-  const loadRecommended = () => loadInto(p, async () => hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []));
-  const loadLibrary = () => {
+  // What each tab showed last time: switching back shows it at once (then refreshes quietly).
+  const tabRows = [];
+  const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
+  const loadRecommended = (o = {}) => loadInto(p, async () => hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []), { ...o, done: keep(0) });
+  // The Library tab pages in 84 titles at a time; the old grid stays up until the first batch is in.
+  let libLoad = null;
+  const loadLibrary = ({ quiet = false } = {}) => {
+    p.loadSeq = (p.loadSeq || 0) + 1;   // drops answers still on their way for the other tabs
     let start = 0, total = Infinity, loading = false;
+    const old = p.rows[0] && p.rows[0].kind === "options" ? p.rows[0] : null;
     const opts = {
-      kind: "options", col: 0,
+      kind: "options", fixed: true, col: old ? old.col : 0,
       items: [
-        { label: tr("Sort: {value}", { value: SORTS[sort].label }), action: () => { sort = (sort + 1) % SORTS.length; loadLibrary(); } },
-        { label: tr("Show: {value}", { value: SHOWS[show].label }), action: () => { show = (show + 1) % SHOWS.length; loadLibrary(); } },
+        // like Plex: "All ▾  by  Title ▾" — each opens its list
+        { label: SHOWS[show].label, action: () => Dialog.open({ layout: "list", title: sec.title, focus: show,
+          items: SHOWS.map((x, i) => ({ label: (i === show ? "✓  " : "") + x.label, action: () => { show = i; loadLibrary(); } })) }) },
+        { label: sec.type === "show" ? tr("Shows") : sec.type === "artist" ? tr("Artists") : tr("Movies"), plain: true, action: () => {} },
+        { label: SORTS[sort].label, sortIcon: true, before: tr("by"), action: () => Dialog.open({ layout: "list", title: tr("Sort by"), focus: sort,
+          items: SORTS.map((x, i) => ({ label: (i === sort ? "✓  " : "") + x.label, action: () => { sort = i; loadLibrary(); } })) }) },
+        // ⋮: play the library from the top, or something at random
+        { icon: "dots", iconOnly: true, label: tr("More"), action: () => Dialog.open({ layout: "list", title: sec.title,
+          items: [{ label: tr("Play"), action: () => playLibrary(false) }, { label: tr("Shuffle"), action: () => playLibrary(true) }] }) },
       ],
     };
-    p.rows = [opts]; p.row = 1; p.rendered = false;
-    p.loadMore = async () => {
+    const rows = [opts];
+    const loadMore = libLoad = async () => {
       if (loading || start >= total) return;
       loading = true;
+      const first = start === 0;
+      if (first && !quiet) busy(true);
       try {
         const r = mc(await api(`/library/sections/${sec.key}/all`, { "X-Plex-Container-Start": start, "X-Plex-Container-Size": 84, sort: SORTS[sort].v, ...SHOWS[show].q }));
+        if (libLoad !== loadMore) return;   // sort/show changed meanwhile
         total = r.totalSize ?? r.size ?? 0;
+        opts.count = tr("{n} Items", { n: total });
         const items = (r.Metadata || []).map(norm);
         start += items.length;
         if (!items.length) total = start;
-        for (let i = 0; i < items.length; i += 7) p.rows.push({ kind: "posters", grid: true, title: p.rows.length === 1 ? tr("{library} · {n} titles", { library: sec.title, n: total }) : "", col: 0, items: items.slice(i, i + 7) });
+        // 6 to a row (the A–Z bar has the right edge), no heading — like Plex
+        const last = rows[rows.length - 1];
+        let rest = items;
+        if (rows.length > 1 && last.items.length < 6) { const fill = 6 - last.items.length; last.items.push(...rest.slice(0, fill)); rest = rest.slice(fill); }
+        for (let i = 0; i < rest.length; i += 6) rows.push({ kind: "posters", grid: true, title: "", col: 0, items: rest.slice(i, i + 6) });
+        tabRows[1] = { rows, loadMore };
+        if (p.tabs.selected !== 1 || (!first && p.rows !== rows)) return;
+        if (first) {
+          if (quiet) keepCols(p.rows, rows);
+          p.rows = rows; p.loadMore = loadMore; p.pending = false;
+          if (!quiet) p.row = 1;
+          else if (p.row >= p.allRows().length) p.row = 1;
+        }
         if (page === p) { p.rendered = false; drawPage(p); }
-      } finally { loading = false; }
+      } catch (err) {
+        if (first && !quiet && libLoad === loadMore) showError(tr("Couldn't load this from your Plex server."), tr("Try again"), () => loadLibrary());
+      } finally {
+        loading = false;
+        if (first && !quiet) busy(false);
+      }
     };
-    if (page === p) drawPage(p);
-    p.loadMore();
+    loadMore();
+    loadLetters();
   };
-  const loadCollections = () => loadInto(p, async () => {
+  // ---- the Library tab's A–Z bar: Plex's own letter counts (only when sorted by title) ----
+  let az = [];   // [{ ch, size, start }]
+  const loadLetters = async () => {
+    az = [];
+    if (SORTS[sort].v !== "titleSort") { if (page === p) p.draw(); return; }
+    try {
+      const d = mc(await api(`/library/sections/${sec.key}/firstCharacter`, { ...SHOWS[show].q })).Directory || [];
+      let n = 0;
+      az = d.map((x) => { const e = { ch: x.title, size: Number(x.size) || 0, start: n }; n += e.size; return e; });
+    } catch {}
+    if (page === p) p.draw();
+  };
+  const gridItems = () => p.rows.slice(1).flatMap((r) => r.items);
+  const letterOf = (it) => {
+    const t = String((it && ((it.raw && it.raw.titleSort) || it.title)) || "").trim().toUpperCase();
+    const c = t[0] || "#";
+    return /[A-Z]/.test(c) ? c : "#";
+  };
+  const azIndexFor = (ch) => Math.max(0, az.findIndex((e) => e.ch === ch));
+  async function jumpTo(k) {
+    const e = az[k];
+    if (!e) return;
+    for (let tries = 0; tries < 60 && gridItems().length <= e.start && p.loadMore; tries++) { await p.loadMore(); await new Promise((r) => setTimeout(r, 60)); }
+    const idx = Math.min(e.start, gridItems().length - 1);
+    if (idx < 0) return;
+    p.row = 2 + Math.floor(idx / 6);
+    const r = p.allRows()[p.row];
+    if (r) r.col = idx % 6;
+    p.azFocus = false;
+    p.draw();
+  }
+  async function playLibrary(shuffle) {
+    try {
+      let it = shuffle
+        ? (mc(await api(`/library/sections/${sec.key}/all`, { sort: "random", "X-Plex-Container-Size": 1, ...SHOWS[show].q })).Metadata || []).map(norm)[0]
+        : gridItems()[0];
+      if (!it) return;
+      // a show: its next episode (the first one not watched yet)
+      if (it.type === "show") {
+        const eps = (mc(await api(`/library/metadata/${it.key}/allLeaves`)).Metadata || []).map(norm);
+        it = (shuffle ? eps[Math.floor(Math.random() * eps.length)] : eps.find((e) => !watched(e))) || eps[0];
+        if (!it) return;
+      }
+      playItem(it, !!it.offset);
+    } catch { toast(tr("Couldn't play this")); }
+  }
+  // keys: Right at the end of a grid row goes to the A–Z bar; there Up / Down pick a letter, OK jumps
+  p.onAct = (name) => {
+    if (tabs.selected !== 1 || !az.length) { p.azFocus = false; return false; }
+    if (p.azFocus) {
+      if (name === "Up") p.azIndex = Math.max(0, p.azIndex - 1);
+      else if (name === "Down") p.azIndex = Math.min(az.length - 1, p.azIndex + 1);
+      else if (name === "OK") { jumpTo(p.azIndex); return true; }
+      else if (name === "Left" || name === "Back") p.azFocus = false;
+      else return true;
+      p.draw();
+      return true;
+    }
+    const r = p.allRows()[p.row];
+    if (name === "Right" && r && r.grid && r.col >= r.items.length - 1) {
+      p.azFocus = true; p.azIndex = azIndexFor(letterOf(r.items[r.col])); p.draw();
+      return true;
+    }
+    return false;
+  };
+  // draw the bar; the letter of the focused title is lit, like Plex
+  p.after = () => {
+    const bar = $("azBar");
+    const on = tabs.selected === 1 && az.length > 0 && page === p;
+    bar.hidden = !on;
+    if (!on) return;
+    const r = p.allRows()[p.row];
+    const cur = p.azFocus ? -1 : r && r.grid ? azIndexFor(letterOf(r.items[r.col])) : -1;
+    bar.innerHTML = az.map((e, i) => `<div class="${i === cur ? "cur" : ""} ${p.azFocus && i === p.azIndex ? "focus" : ""}">${esc(e.ch)}</div>`).join("");
+  };
+  const loadCollections = (o = {}) => loadInto(p, async () => {
     const items = (mc(await api(`/library/sections/${sec.key}/collections`)).Metadata || []).map(norm);
     return items.length ? gridRows(items, tr("Collections")) : [{ kind: "posters", title: tr("No collections in this library"), col: 0, items: [] }];
-  });
-  const loadCategories = () => loadInto(p, async () => {
+  }, { ...o, done: keep(2) });
+  const loadCategories = (o = {}) => loadInto(p, async () => {
     const genres = mc(await api(`/library/sections/${sec.key}/genre`)).Directory || [];
     const tiles = genres.map((g) => ({ title: g.title, open: () => showPage(listPage(g.title, `/library/sections/${sec.key}/all`, null, { genre: g.key, sort: "titleSort" }), { push: true }) }));
     const rows = [];
     for (let i = 0; i < tiles.length; i += 4) rows.push({ kind: "tiles", grid: true, title: i === 0 ? tr("Genres") : "", col: 0, items: tiles.slice(i, i + 4) });
     return rows;
-  });
+  }, { ...o, done: keep(3) });
+  const loaders = [loadRecommended, loadLibrary, loadCollections, loadCategories];
   p.onTab = (i) => {
-    p.loadMore = null; p.rows = []; p.row = 0;
-    [loadRecommended, loadLibrary, loadCollections, loadCategories][i]();
+    const saved = tabRows[i];
+    if (saved) {
+      p.rows = saved.rows; p.loadMore = saved.loadMore;
+      p.row = saved.rows.length ? 1 : 0;
+      if (page === p) { p.rendered = false; drawPage(p); }
+      // the Library grid only refreshes from the top, so leave it be once you've paged down it
+      if (i !== 1) loaders[i]({ quiet: true });
+    } else {
+      p.loadMore = null;   // the old tab stays on screen until the new one arrives
+      loaders[i]();
+    }
+  };
+  // Coming back to this library from the menu or the player: refresh the tab you're on.
+  p.refresh = () => {
+    const i = p.tabs.selected;
+    if (i === 1 && p.row > 1) return;
+    loaders[i]({ quiet: true });
   };
   loadRecommended();
   return p;
 }
 
-// Load rows into a page (with a spinner while it loads).
-async function loadInto(p, fetchRows) {
-  busy(true);
+// Load rows into a page. What's on screen stays until the new rows arrive (no blank page),
+// and a newer load for the same page wins over an older one still on its way.
+// quiet: a refresh behind the scenes — no spinner, no error, focus stays where it is.
+async function loadInto(p, fetchRows, { quiet = false, done = null } = {}) {
+  const seq = p.loadSeq = (p.loadSeq || 0) + 1;
+  p.reload = () => loadInto(p, fetchRows, { quiet: true, done });
+  if (!p.rows.length) p.pending = true;
+  if (!quiet) busy(true);
   try {
     const rows = await fetchRows();
+    if (seq !== p.loadSeq) return;
+    p.pending = false;
+    if (done) done(rows);
+    if (quiet && sameRows(p.rows, rows)) return;
+    if (quiet) keepCols(p.rows, rows);
     p.rows = rows;
     if (p.row >= p.allRows().length) p.row = p.tabs ? 1 : 0;
-    if (p.tabs && p.row === 0) p.row = rows.length ? 1 : 0;
+    if (!quiet && p.tabs && p.row === 0) p.row = rows.length ? 1 : 0;
     if (page === p) { p.rendered = false; drawPage(p); }
   } catch (err) {
-    showError(tr("Couldn't load this from your Plex server."), tr("Try again"), () => loadInto(p, fetchRows));
-    return;
-  } finally { busy(false); }
+    if (seq !== p.loadSeq) return;
+    p.pending = false;
+    if (!quiet) showError(tr("Couldn't load this from your Plex server."), tr("Try again"), () => loadInto(p, fetchRows, { done }));
+  } finally { if (!quiet) busy(false); }
+}
+function sameRows(a, b) {
+  try {
+    const sig = (rows) => JSON.stringify(rows, (k, v) => (k === "col" ? undefined : v));
+    return sig(a) === sig(b);
+  } catch { return false; }
+}
+// A refreshed page keeps the card you were on in each row.
+function keepCols(old, rows) {
+  rows.forEach((r, i) => {
+    const o = old[i];
+    if (o && o.kind === r.kind && o.title === r.title) r.col = Math.max(0, Math.min(o.col, r.items.length - 1));
+  });
 }
 
 // ---- extra rows on details pages ------------------------------------------------------
@@ -573,6 +1198,61 @@ async function extraRows(m) {
   return rows;
 }
 
+// The buttons on a details page, like Plex's: Play (or Resume) with its name, then round ones —
+// play from the start, watched, and ⋯ for the rest (audio & subtitles, add to playlist).
+function detailButtons(it, after) {
+  const b = [];
+  b.push({ icon: "play", label: it.offset ? tr("Resume") : tr("Watch"), named: true, action: () => playItem(it, !!it.offset) });
+  const plexId = String(it.guid || (it.raw && it.raw.guid) || "").split("/").pop();
+  if (/^plex:\/\//.test(String(it.guid || (it.raw && it.raw.guid) || ""))) {
+    b.push({ icon: "bookmark", label: tr("Watchlist"), action: async () => {
+      const on = !(await onWatchlist(it));
+      const ok = await desktop.tvWatchlistSet(plexId, on).catch(() => false);
+      toast(ok ? (on ? tr("Added to your Watchlist") : tr("Removed from your Watchlist")) : tr("Couldn't change your Watchlist"));
+    } });
+  }
+  b.push({ icon: "star", label: tr("Rate"), action: () => Dialog.open({
+    layout: "list", title: tr("Rate {title}", { title: it.type === "episode" ? it.epTitle : it.title }), focus: Math.max(0, Math.round(((it.raw && it.raw.userRating) || 0) / 2) - 1),
+    items: [1, 2, 3, 4, 5].map((n) => ({ label: "★".repeat(n) + "☆".repeat(5 - n), action: async () => {
+      await api("/:/rate", { key: it.key, identifier: "com.plexapp.plugins.library", rating: n * 2 }).catch(() => {});
+      toast(tr("Rated {n} of 5", { n })); after();
+    } })).concat([{ label: tr("Clear rating"), action: async () => { await api("/:/rate", { key: it.key, identifier: "com.plexapp.plugins.library", rating: -1 }).catch(() => {}); after(); } }]),
+  }) });
+  const isW = watched(it);
+  b.push({ icon: isW ? "checked" : "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"),
+    action: async () => { await setWatched(it, !isW); after(); } });
+  b.push({ icon: "dots", label: tr("More"), action: () => Dialog.open({
+    layout: "list", title: it.type === "episode" ? `${it.title} · ${it.epTitle}` : it.title,
+    items: [
+      ...(it.offset ? [{ label: tr("Play from start"), action: () => playItem(it, false) }] : []),
+      { label: tr("Audio & subtitles"), action: () => desktop.openTracks(it.key) },
+      { label: tr("Add to Playlist"), action: () => showPage(addToPlaylistPage(it), { push: true }) },
+      ...(it.type === "episode" && it.showKey ? [{ label: tr("Go to show"), action: () => showPage(showPage_(it.showKey), { push: true }) }] : []),
+    ],
+  }) });
+  return b;
+}
+async function onWatchlist(it) {
+  const r = await desktop.tvWatchlist().catch(() => null);
+  const g = String(it.guid || (it.raw && it.raw.guid) || "");
+  return (mc(r).Metadata || []).some((m) => m.guid === g);
+}
+// Quality, audio and subtitles of what will play (right of the buttons, like Plex).
+function mediaChips(m) {
+  const media = m && m.Media && m.Media[0];
+  if (!media) return [];
+  const res = String(media.videoResolution || "");
+  const video = ((media.Part && media.Part[0] && media.Part[0].Stream) || []).find((s) => s.streamType === 1);
+  const streams = (media.Part && media.Part[0] && media.Part[0].Stream) || [];
+  const audio = streams.find((s) => s.streamType === 2 && s.selected) || streams.find((s) => s.streamType === 2);
+  const sub = streams.find((s) => s.streamType === 3 && s.selected);
+  return [
+    video && (video.extendedDisplayTitle || video.displayTitle) ? { text: video.extendedDisplayTitle || video.displayTitle } : res ? { text: /^\d+$/.test(res) ? `${res}p` : res.toUpperCase() } : null,
+    audio ? { icon: "audio", text: audio.displayTitle || audio.language || tr("Audio") } : null,
+    { icon: "subs", text: sub ? (sub.displayTitle || sub.language) : tr("Off") },
+  ].filter(Boolean);
+}
+
 // ---- a movie ---------------------------------------------------------------------------
 function moviePage(item) {
   const p = makePage({ heroItem: item, pinned: false, pinFrom: 1 });
@@ -581,19 +1261,9 @@ function moviePage(item) {
     const raw = (mc(await api(`/library/metadata/${item.key}`)).Metadata || [])[0] || item.raw;
     const full = norm(raw);
     if (!more) more = await extraRows(raw).catch(() => []);
-    p.heroItem = full;
-    const buttons = [];
-    if (full.offset) {
-      buttons.push({ icon: "play", label: tr("Resume"), action: () => playItem(full, true) });
-      buttons.push({ icon: "restart", label: tr("Play from start"), action: () => playItem(full, false) });
-    } else buttons.push({ icon: "play", label: tr("Play"), action: () => playItem(full, false) });
-    const isW = watched(full);
-    buttons.push({ icon: "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"), on: isW,
-      action: async () => { await setWatched(full, !isW); refresh(); } });
-    buttons.push({ icon: "playlist", label: tr("Add to playlist"), action: () => showPage(addToPlaylistPage(full), { push: true }) });
-    buttons.push({ icon: "tracks", label: tr("Audio & subtitles"), action: () => desktop.openTracks(full.key) });
+    p.heroItem = { ...full, details: true };
     const keepRow = p.rows.length ? p.row : 0;
-    p.rows = [{ kind: "buttons", col: 0, items: buttons }, ...more];
+    p.rows = [{ kind: "buttons", col: 0, items: detailButtons(full, refresh), chips: mediaChips(raw) }, ...more];
     p.row = Math.min(keepRow, p.rows.length - 1);
     if (page === p) { p.rendered = false; drawPage(p); }
   };
@@ -614,16 +1284,8 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   const makeButtons = () => {
     const ep = focusedEpisode();
     if (!ep) { btnRow.items = []; return; }
-    const b = [];
-    if (ep.offset) {
-      b.push({ icon: "play", label: tr("Resume"), action: () => playItem(ep, true) });
-      b.push({ icon: "restart", label: tr("Play from start"), action: () => playItem(ep, false) });
-    } else b.push({ icon: "play", label: tr("Play"), action: () => playItem(ep, false) });
-    const isW = watched(ep);
-    b.push({ icon: "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"), on: isW,
-      action: async () => { await setWatched(ep, !isW); await loadSeason(tabs.selected, ep.key); } });
-    b.push({ icon: "playlist", label: tr("Add to playlist"), action: () => showPage(addToPlaylistPage(ep), { push: true }) });
-    b.push({ icon: "tracks", label: tr("Audio & subtitles"), action: () => desktop.openTracks(ep.key) });
+    const b = detailButtons({ ...ep, title: show ? show.title : ep.title }, () => loadSeason(tabs.selected, ep.key));
+    btnRow.chips = mediaChips(ep.raw);
     btnRow.items = b;
     btnRow.col = Math.min(btnRow.col, b.length - 1);
   };
@@ -646,7 +1308,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   // The hero follows the focused episode; the buttons act on it.
   p.focused = function () {
     const r = this.allRows()[this.row];
-    if (r === epRow || r === btnRow) { const ep = focusedEpisode(); return ep ? { ...ep, title: show ? show.title : ep.title, sub: ep.epTitle } : null; }
+    if (r === epRow || r === btnRow) { const ep = focusedEpisode(); return ep ? { ...ep, title: show ? show.title : ep.title, sub: ep.epTitle, details: true } : null; }
     return null;
   };
   const baseDraw = p.draw;
@@ -662,7 +1324,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     ]);
     const m = (mc(meta).Metadata || [])[0];
     show = m ? norm(m) : null;
-    p.heroItem = show;
+    p.heroItem = show ? { ...show, details: true } : null;
     if (m) more = await extraRows(m).catch(() => []);
     if (m && m.theme && page === p) playTheme(showKey, m.theme);
     p.themeFor = showKey;
@@ -771,41 +1433,115 @@ async function openWatchlistItem(it) {
   } finally { busy(false); }
 }
 
-// ---- profiles: switch Plex Home user (PIN if it has one) --------------------------------
-function profilesPage() {
-  const p = makePage({});
-  p.drawHero = () => { $("heroTitle").textContent = tr("Who's watching?"); $("heroSub").textContent = ""; $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = ""; $("artImg").classList.remove("on"); };
-  loadInto(p, async () => {
-    const users = await desktop.tvHomeUsers();
-    return [{ kind: "people", title: tr("Plex Home"), col: 0, items: (users || []).map((u) => ({
-      title: u.title, role: u.protected ? "🔒 PIN" : (u.admin ? tr("Admin") : ""), thumb: u.thumb,
-      open: () => (u.protected ? showPage(pinPage(u), { push: true }) : switchTo(u, "")),
-    })) }];
-  });
-  return p;
+// ---- who's watching: your Plex Home users, the PIN pad under the chosen one (like Plex) -----
+// Cards in a row, the focused one bigger and centred with its name; a lock for users with a PIN,
+// a crown for the admin. A protected user's number pad sits right under its card. Shown at start
+// (Settings → "Ask who's watching at start") and from your profile → Switch user.
+const PIN_PAD = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], [null, "0", null]];
+const LOCK_SVG = '<svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0110 0v3h.5A1.5 1.5 0 0119 11.5v8a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19.5v-8A1.5 1.5 0 016.5 10zm2 0h6V7a3 3 0 00-6 0z"/></svg>';
+const CROWN_SVG = '<svg viewBox="0 0 24 24"><path d="M3 8.5l4.6 3.8L12 5.5l4.4 6.8L21 8.5 19.2 18H4.8zM5 19.5h14V21H5z"/></svg>';
+function openUserPicker({ atStart = false, focusUser = null } = {}) {
+  showPage(userPickerPage(atStart, focusUser), { push: !atStart });
 }
-function pinPage(user) {
+function userPickerPage(atStart, focusUser = null) {
   const p = makePage({});
-  p.pin = "";
-  const keys = { kind: "keys", col: 0, items: [
-    ..."1234567890".split("").map((d) => ({ label: d, action: () => { if (p.pin.length < 4) { p.pin += d; p.drawHero(); if (p.pin.length === 4) switchTo(user, p.pin); } } })),
-    { label: "⌫", wide: true, action: () => { p.pin = p.pin.slice(0, -1); p.drawHero(); } },
-  ] };
-  p.rows = [keys];
-  p.drawHero = () => {
-    $("heroTitle").textContent = tr("PIN for {name}", { name: user.title });
-    $("heroSub").textContent = "●".repeat(p.pin.length) + "○".repeat(4 - p.pin.length);
-    $("heroMeta").innerHTML = ""; $("heroLine").textContent = ""; $("heroSummary").textContent = ""; $("heroCast").textContent = "";
+  p.noMenu = true; p.isPicker = true;
+  let users = [], at = 0, zone = "cards", r = 0, c = 0, pin = "", wrong = false;
+  const me = () => (S && S.user && S.user.name) || "";
+  const cur = () => users[at];
+  const choose = (u, code) => {
+    if (!u) return;
+    if (!u.protected && u.title === me()) { leave(); return; }   // already you
+    switchTo(u, code || "");
   };
+  const leave = () => {   // back to where you were (Home at start)
+    if (stack.length) { back(); return; }
+    currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); drawMenu();
+  };
+  const press = (k) => {
+    const u = cur();
+    if (!u || !u.protected) return;
+    if (k === "⌫") pin = pin.slice(0, -1);
+    else if (pin.length < 4) { pin += k; wrong = false; }
+    p.drawHero();
+    if (pin.length === 4) choose(u, pin);
+  };
+  p.type = (k) => { if (cur() && cur().protected) { zone = "pad"; press(k); } };
+  p.wrong = () => {
+    pin = ""; wrong = true; p.drawHero();
+    const n = document.querySelector(".wc.focus .wname"); if (n) { n.classList.remove("shake"); void n.offsetWidth; n.classList.add("shake"); }
+  };
+  p.onAct = (name) => {
+    const u = cur();
+    if (!u) return name !== "Back";
+    if (zone === "cards") {
+      if (name === "Left" || name === "Right") { const n = at + (name === "Left" ? -1 : 1); if (n >= 0 && n < users.length) { at = n; pin = ""; wrong = false; } }
+      else if (name === "Down" && u.protected) { zone = "pad"; r = 0; c = 0; }
+      else if (name === "OK") { if (u.protected) { zone = "pad"; r = 0; c = 0; } else choose(u); }
+      else if (name === "Back") { if (atStart || stack.length) { leave(); return true; } return false; }
+      else return true;
+    } else {
+      if (name === "Back") { zone = "cards"; }
+      else if (name === "OK") { press(c === 3 ? "⌫" : PIN_PAD[r][c]); return true; }
+      else if (name === "Up") { if (c === 3) zone = "cards"; else if (r === 0) zone = "cards"; else r--; }
+      else if (name === "Down") { if (c < 3 && r < 3 && PIN_PAD[r + 1][c]) r++; else if (c < 3 && r === 2) { r = 3; c = 1; } }
+      else if (name === "Left") { if (c === 3) { c = 2; if (!PIN_PAD[r][c]) c = 1; } else if (c > 0 && PIN_PAD[r][c - 1]) c--; }
+      else if (name === "Right") { if (c < 2 && PIN_PAD[r][c + 1]) c++; else c = 3; }
+    }
+    p.drawHero();
+    return true;
+  };
+  p.drawHero = () => {
+    document.body.classList.add("who-mode");
+    $("who").hidden = false;
+    const face = (u) => (u.thumb ? (/^https?:/.test(u.thumb) ? u.thumb : img(u.thumb, 432, 432)) : "");
+    $("whoTitle").textContent = tr("Who's watching?");
+    $("whoRow").innerHTML = users.map((u, i) => {
+      const f = face(u);
+      const focus = i === at;
+      return `<div class="wc ${focus ? "focus" : ""} ${focus && zone === "cards" ? "on" : ""}"><div class="wt">`
+        + (f ? `<img class="wface" src="${esc(f)}" alt="">` : `<div class="wface none">${esc((u.title || "?").slice(0, 1).toUpperCase())}</div>`)
+        + (u.protected ? `<i class="wlock">${LOCK_SVG}</i>` : "")
+        + `</div><div class="wname">${esc(u.title)}</div></div>`;
+    }).join("");
+    // the row is centred on screen; too many users to fit → the focused one stays in the middle
+    const row = $("whoRow"), el = row.children[at];
+    const w = row.scrollWidth;
+    let x = (1920 - w) / 2;
+    if (w > 1920 - 160 && el) x = 960 - (el.offsetLeft + el.offsetWidth / 2);   // the chosen one in the middle
+    row.style.transform = `translateX(${x}px)`;
+    const pad = $("whoPad"), u = cur();
+    pad.hidden = !(u && u.protected);
+    if (!pad.hidden && el) {
+      const centre = x + el.offsetLeft + el.offsetWidth / 2;
+      pad.style.left = `${centre - 145}px`;
+      const keys = [];
+      for (let ri = 0; ri < 3; ri++) for (let ci = 0; ci < 3; ci++) keys.push(`<div class="pk ${zone === "pad" && ri === r && ci === c ? "focus" : ""}">${PIN_PAD[ri][ci]}</div>`);
+      keys.push(`<div class="pk zero ${zone === "pad" && r === 3 && c < 3 ? "focus" : ""}">0</div>`);
+      pad.innerHTML = `<div class="pfield ${wrong && !pin.length ? "wrong" : ""}">${wrong && !pin.length ? esc(tr("Wrong PIN")) : "●".repeat(pin.length)}</div>`
+        + `<div class="pkeys">${keys.join("")}<div class="pk bk ${zone === "pad" && c === 3 ? "focus" : ""}"><svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13zM17 9l-6 6M11 9l6 6"/></svg></div></div>`;
+    }
+  };
+  busy(true);
+  desktop.tvHomeUsers().then((list) => {
+    users = list || [];
+    at = Math.max(0, users.findIndex((u) => u.title === (focusUser || me())));
+    if (!users.length) { leave(); return; }
+    if (page === p) p.drawHero();
+  }).catch(() => leave()).finally(() => busy(false));
   return p;
 }
 async function switchTo(user, pin) {
   busy(true);
   const r = await desktop.tvSwitchUser(user.uuid, pin).catch(() => null);
   busy(false);
-  if (!r || !r.ok) { showError(pin ? tr("Wrong PIN — try again.") : tr("Couldn't switch user."), tr("OK"), () => { if (page && page.pin != null) { page.pin = ""; page.drawHero(); } }); return; }
+  if (!r || !r.ok) {
+    if (pin && page && page.isPicker) { page.wrong(); return; }   // shown on the card itself
+    showError(pin ? tr("Wrong PIN — try again.") : tr("Couldn't switch user."), tr("OK"), () => {});
+    return;
+  }
   stack.length = 0;
-  start(true);
+  start(true, { picked: true });
 }
 
 // ---- Theme (same choices as the paintbrush in PC mode) ------------------------------
@@ -968,7 +1704,7 @@ function toast(text) {
   $("messageText").textContent = text; $("messageButton").hidden = true;
   box.classList.add("toast"); box.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { box.classList.remove("toast"); box.hidden = busyCount === 0; }, 1600);
+  toastTimer = setTimeout(() => { box.classList.remove("toast"); box.hidden = true; }, 1600);
 }
 
 // ---- screensaver: your artwork, slowly, with the time --------------------------------
@@ -1059,14 +1795,12 @@ function searchPage() {
 }
 
 // ---- messages ------------------------------------------------------------------------
-let busyCount = 0;
+// Loading: a small spinner in the corner, and only when it takes a while — quick loads show nothing.
+let busyCount = 0, busyTimer = null;
 function busy(on) {
   busyCount = Math.max(0, busyCount + (on ? 1 : -1));
-  const box = $("message");
-  if (box.classList.contains("error")) return;
-  box.hidden = busyCount === 0;
-  $("messageText").textContent = busyCount ? tr("Loading…") : "";
-  $("messageButton").hidden = true;
+  if (!busyCount) { clearTimeout(busyTimer); busyTimer = null; $("loading").hidden = true; }
+  else if (!busyTimer && $("loading").hidden) busyTimer = setTimeout(() => { busyTimer = null; if (busyCount) $("loading").hidden = false; }, 400);
 }
 function showError(text, button, action) {
   const box = $("message");
@@ -1079,13 +1813,14 @@ function showError(text, button, action) {
   errorAction = action || null;
 }
 let errorAction = null;
-function clearError() { $("message").classList.remove("error"); $("message").hidden = busyCount === 0; errorAction = null; }
+function clearError() { $("message").classList.remove("error"); $("message").hidden = true; errorAction = null; }
 
 // ---- input: keyboard, controller, mouse ----------------------------------------------
 function act(name) {
   lastInput = Date.now();
   if (stopSaver()) return;
   if (overlayOpen) return;
+  if (nativePlaying) return;   // mpv's player is on top and has the controls: a stray key here must not start a second video
   if (Player.isActive()) { document.body.classList.remove("mouse"); Player.act(name); return; }
   if (Photos.act(name)) return;
   if (Music.act(name)) return;
@@ -1095,6 +1830,10 @@ function act(name) {
     return;
   }
   document.body.classList.remove("mouse");
+  if (Dialog.isOpen()) return Dialog.act(name);
+  if (menuOpen && profPanel) return profPanelAct(name);
+  if (menuOpen && menuKey(name)) return;
+  if (!menuOpen && page && page.onAct && page.onAct(name)) return;   // pages with their own layout (the PIN pad)
   if (name === "Up" || name === "Down" || name === "Left" || name === "Right") move(name);
   else if (name === "OK") ok();
   else if (name === "Y" && page && page.onY && !menuOpen) { const r = page.allRows()[page.row]; if (r && r.items[r.col]) page.onY(r.items[r.col]); }
@@ -1105,6 +1844,10 @@ const KEYS = { Delete: "Y", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left",
   MediaPlayPause: "OK", MediaTrackNext: "R1", MediaTrackPrevious: "L1", MediaFastForward: "R2", MediaRewind: "L2" };
 addEventListener("keydown", (e) => {
   lastInput = Date.now();
+  if (page && page.isPicker && !menuOpen && !overlayOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); page.type(e.key); return; }
+    if (e.key === "Backspace") { e.preventDefault(); page.type("⌫"); return; }
+  }
   if (page && page.isSearch && !menuOpen && !overlayOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
     if (e.key.length === 1 && /[\p{L}\p{N} '&:.-]/u.test(e.key)) { e.preventDefault(); page.type(e.key.toLowerCase()); return; }
     if (e.key === "Backspace" && page.query) { e.preventDefault(); page.erase(); return; }
@@ -1117,10 +1860,15 @@ addEventListener("keydown", (e) => {
 
 // Controller: same names as the PC-mode layer (A = OK, B = Back, Start = settings).
 const held = new Map();
+let padPrimed = false;
 function padLoop() {
   const pads = desktop.padState();
   const now = performance.now();
   const down = new Set(pads.flatMap((p) => p.pressed));
+  // Buttons already down when this page opens belong to whatever opened it (A on Play opens
+  // the player's controls with A still held, which paused it at 0:00): they only count once
+  // they're let go and pressed again. The pad can show up a moment after the page opens.
+  if (!padPrimed && pads.length) { padPrimed = true; if (now < 1500) for (const n of down) held.set(n, Infinity); }
   for (const n of down) {
     const name = n === "A" ? "OK" : n === "B" || n === "Back" ? "Back" : n;
     if (!held.has(n)) { held.set(n, now + 380); act(name); }
@@ -1150,7 +1898,6 @@ desktop.onTv("tv:refresh", () => {
   // Back from the player: progress has changed — reload the page you're on.
   if (page && page.refresh) page.refresh();
   else if (page && page.reload) page.reload();
-  else if (page === homePageRef) { const p = homePage(); p.row = page.row; showPage(p); homePageRef = p; }
 });
 let homePageRef = null;
 let lastPrefs = {};
@@ -1162,10 +1909,15 @@ function applyPrefs(s) {
 }
 
 // ---- start ----------------------------------------------------------------------------
-async function start(force = false) {
+let askedWho = false;   // "Who's watching" is asked once, when TV mode starts
+async function start(force = false, { picked = false } = {}) {
+  if (picked) askedWho = true;
   clearError();
   busy(true);
   $("messageText").textContent = tr("Connecting to your Plex server…");
+  $("messageButton").hidden = true;
+  $("message").hidden = false;
+  pageCache.clear();   // another user's libraries
   try {
     const s = await desktop.tvSession(force);
     if (!s || !s.ok) {
@@ -1181,7 +1933,7 @@ async function start(force = false) {
     Player.init({
       S, api, put: (p, q) => desktop.tvApiPut(p, q), prefs: () => lastPrefs,
       // Back from the player: progress changed, so reload the page you're on.
-      onClose: () => { if (page && page.refresh) page.refresh(); else if (page === homePageRef) { const hp = homePage(); hp.row = page.row; showPage(hp); homePageRef = hp; } },
+      onClose: () => { if (page && page.refresh) page.refresh(); else if (page && page.reload) page.reload(); },
       // Couldn't play it here: hand it to Plex's own player instead.
       fallback: (it) => desktop.tvPlay({ ratingKey: it.ratingKey, resume: true }),
     });
@@ -1196,12 +1948,20 @@ async function start(force = false) {
     menuOpen = true;
     menuIndex = menuItems.findIndex((m) => m.id === "home");
     homePageRef = homePage();
+    pageCache.set("home", homePageRef);
     showPage(homePageRef);
     drawMenu();
+    // Like Plex (with "Sign in automatically" off): who's watching, when there's more than one of you.
+    if (!askedWho && lastPrefs.askUserAtStart !== false) {
+      askedWho = true;
+      const users = await desktop.tvHomeUsers().catch(() => null);
+      if (users && users.length > 1) { menuOpen = false; drawMenu(); openUserPicker({ atStart: true }); }
+    }
   } catch (err) {
     showError(tr("Couldn't reach your Plex server."), tr("Try again"), () => start(true));
   } finally {
     busy(false);
+    if (!$("message").classList.contains("error")) $("message").hidden = true;
   }
 }
 desktop.getSettings().then(applyPrefs).catch(() => {});

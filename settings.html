@@ -30,6 +30,10 @@
             <label class="row"><span>Auto-skip credits</span><input type="checkbox" data-key="autoSkipCredits" /></label>
             <label class="row"><span>…after</span><span class="slider"><input type="range" min="0" max="30" data-key="skipCreditsDelay" /><output></output></span></label>
             <p class="note" data-i18n>PlexDeck presses Plex's own <b>Skip Intro</b> / <b>Skip Credits</b> button once it has been on screen this long, so you still get a few seconds to watch. Your server needs intro/credit markers (Plex makes them for most TV).</p>
+            <h2>Jump back / forward</h2>
+            <label class="row"><span>← Jump back</span><span class="slider"><input type="range" min="1" max="120" step="1" data-key="jumpBack" /><output></output></span></label>
+            <label class="row"><span>→ Jump forward</span><span class="slider"><input type="range" min="1" max="120" step="1" data-key="jumpForward" /><output></output></span></label>
+            <p class="note">TV mode player: Left / Right (or L2 / R2) while the controls are hidden.</p>
             <p class="note">Quality, subtitles, audio language and auto-play next episode are in Plex's own settings.</p>
             <button type="button" class="secondary" data-action="plex">Open Plex settings</button>
           </div>
@@ -65,6 +69,7 @@
             <label class="row"><span>Screensaver after (TV mode)</span>
               <select data-key="screensaver" data-number="1"><option value="0">Never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
             <label class="row"><span>Switch by itself (controller → TV, mouse → PC)</span><input type="checkbox" data-key="autoMode" /></label>
+            <label class="row"><span>Ask "Who's watching?" when TV mode starts</span><input type="checkbox" data-key="askUserAtStart" /></label>
             <p class="note" data-i18n>TV mode is a controller-first layout like Plex's TV apps. Switch any time with the <b>PC | TV</b> buttons in the title bar or <b>F10</b>.</p>
             <h2>Picture &amp; sound (native player)</h2>
             <label class="row"><span>HDR on HDR screens <small>(Windows HDR on)</small></span><input type="checkbox" data-key="hdr" /></label>

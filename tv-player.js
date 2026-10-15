@@ -21,7 +21,7 @@ const Player = (() => {
   let hls = null, session = null, base = 0, absolute = null;
   let quality = 0;           // index into QUALITIES
   let active = false, controls = false, menu = null;
-  let zone = 1, btn = 4;     // 0 = seek bar, 1 = buttons; btn index in BUTTONS
+  let zone = 1, btn = 0;     // 0 = seek bar, 1 = buttons; btn index in BUTTONS (0 = play)
   let hideTimer = null, tlTimer = null, scrobbled = false;
   let scrub = null, scrubTimer = null;
   let nextEp = null, upNextTimer = null, upNextShown = false, upNextCancelled = false;
@@ -129,15 +129,15 @@ const Player = (() => {
   }
 
   const QUALITIES = [
-    { label: tr("Original (best)"), bitrate: 200000, res: null },
-    { label: "20 Mbps 1080p", bitrate: 20000, res: "1920x1080" },
-    { label: "12 Mbps 1080p", bitrate: 12000, res: "1920x1080" },
-    { label: "8 Mbps 1080p", bitrate: 8000, res: "1920x1080" },
-    { label: "4 Mbps 720p", bitrate: 4000, res: "1280x720" },
-    { label: "2 Mbps 720p", bitrate: 2000, res: "1280x720" },
-    { label: "1.5 Mbps 480p", bitrate: 1500, res: "720x480" },
+    { label: tr("Original"), sub: tr("Best, straight from your server"), bitrate: 200000, res: null },
+    { label: "1080p HD", sub: "20 Mbps", bitrate: 20000, res: "1920x1080" },
+    { label: "1080p HD", sub: "12 Mbps", bitrate: 12000, res: "1920x1080" },
+    { label: "1080p HD", sub: "8 Mbps", bitrate: 8000, res: "1920x1080" },
+    { label: "720p HD", sub: "4 Mbps", bitrate: 4000, res: "1280x720" },
+    { label: "720p HD", sub: "2 Mbps", bitrate: 2000, res: "1280x720" },
+    { label: "480p", sub: "1.5 Mbps", bitrate: 1500, res: "720x480" },
   ];
-  const BUTTONS = ["subs", "audio", "quality", "prev", "play", "next", "chapters", "more"];
+  const BUTTONS = ["play", "chapters", "mini", "quality", "audio", "subs", "more"];   // left to right, as on screen
   // Playback speed, audio / subtitle sync and subtitle size (the ⋯ button).
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const DELAYS = [-1, -0.5, -0.3, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.3, 0.5, 1];
@@ -145,18 +145,58 @@ const Player = (() => {
   const fx = { speed: 1, audioDelay: 0, subDelay: 0, subScale: null };
   const setProp = (name, v) => (mpvMode ? mpvV.cmd(["set_property", name, v]) : null);
   const ms = (s) => (s === 0 ? tr("In sync") : `${s > 0 ? "+" : ""}${Math.round(s * 1000)} ms`);
-  function moreMenu() {
-    const items = [{ label: tr("Playback speed: {value}", { value: `${fx.speed}×` }), value: "speed" }];
+  let sleepAt = 0, sleepTimer = null, sleepEnd = false;
+  function setSleep(min) {
+    clearTimeout(sleepTimer); sleepAt = 0; sleepEnd = false;
+    if (min === "end") { sleepEnd = true; return; }
+    if (!min) return;
+    sleepAt = Date.now() + min * 60000;
+    sleepTimer = setTimeout(() => { sleepAt = 0; if (active && !video().paused) togglePause(); }, min * 60000);
+  }
+  const sleepName = () => (sleepEnd ? tr("End of video") : sleepAt ? tr("{n} min left", { n: Math.max(1, Math.round((sleepAt - Date.now()) / 60000)) }) : tr("Off"));
+  function moreMenu(parent = null) {
+    const speedName = (v) => (v === 1 ? tr("Normal") : `${v}×`);
+    const items = [{ label: tr("Playback Speed"), right: speedName(fx.speed), value: "speed" },
+      { label: tr("Sleep Timer"), right: sleepName(), value: "sleep" }];
     if (mpvMode) items.push(
-      { label: tr("Audio sync: {value}", { value: ms(fx.audioDelay) }), value: "audio" },
-      { label: tr("Subtitle sync: {value}", { value: ms(fx.subDelay) }), value: "sub" },
-      { label: tr("Subtitle size: {value}", { value: fx.subScale ? tr(SUBSCALE.find((x) => x[1] === fx.subScale)[0]) : tr("From settings") }), value: "size" });
-    openMenu(tr("More"), items, (k) => {
-      if (k === "speed") openMenu(tr("Playback speed"), SPEEDS.map((s) => ({ label: `${s}×`, value: s, selected: s === fx.speed })), (s) => {
-        fx.speed = s; if (mpvMode) setProp("speed", s); else $("video").playbackRate = s; });
-      if (k === "audio") openMenu(tr("Audio sync (+ = later)"), DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.audioDelay })), (s) => { fx.audioDelay = s; setProp("audio-delay", s); });
-      if (k === "sub") openMenu(tr("Subtitle sync (+ = later)"), DELAYS.map((s) => ({ label: ms(s), value: s, selected: s === fx.subDelay })), (s) => { fx.subDelay = s; setProp("sub-delay", s); });
-      if (k === "size") openMenu(tr("Subtitle size"), SUBSCALE.map(([l, v]) => ({ label: tr(l), value: v, selected: v === fx.subScale })), (v) => { fx.subScale = v; setProp("sub-scale", v); });
+      { label: tr("Audio Sync"), right: ms(fx.audioDelay), value: "audio" },
+      { label: tr("Subtitle Sync"), right: ms(fx.subDelay), value: "sub" },
+      { label: tr("Subtitle Size"), right: fx.subScale ? tr(SUBSCALE.find((x) => x[1] === fx.subScale)[0]) : tr("From settings"), value: "size" });
+    const me = openMenu(tr("Playback Options"), items, (k) => {
+      if (k === "sleep") openMenu(tr("Sleep Timer"), [["Off", 0], ["15 min", 15], ["30 min", 30], ["45 min", 45], ["60 min", 60], ["90 min", 90], ["End of video", "end"]]
+        .map(([l, v]) => ({ label: tr(l), value: v, radio: true, selected: v === "end" ? sleepEnd : v === 0 ? !sleepAt && !sleepEnd : false })), (v) => setSleep(v), me);
+      if (k === "speed") openMenu(tr("Playback Speed"), SPEEDS.map((v) => ({ label: speedName(v), value: v, selected: v === fx.speed, radio: true })), (v) => {
+        fx.speed = v; if (mpvMode) setProp("speed", v); else $("video").playbackRate = v; }, me);
+      if (k === "audio") openMenu(tr("Audio Sync (+ = later)"), DELAYS.map((v) => ({ label: ms(v), value: v, selected: v === fx.audioDelay, radio: true })), (v) => { fx.audioDelay = v; setProp("audio-delay", v); }, me);
+      if (k === "sub") openMenu(tr("Subtitle Sync (+ = later)"), DELAYS.map((v) => ({ label: ms(v), value: v, selected: v === fx.subDelay, radio: true })), (v) => { fx.subDelay = v; setProp("sub-delay", v); }, me);
+      if (k === "size") openMenu(tr("Subtitle Size"), SUBSCALE.map(([l, v]) => ({ label: tr(l), value: v, selected: v === fx.subScale, radio: true })), (v) => { fx.subScale = v; setProp("sub-scale", v); }, me);
+    }, parent);
+  }
+  // ⚙ Settings, like Plex: Quality, Subtitles, Audio (each with what's on now), Playback Options
+  const subName = () => { const x = streams.subtitle.find((t) => t.selected); return x ? x.label : tr("None"); };
+  const audioName = () => { const x = streams.audio.find((t) => t.selected); return x ? x.label : ""; };
+  function qualityMenu(parent) {
+    const list = mpvMode ? [QUALITIES[0]] : QUALITIES;   // mpv always plays the original file
+    return openMenu(tr("Quality"), list.map((q, i) => ({ label: q.label, sub: q.sub, value: i, selected: i === (mpvMode ? 0 : quality), radio: true })), (i) => { if (mpvMode) return; quality = i; load(position()); }, parent);
+  }
+  function subsMenu(parent) {
+    return openMenu(tr("Subtitles"), [{ label: tr("None"), value: 0, selected: !streams.subtitle.some((x) => x.selected), radio: true },
+      ...streams.subtitle.map((x) => ({ label: x.label, value: x.id, selected: x.selected, radio: true }))], setSubtitle, parent);
+  }
+  function audioMenu(parent) {
+    return openMenu(tr("Audio"), streams.audio.map((a) => ({ label: a.label, value: a.id, selected: a.selected, radio: true })), setAudio, parent);
+  }
+  function settingsMenu() {
+    const me = openMenu(tr("Settings"), [
+      { label: tr("Quality"), right: mpvMode ? tr("Original") : QUALITIES[quality].label, value: "quality" },
+      { label: tr("Subtitles"), right: subName(), value: "subs" },
+      { label: tr("Audio"), right: audioName(), value: "audio" },
+      { label: tr("Playback Options"), value: "options" },
+    ], (k) => {
+      if (k === "quality") qualityMenu(me);
+      else if (k === "subs") subsMenu(me);
+      else if (k === "audio") audioMenu(me);
+      else moreMenu(me);
     });
   }
 
@@ -236,7 +276,24 @@ const Player = (() => {
     }
     load(t);
   }
-  const seekBy = (d) => { seekTo(position() + d); showControls(false); };
+  // ← / → with the controls hidden: jump by your own amounts (PlexDeck settings → Playback).
+  // Only a small hint shows (not the whole bar, which would turn the next ← / → into button
+  // moves), and quick presses add up from where the last jump is going.
+  const jumpSecs = (back) => { const p = ctx.prefs() || {}; const v = Number(back ? p.jumpBack : p.jumpForward); return v > 0 ? v : back ? 10 : 30; };
+  let jumpTarget = null, jumpTotal = 0, jumpTimer = null;
+  function jump(back) {
+    const d = back ? -jumpSecs(true) : jumpSecs(false);
+    jumpTarget = Math.max(0, Math.min(duration() - 2, (jumpTarget != null ? jumpTarget : position()) + d));
+    jumpTotal += d;
+    seekTo(jumpTarget);
+    const a = Math.abs(jumpTotal);
+    $("pJumpBy").textContent = `${jumpTotal < 0 ? "−" : "+"}${a < 60 ? tr("{n} s", { n: a }) : fmt(a)}`;
+    $("pJumpAt").textContent = `${fmt(jumpTarget)} / ${fmt(duration())}`;
+    $("pJump").hidden = false;
+    clearTimeout(jumpTimer);
+    jumpTimer = setTimeout(endJump, 1500);
+  }
+  function endJump() { clearTimeout(jumpTimer); $("pJump").hidden = true; jumpTarget = null; jumpTotal = 0; }
 
   // ---- progress back to Plex -----------------------------------------------------------
   function timeline(state) {
@@ -278,8 +335,12 @@ const Player = (() => {
     // Titles, like the TV app: show / episode line, or the movie.
     const ep = m.type === "episode";
     $("pTitle").textContent = ep ? m.grandparentTitle : m.title;
-    $("pSub").textContent = ep ? `S${m.parentIndex} • E${m.index}  ·  ${m.title}` : [m.year, m.contentRating].filter(Boolean).join("  ·  ");
-    const start = at != null ? at : resume && m.viewOffset ? m.viewOffset / 1000 : 0;
+    // like the new Plex: "2004 • 1 hour 39 minutes" (episodes: "S4 • E2 • Alex Gives Up")
+    const mins = Math.round((m.duration || 0) / 60000), hrs = Math.floor(mins / 60), rest = mins % 60;
+    const len = !mins ? "" : [hrs ? (hrs === 1 ? tr("1 hour") : tr("{n} hours", { n: hrs })) : "", rest ? (rest === 1 ? tr("1 minute") : tr("{n} minutes", { n: rest })) : ""].filter(Boolean).join(" ");
+    $("pSub").textContent = ep ? `S${m.parentIndex} • E${m.index} • ${m.title}` : [m.year, len].filter(Boolean).join(" • ");
+    const rewind = Number((ctx.prefs() || {}).rewindOnResume) || 0;
+    const start = at != null ? at : resume && m.viewOffset ? Math.max(0, m.viewOffset / 1000 - rewind) : 0;
     load(start);
     if (ep) findNext(); else { neighboursKnown = true; syncPlaylist(); }
     btn = BUTTONS.indexOf("play"); zone = 1;
@@ -309,6 +370,7 @@ const Player = (() => {
     timeline("stopped");
     active = false;
     clearInterval(tlTimer); clearTimeout(hideTimer); clearTimeout(upNextTimer);
+    endJump();
     const old = session; session = null;
     if (mpvMode) {
       // The native player lives in its own layer: closing it takes us back to TV mode.
@@ -340,6 +402,7 @@ const Player = (() => {
 
   // ---- the on-screen controls ------------------------------------------------------------
   function showControls(focusButtons = true) {
+    endJump();   // the bar shows the time itself
     controls = true;
     $("player").classList.add("osd");
     if (focusButtons) zone = 1;
@@ -364,8 +427,6 @@ const Player = (() => {
     $("bChapters").hidden = !(meta && meta.Chapter && meta.Chapter.length);
     document.querySelector('.pb[data-b="quality"]').hidden = mpvMode;
     $("bMini").hidden = !(mpvMode && FROM_PC);
-    $("bPrev").classList.toggle("off", !(meta && meta.type === "episode"));
-    $("bNext").classList.toggle("off", !nextEp);
   }
   const ICONS = {
     play: '<svg viewBox="0 0 24 24"><path d="M7 4l14 8-14 8z"/></svg>',
@@ -381,11 +442,10 @@ const Player = (() => {
     if (name === "play") return togglePause();
     if (name === "prev") return playPrev();
     if (name === "next") return nextEp ? playNext() : null;
-    if (name === "subs") return openMenu(tr("Subtitles"), [{ label: tr("Off"), value: 0, selected: !streams.subtitle.some((s) => s.selected) },
-      ...streams.subtitle.map((s) => ({ label: s.label, value: s.id, selected: s.selected }))], setSubtitle);
-    if (name === "audio") return openMenu(tr("Audio"), streams.audio.map((a) => ({ label: a.label, value: a.id, selected: a.selected })), setAudio);
-    if (name === "quality") return openMenu(tr("Quality"), QUALITIES.map((q, i) => ({ label: q.label, value: i, selected: i === quality })), (i) => { quality = i; load(position()); });
-    if (name === "more") return moreMenu();
+    if (name === "subs") return subsMenu(null);
+    if (name === "audio") return audioMenu(null);
+    if (name === "quality") return qualityMenu(null);
+    if (name === "more") return settingsMenu();
     if (name === "mini") return setMini(true);
     if (name === "chapters") return openMenu(tr("Chapters"), (meta.Chapter || []).map((c, i) => ({ label: `${c.tag || tr("Chapter {n}", { n: i + 1 })}  ·  ${fmt(c.startTimeOffset / 1000)}`, value: c.startTimeOffset / 1000, selected: false })), (t) => seekTo(t));
   }
@@ -467,16 +527,25 @@ const Player = (() => {
   }
 
   // ---- side menu (subtitles, audio, quality, chapters) ------------------------------------
-  function openMenu(title, options, onPick) {
-    if (!options.length) return;
-    menu = { options, onPick, focus: Math.max(0, options.findIndex((o) => o.selected)) };
+  function openMenu(title, options, onPick, parent = null) {
+    if (!options.length) return null;
+    menu = { title, options, onPick, parent, focus: Math.max(0, options.findIndex((o) => o.selected)) };
     $("pMenuTitle").textContent = title;
     $("pMenu").hidden = false;
     drawMenu();
+    return menu;
+  }
+  // Back in a sub-menu goes to the menu it came from (like Plex)
+  function menuBack() {
+    const pa = menu && menu.parent;
+    if (pa) { const f = pa.focus; openMenu(pa.title, pa.options, pa.onPick, pa.parent); menu.focus = f; drawMenu(); return; }
+    closeMenu();
   }
   function drawMenu() {
+    const e = (t) => String(t ?? "").replace(/[&<>"]/g, "");
     $("pMenuList").innerHTML = menu.options.map((o, i) =>
-      `<div class="pm ${i === menu.focus ? "focus" : ""} ${o.selected ? "sel" : ""}">${o.selected ? "✓ " : ""}${String(o.label).replace(/[&<>]/g, "")}</div>`).join("");
+      `<div class="pm ${i === menu.focus ? "focus" : ""} ${o.selected ? "sel" : ""}"><span class="l">${e(o.label)}${o.sub ? `<small>${e(o.sub)}</small>` : ""}</span>`
+      + (o.radio ? `<i class="radio"></i>` : o.right != null ? `<span class="r">${e(o.right)}</span>` : "") + `</div>`).join("");
     const el = $("pMenuList").children[menu.focus];
     if (el) el.scrollIntoView({ block: "nearest" });
   }
@@ -512,9 +581,17 @@ const Player = (() => {
     const img = n.thumb ? `${ctx.S.uri}/photo/:/transcode?width=480&height=270&minSize=1&upscale=1&url=${encodeURIComponent(n.thumb)}&X-Plex-Token=${ctx.S.token}` : "";
     $("pUpNextImg").src = img;
     $("pUpNext").hidden = false;
-    let left = 10;
-    $("pUpNextCount").textContent = tr("Playing in {n}", { n: left });
+    const pr = ctx.prefs() || {};
     clearInterval(upNextTimer);
+    // Auto Play off, or no button pressed for a long time (Passout Protection): wait for OK
+    const passout = Number(pr.passoutHours) || 0;
+    const asleep = passout && Date.now() - lastAct > passout * 3600000;
+    if (pr.autoPlay === false || asleep || sleepEnd) {
+      $("pUpNextCount").textContent = asleep ? tr("Still watching? Press OK to play") : tr("Press OK to play");
+      return;
+    }
+    let left = Number(pr.autoPlayCountdown) || 10;
+    $("pUpNextCount").textContent = tr("Playing in {n}", { n: left });
     upNextTimer = setInterval(() => {
       left--;
       $("pUpNextCount").textContent = tr("Playing in {n}", { n: left });
@@ -524,7 +601,9 @@ const Player = (() => {
   function cancelUpNext() { clearInterval(upNextTimer); upNextCancelled = true; $("pUpNext").hidden = true; }
 
   // ---- input ---------------------------------------------------------------------------------
+  let lastAct = Date.now();
   function act(name) {
+    lastAct = Date.now();
     if (!active) return false;
     if (mini) {
       if (name === "Back") setMini(false);
@@ -535,7 +614,7 @@ const Player = (() => {
       if (name === "Up") menu.focus = Math.max(0, menu.focus - 1);
       else if (name === "Down") menu.focus = Math.min(menu.options.length - 1, menu.focus + 1);
       else if (name === "OK") { const o = menu.options[menu.focus]; const f = menu.onPick; closeMenu(); f(o.value); if (menu) drawMenu(); return true; }
-      else if (name === "Back" || name === "Left") { closeMenu(); return true; }
+      else if (name === "Back" || name === "Left") { menuBack(); return true; }
       drawMenu();
       return true;
     }
@@ -548,8 +627,8 @@ const Player = (() => {
         if (!$("pSkip").hidden) { const k = skipKey; const mk = (meta.Marker || []).find((x) => `${x.type}-${x.startTimeOffset}` === k); if (mk) { skipped.add(k); seekTo(mk.endTimeOffset / 1000); } return true; }
         togglePause(); showControls(); return true;
       }
-      if (name === "Left" || name === "L2") { seekBy(-10); return true; }
-      if (name === "Right" || name === "R2") { seekBy(30); return true; }
+      if (name === "Left" || name === "L2") { jump(true); return true; }
+      if (name === "Right" || name === "R2") { jump(false); return true; }
       if (name === "Up" || name === "Down") { showControls(); return true; }
       if (name === "L1") { playPrev(); return true; }
       if (name === "R1") { if (nextEp) playNext(); return true; }
@@ -563,7 +642,7 @@ const Player = (() => {
       if (name === "Down") { zone = 1; }
       else if (name === "Left" || name === "Right") {
         // Scrub: move a preview point, jump there when you stop (or press A).
-        scrub = Math.max(0, Math.min(duration(), (scrub != null ? scrub : position()) + (name === "Left" ? -10 : 30)));
+        scrub = Math.max(0, Math.min(duration(), (scrub != null ? scrub : position()) + (name === "Left" ? -jumpSecs(true) : jumpSecs(false))));
         clearTimeout(scrubTimer);
         scrubTimer = setTimeout(() => { if (scrub != null) { const t = scrub; scrub = null; seekTo(t); } }, 900);
       } else if (name === "OK" && scrub != null) { clearTimeout(scrubTimer); const t = scrub; scrub = null; seekTo(t); }
@@ -613,7 +692,13 @@ const Player = (() => {
     v.addEventListener("pause", () => { draw(); drawMini(); if (!mini) showControls(false); });
     v.addEventListener("playing", drawMini);
     v.addEventListener("timeupdate", () => { if (controls) draw(); drawMini(); markerCheck(); });
-    v.addEventListener("ended", () => { if (nextEp && !upNextCancelled) playNext(); else close(); });
+    v.addEventListener("ended", () => {
+      const pr = ctx.prefs() || {}, passout = Number(pr.passoutHours) || 0;
+      const waitForOk = pr.autoPlay === false || sleepEnd || (passout && Date.now() - lastAct > passout * 3600000);
+      if (nextEp && !upNextCancelled && !waitForOk) playNext();
+      else if (nextEp && !upNextCancelled && !$("pUpNext").hidden) { if (sleepEnd) { sleepEnd = false; close(); } }   // Up Next stays, waiting for OK
+      else close();
+    });
   }
   function init(c) {
     ctx = c;

@@ -223,6 +223,15 @@ function openExternal(url) {
   if (/^(https?|mailto):/i.test(String(url))) shell.openExternal(url);
 }
 const wc = () => view.webContents;
+// Give the keyboard to what you're using: the player's controls when a video is open, else
+// settings, the TV mode page or Plex. (Plex getting it in TV mode let the controller and keys
+// work Plex in the background.)
+function focusInUse() {
+  if (!win) return;
+  const player = mpv.controls();
+  if (player) { player.focus(); return; }
+  (settingsView ? settingsView.webContents : (tv.mode() === "tv" && tv.view() ? tv.view().webContents : wc())).focus();
+}
 
 function goHome() { wc().loadURL(plexUrl()); }
 function navigate(direction, contents) {
@@ -341,6 +350,7 @@ function onSettingChanged(key) {
   if (key in prefsForPage()) all.forEach((c) => c.send("plex:prefs", prefsForPage()));
   if (key === "source" || key === "serverUrl") goHome();
   if (settingsView) settingsView.webContents.send("settings:changed", publicSettings());
+  if (key === "autoMode") win.webContents.send("settings:changed", publicSettings());   // the Auto button in the title bar
   if (tv.view()) tv.view().webContents.send("tv:prefs", publicSettings());
 }
 
@@ -498,7 +508,7 @@ function hideSplash() {
   v.webContents.executeJavaScript("document.body.classList.add('done')").catch(() => {});
   setTimeout(() => {
     try { win.contentView.removeChildView(v); v.webContents.close(); } catch {}
-    if (!settingsView) wc().focus();
+    if (!settingsView) focusInUse();
   }, 350);
 }
 
@@ -526,7 +536,7 @@ function createWindow() {
   win.once("ready-to-show", () => {
     if (startHidden) return;   // started with Windows → stay in the tray
     win.show();
-    wc().focus();
+    focusInUse();
   });
   // ✕ hides to the tray (music keeps playing) unless you're quitting or turned it off.
   win.on("close", (e) => {
@@ -547,8 +557,11 @@ function createWindow() {
   });
   win.on("focus", () => {
     win.webContents.send("titlebar:focus", true);
-    (settingsView ? settingsView.webContents : (tv.mode() === "tv" && tv.view() ? tv.view().webContents : wc())).focus();
+    focusInUse();
   });
+  // Clicking the title bar (PC / TV, Auto, the menus) mustn't keep the focus there: the
+  // controller only works in the page that has focus.
+  win.webContents.on("focus", () => setTimeout(() => { if (win.isFocused()) focusInUse(); }, 0));
   win.on("blur", () => win.webContents.send("titlebar:focus", false));
 
   // Plex, under the title bar. backgroundThrottling off: music keeps playing
@@ -692,9 +705,9 @@ function closeSettings() {
 const NOT_EXPORTED = new Set(["source", "serverUrl"]);
 const SETTING_NAMES = {
   autoSkipIntro: N_("Skip intros automatically"), skipIntroDelay: N_("Intro skip delay"), autoSkipCredits: N_("Skip credits automatically"),
-  skipCreditsDelay: N_("Credits skip delay"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
+  skipCreditsDelay: N_("Credits skip delay"), autoPlay: N_("Auto Play"), autoPlayCountdown: N_("Auto Play Countdown"), passoutHours: N_("Passout Protection"), rewindOnResume: N_("Rewind Video on Resume"), jumpBack: N_("Jump back"), jumpForward: N_("Jump forward"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
   keyboardNav: N_("Arrow-key navigation"), controller: N_("Game controller"), startMaximized: N_("Start maximised"), theme: N_("Theme"),
-  closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"),
+  closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"), askUserAtStart: N_("Ask who's watching"), heroTitle: N_("Title Style"),
   pcPlayerEngine: N_("PC mode player"), playerEngine: N_("TV mode player"), hdr: N_("HDR"), passthrough: N_("Surround passthrough"),
   matchRefresh: N_("Match refresh rate"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),

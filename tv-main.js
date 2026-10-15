@@ -160,6 +160,7 @@ function setMode(next, { remember = true } = {}) {
   }
   if (remember) d.setConfig({ lastMode: next });
   d.titlebar().send("titlebar:mode", next);
+  try { d.plexContents().send("plex:app-mode", next); } catch {}   // Plex leaves the controller alone in TV mode
 }
 function startMode() {
   const c = d.config();
@@ -261,6 +262,15 @@ function init(deps) {
     watchlistCache = { at: Date.now(), data };
     return data;
   });
+  // Add / remove something on your Watchlist (the details page's bookmark button). id = the
+  // item's Plex id (the last part of its plex:// guid).
+  ipcMain.handle("tv:watchlist-set", async (e, { id, on } = {}) => {
+    if (!fromTv(e) || !/^[0-9a-f]{12,40}$/i.test(String(id || ""))) return false;
+    const s = await getSession();
+    await fetchJson(`https://discover.provider.plex.tv/actions/${on ? "addToWatchlist" : "removeFromWatchlist"}?ratingKey=${id}`, s.accountToken, 15000, "PUT");
+    watchlistCache = null;
+    return true;
+  });
   // Plex's online services for TV mode (read only): Live TV channels and Discover.
   const PROVIDERS = /^https:\/\/(epg|discover|metadata)\.provider\.plex\.tv\//;
   ipcMain.handle("tv:provider", async (e, url) => {
@@ -315,6 +325,8 @@ function init(deps) {
   ipcMain.on("tv:settings", (e) => { if (fromTv(e)) d.openSettings(); });
   // The mouse was used in TV mode: back to PC mode (if switching by itself is on).
   ipcMain.on("tv:mouse-used", (e) => { if (fromTv(e) && d.config().autoMode !== false) setMode("pc"); });
+  // Plex asks which mode we're in when it (re)loads.
+  ipcMain.handle("plex:app-mode", (e) => (e.sender === d.plexContents() ? mode : null));
   // A controller button in PC mode: over to TV mode (if switching by itself is on).
   ipcMain.on("plex:pad-used", (e) => {
     if (e.sender !== d.plexContents() || playingFromTv || mode === "tv") return;

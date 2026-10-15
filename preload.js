@@ -96,6 +96,7 @@ if (location.protocol === "file:") {
     tvApiPut: (path, params) => ipcRenderer.invoke("tv:api", { path, params, method: "PUT" }),
     tvApiSend: (method, path, params) => ipcRenderer.invoke("tv:api", { path, params, method }),
     tvWatchlist: () => ipcRenderer.invoke("tv:watchlist"),
+    tvWatchlistSet: (id, on) => ipcRenderer.invoke("tv:watchlist-set", { id: String(id), on: !!on }),
     tvProvider: (url) => ipcRenderer.invoke("tv:provider", url),
     tvLyrics: (streamId) => ipcRenderer.invoke("tv:lyrics", String(streamId)),
     tvPlayProvider: (hash) => ipcRenderer.send("tv:play-provider", hash),
@@ -1161,6 +1162,10 @@ function plexExtras() {
   // While PlexDeck settings are open on top, the controller belongs to them.
   let overlayOpen = false;
   ipcRenderer.on("plex:overlay", (_e, open) => { overlayOpen = !!open; });
+  // In TV mode PlexDeck's own TV page has the controller, even if Plex has focus.
+  let appTv = false;
+  ipcRenderer.on("plex:app-mode", (_e, m) => { appTv = m === "tv"; });
+  ipcRenderer.invoke("plex:app-mode").then((m) => { appTv = m === "tv"; }).catch(() => {});
 
   let polling = false;
   function poll() {
@@ -1170,7 +1175,10 @@ function plexExtras() {
     const now = performance.now();
     const down = new Set();
     for (const pad of pads) for (const name of padButtons(pad)) down.add(name);
-    if (overlayOpen) { held.clear(); for (const n of down) held.set(n, Infinity); requestAnimationFrame(poll); return; }
+    // Only while this page is the one you're using: not behind TV mode, not while the player's
+    // controls (or another app) have focus — else it moved around Plex in the background and
+    // started things (Continue Watching) while you used the player.
+    if (overlayOpen || appTv || !document.hasFocus() || document.hidden) { held.clear(); for (const n of down) held.set(n, Infinity); requestAnimationFrame(poll); return; }
     if (down.size && !held.size) ipcRenderer.send("plex:pad-used");
     for (const name of down) {
       if (!held.has(name)) { held.set(name, now + REPEAT_FIRST); press(name); }

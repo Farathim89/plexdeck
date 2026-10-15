@@ -18,6 +18,12 @@ const DEFAULTS = {
   skipIntroDelay: 5,
   autoSkipCredits: false,
   skipCreditsDelay: 5,
+  autoPlay: true,            // play the next episode by itself (Up Next)
+  autoPlayCountdown: 10,     // …after this many seconds
+  passoutHours: 0,           // no button for this many hours → Up Next waits for OK (0 = off)
+  rewindOnResume: 0,         // resume this many seconds earlier
+  jumpBack: 10,              // player: ← / L2 jumps back this many seconds
+  jumpForward: 30,           // player: → / R2 jumps forward this many seconds
   textSize: 1,
   fontFamily: "",            // "" = Plex's own font
   plexColours: true,         // ignore a Windows contrast theme (keeps sliders visible)
@@ -29,6 +35,8 @@ const DEFAULTS = {
   startWithWindows: false,   // starts hidden in the tray when you sign in to Windows
   startMode: "last",         // "last" | "pc" | "tv"
   autoMode: true,            // controller → TV mode, mouse → PC mode by itself
+  heroTitle: "logo",        // TV mode titles: "logo" (Plex's logo artwork) or "text"
+  askUserAtStart: true,      // TV mode starts on "Who's watching?" when you have Plex Home users (like Plex)
   pcPlayerEngine: "mpv",     // PC mode: "mpv" hands your server's videos to the native player, "plex" keeps Plex's player
   playerEngine: "mpv",       // TV mode: "mpv" (native, plays everything) or "builtin"
   // Native player: picture & sound

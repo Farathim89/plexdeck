@@ -32,6 +32,18 @@ modeButtons.forEach((b) => b.addEventListener("click", () => desktop.setMode(b.d
 desktop.onMode(showMode);
 showMode("pc");
 
+// Auto: switch mode by itself (same setting as in PlexDeck settings).
+const autoBtn = document.getElementById("autoMode");
+function showAuto(s) {
+  if (!s) return;
+  const on = s.autoMode !== false;
+  autoBtn.classList.toggle("on", on);
+  autoBtn.setAttribute("aria-checked", String(on));
+}
+autoBtn.addEventListener("click", () => desktop.setSetting("autoMode", !autoBtn.classList.contains("on")));
+desktop.getSettings().then(showAuto);
+desktop.onSettings(showAuto);
+
 // "Update x.y.z" pill: shown when GitHub has a newer PlexDeck.
 const updateBtn = document.getElementById("update");
 desktop.onUpdate((u) => {
