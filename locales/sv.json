@@ -597,5 +597,6 @@
   "Screensaver Libraries": "Bibliotek för skärmsläckaren",
   "1 library": "1 bibliotek",
   "{n} libraries": "{n} bibliotek",
-  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Skärmsläckaren visar bilder från biblioteken som är på här. Är inget på visas bara klockan."
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Skärmsläckaren visar bilder från biblioteken som är på här. Är inget på visas bara klockan.",
+  "Updated to {version} (from {from}).": "Uppdaterad till {version} (från {from})."
 }

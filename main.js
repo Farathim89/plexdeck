@@ -759,14 +759,21 @@ const REPO_URL = "https://github.com/Farathim89/plexdeck";
 
 // ---- update check -------------------------------------------------------------
 // Asks GitHub for the newest release. If it's newer: an "Update x.y.z" pill in the
-// title bar and a Windows notification (once per version). Automatic checks can be
-// turned off; Help → Check for updates… always works.
+// title bar and a Windows notification (once per version). Clicking either offers a
+// one-click install, like ABS-DA:
+//  - installed: electron-updater downloads the new Setup, installs it quietly on restart;
+//  - portable folder: downloads the new zip into plexdeck-data\update, checks it against
+//    the SHA-256 GitHub publishes, then a small hidden PowerShell waits for PlexDeck to
+//    close, copies the new files over the folder (plexdeck-data stays) and starts it again.
+// The older single-file portable .exe can't replace itself: it opens the download page.
+// Nothing installs without a click. Automatic checks can be turned off; Help → Check for
+// updates… always works.
 const RELEASES_API = "https://api.github.com/repos/Farathim89/plexdeck/releases/latest";
-let latestRelease = null;   // { version, url } when GitHub has a newer version
+let latestRelease = null;   // { version, url, zip } when GitHub has a newer version
 const autoUpdateCheck = () => config.updateCheck !== false;
-// The installed app updates itself (download, then install on restart or quit). The portable
-// .exe can't replace itself, so it opens the download page instead.
-const canSelfUpdate = app.isPackaged && !PORTABLE_DIR;
+const folderMode = app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR && !!PORTABLE_DIR;
+const canSelfUpdate = app.isPackaged && (!PORTABLE_DIR || folderMode);
+let folderUpdate = null;   // { zip } once the portable update is downloaded and checked
 let updateState = "idle";  // "idle" | "downloading" | "ready"
 let updatePercent = 0;
 let updater = null;
@@ -787,6 +794,7 @@ async function downloadUpdate() {
   updateState = "downloading"; updatePercent = 0;
   sendUpdateToTitleBar();
   try {
+    if (folderMode) { await downloadFolderUpdate(); updateState = "ready"; sendUpdateToTitleBar(); askToRestart(); return; }
     const u = getUpdater();
     const found = await u.checkForUpdates();
     if (!found || !found.updateInfo || !isNewer(found.updateInfo.version, app.getVersion())) throw new Error("no update");
@@ -819,13 +827,96 @@ function restartToUpdate() {
   if (updateState !== "ready") return;
   isQuitting = true;
   saveWindowState();
+  config = { ...config, updatedFrom: app.getVersion() };
+  writeJson(dataFile("config.json"), config);
+  if (folderMode) { runFolderUpdate(true); setTimeout(() => app.quit(), 300); return; }
   setImmediate(() => getUpdater().quitAndInstall(true, true));   // quiet install, then start again
 }
+
+// ---- the portable folder's own update ---------------------------------------------
+const updateDir = () => path.join(app.getPath("userData"), "update");
+// Download with progress in the title bar; returns the file's SHA-256.
+async function downloadFile(url, dest, size) {
+  const res = await net.fetch(url);
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || size || 0;
+  const hash = require("crypto").createHash("sha256");
+  const out = fs.createWriteStream(dest);
+  const reader = res.body.getReader();
+  let got = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = Buffer.from(value);
+      hash.update(chunk);
+      if (!out.write(chunk)) await new Promise((r) => out.once("drain", r));
+      got += chunk.length;
+      const pct = total ? Math.floor((got / total) * 100) : 0;
+      if (pct !== updatePercent) { updatePercent = pct; sendUpdateToTitleBar(); }
+    }
+  } finally {
+    await new Promise((r) => out.end(r));
+  }
+  if (size && got !== size) throw new Error(`size ${got} ≠ ${size}`);
+  return hash.digest("hex");
+}
+// The fingerprint GitHub gives the file, else the one in the release's SHA256SUMS.txt.
+async function expectedSha(zip) {
+  if (zip.sha256) return zip.sha256;
+  if (!zip.sums) return null;
+  const res = await net.fetch(zip.sums).catch(() => null);
+  const text = res && res.ok ? await res.text() : "";
+  const line = text.split(/\r?\n/).find((l) => l.trim().endsWith(zip.name));
+  return line ? line.trim().split(/\s+/)[0].toLowerCase() : null;
+}
+async function downloadFolderUpdate() {
+  const zip = latestRelease && latestRelease.zip;
+  if (!zip) throw new Error("no zip in this release");
+  fs.mkdirSync(updateDir(), { recursive: true });
+  const target = path.join(updateDir(), zip.name), part = target + ".download";
+  const want = await expectedSha(zip);
+  const sha = await downloadFile(zip.url, part, zip.size);
+  if (!want || sha !== want) { try { fs.unlinkSync(part); } catch {} throw new Error("checksum mismatch"); }
+  try { fs.unlinkSync(target); } catch {}
+  fs.renameSync(part, target);
+  folderUpdate = { zip: target };
+}
+// PowerShell that waits for PlexDeck to close, puts the new files over the folder
+// (only the app's own files — plexdeck-data and anything else you keep there stay)
+// and, if asked, starts PlexDeck again the way it was started (hidden stays hidden).
+function folderUpdateScript({ zip, tmp, dest, exe, restart, args = [] }) {
+  const q = (str) => "'" + String(str).replace(/'/g, "''") + "'";
+  return `$ProgressPreference = 'SilentlyContinue'; $zip = ${q(zip)}; $tmp = ${q(tmp)}; $dest = ${q(dest)}; $exe = ${q(exe)};` +
+    "for ($i = 0; $i -lt 240; $i++) { if (-not (Get-Process | Where-Object { $_.Path -eq $exe })) { break }; Start-Sleep -Milliseconds 500 };" +
+    "Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue;" +
+    "Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force;" +
+    // the zip holds the files directly, or inside one folder
+    "$src = $tmp; $top = @(Get-ChildItem -LiteralPath $tmp);" +
+    "if ($top.Count -eq 1 -and $top[0].PSIsContainer) { $src = $top[0].FullName };" +
+    "if (Test-Path -LiteralPath (Join-Path $src 'PlexDeck.exe')) { robocopy $src $dest /E /R:30 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null };" +
+    (restart ? `Start-Process -FilePath $exe${args.length ? ` -ArgumentList ${args.map(q).join(",")}` : ""};` : "") +
+    "Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue;" +
+    "Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue";
+}
+function runFolderUpdate(restart) {
+  if (!folderUpdate) return;
+  const script = folderUpdateScript({
+    zip: folderUpdate.zip, tmp: path.join(updateDir(), "unpacked"), dest: exeDir, exe: process.execPath, restart,
+    args: process.argv.includes("--hidden") ? ["--hidden"] : [],
+  });
+  folderUpdate = null;
+  require("child_process").spawn("powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
+    { detached: true, stdio: "ignore", windowsHide: true }).unref();
+}
+// Downloaded but you chose Later: it goes in when you quit (without starting again).
+app.on("will-quit", () => { if (folderUpdate && updateState === "ready") runFolderUpdate(false); });
 // Clicked the title-bar pill, the notification, or "Check for updates…".
 async function onUpdateClick() {
   if (updateState === "ready") return restartToUpdate();
   if (updateState === "downloading") return;
-  if (!canSelfUpdate) return openUpdatePage();
+  if (!canSelfUpdate || (folderMode && !(latestRelease && latestRelease.zip))) return openUpdatePage();
   const v = latestRelease ? latestRelease.version : "";
   const { response } = await dialog.showMessageBox(win, {
     type: "info", title: tr("Update available"), message: tr("PlexDeck {version} is available", { version: v }),
@@ -856,6 +947,13 @@ function sendUpdateToTitleBar() {
   if (!win || win.isDestroyed()) return;
   win.webContents.send("titlebar:update", updatePill());
 }
+// The portable zip of a release (with GitHub's SHA-256 for it, when it gives one).
+function pickZip(assets) {
+  const a = (assets || []).find((x) => /^PlexDeck-Portable-[\d.]+\.zip$/i.test(x.name));
+  const sums = (assets || []).find((x) => x.name === "SHA256SUMS.txt");
+  return a ? { name: a.name, url: a.browser_download_url, size: a.size,
+    sha256: String(a.digest || "").replace(/^sha256:/i, "").toLowerCase() || null, sums: sums ? sums.browser_download_url : null } : null;
+}
 const openUpdatePage = () => openExternal(latestRelease ? latestRelease.url : `${REPO_URL}/releases/latest`);
 async function checkForUpdates(manual) {
   try {
@@ -864,7 +962,7 @@ async function checkForUpdates(manual) {
     const rel = await res.json();
     const version = String(rel.tag_name || "").replace(/^v/i, "");
     if (version && isNewer(version, app.getVersion())) {
-      latestRelease = { version, url: rel.html_url || `${REPO_URL}/releases/latest` };
+      latestRelease = { version, url: rel.html_url || `${REPO_URL}/releases/latest`, zip: pickZip(rel.assets) };
       sendUpdateToTitleBar();
       if (manual) {
         if (canSelfUpdate || updateState !== "idle") onUpdateClick();
@@ -893,6 +991,14 @@ async function checkForUpdates(manual) {
   }
 }
 function startUpdateChecks() {
+  // Just updated: say so once, and tidy up what the update left.
+  if (config.updatedFrom && config.updatedFrom !== app.getVersion()) {
+    const from = config.updatedFrom;
+    config = { ...config, updatedFrom: null };
+    writeJson(dataFile("config.json"), config);
+    if (Notification.isSupported()) new Notification({ title: "PlexDeck", body: tr("Updated to {version} (from {from}).", { version: app.getVersion(), from }), icon: ICON }).show();
+    try { fs.rmSync(updateDir(), { recursive: true, force: true }); } catch {}
+  }
   setTimeout(() => { if (autoUpdateCheck()) checkForUpdates(false); }, 10000);
   setInterval(() => { if (autoUpdateCheck()) checkForUpdates(false); }, 12 * 60 * 60 * 1000);
 }

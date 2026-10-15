@@ -68,8 +68,8 @@ A built-in player (your server converts the video) is there as a fallback.
   season or movie at once (like PASTA).
 - Controller support (PS4 / PS5 / Xbox), arrow-key navigation, mouse back/forward buttons
 - Tray with play/pause controls (music and video), start with Windows, custom title bar, remembered window
-- **Updates** — the installed app downloads and installs new versions itself (it asks
-  first); the portable one tells you when there's a new version
+- **Updates** — one click: PlexDeck downloads the new version, checks it, and installs it
+  when you restart (installed and portable alike; it asks first)
 - **Languages** — PlexDeck's own menus in English, Svenska, Deutsch, Español and Français
   (follows Windows, or pick one in Settings → Appearance); Plex's pages follow your Plex language
 - **Settings backup** — export / import your PlexDeck settings (Settings → About);
@@ -87,8 +87,10 @@ Grab the latest from [Releases](https://github.com/Farathim89/plexdeck/releases)
 
 Sign in to Plex on first start. PlexDeck checks GitHub for new versions and shows an
 **Update** button in the title bar when one is out (Help → *Check for updates…* checks now).
-The installed app updates itself with one click; for the portable one, unzip the new
-version over the old folder (your `plexdeck-data` folder stays as it is).
+Both versions update themselves with one click (from 5.3.4 on; they ask first). The
+portable one downloads the new zip, checks it against the SHA-256 on the release, and puts
+it over its folder when you restart — `plexdeck-data` stays as it is. You can also unzip a
+new version over the folder yourself.
 
 Coming from the older single-file `PlexDeck-Portable-x.exe`? Unzip the new version into its
 folder and move your `plexdeck-data` folder in next to `PlexDeck.exe`.

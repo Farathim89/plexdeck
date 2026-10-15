@@ -597,5 +597,6 @@
   "Screensaver Libraries": "Bibliotecas del salvapantallas",
   "1 library": "1 biblioteca",
   "{n} libraries": "{n} bibliotecas",
-  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "El salvapantallas muestra imágenes de las bibliotecas activadas aquí. Si no hay ninguna, solo muestra el reloj."
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "El salvapantallas muestra imágenes de las bibliotecas activadas aquí. Si no hay ninguna, solo muestra el reloj.",
+  "Updated to {version} (from {from}).": "Actualizado a {version} (desde {from})."
 }

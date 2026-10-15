@@ -597,5 +597,6 @@
   "Screensaver Libraries": "Bibliothèques de l’économiseur d’écran",
   "1 library": "1 bibliothèque",
   "{n} libraries": "{n} bibliothèques",
-  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "L’économiseur d’écran affiche les images des bibliothèques activées ici. Si aucune ne l’est, il n’affiche que l’horloge."
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "L’économiseur d’écran affiche les images des bibliothèques activées ici. Si aucune ne l’est, il n’affiche que l’horloge.",
+  "Updated to {version} (from {from}).": "Mis à jour vers {version} (depuis {from})."
 }

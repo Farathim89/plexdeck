@@ -597,5 +597,6 @@
   "Screensaver Libraries": "Bildschirmschoner-Mediatheken",
   "1 library": "1 Mediathek",
   "{n} libraries": "{n} Mediatheken",
-  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Der Bildschirmschoner zeigt Bilder aus den hier eingeschalteten Mediatheken. Ist keine eingeschaltet, zeigt er nur die Uhr."
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Der Bildschirmschoner zeigt Bilder aus den hier eingeschalteten Mediatheken. Ist keine eingeschaltet, zeigt er nur die Uhr.",
+  "Updated to {version} (from {from}).": "Auf {version} aktualisiert (vorher {from})."
 }
