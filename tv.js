@@ -501,6 +501,9 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Theme Music"), "themeMusic", "toggle"),
     prefRow(tr("Music Visualiser"), "musicVisualiser", "toggle"),
     prefRow(tr("Screensaver"), "screensaver", [0, 2, 5, 10, 20].map((n) => ({ v: n, l: n ? tr("{n} minutes", { n }) : tr("Never") }))),
+    { label: tr("Screensaver Libraries"), value: () => { const n = saverLibs().length; return n === 1 ? tr("1 library") : tr("{n} libraries", { n }); },
+      action: () => pushPanel({ title: tr("Screensaver Libraries"), intro: tr("The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock."),
+        rows: () => saverChoices().map((sec) => ({ label: sec.title, toggle: () => saverLibs().includes(sec.key), action: () => toggleSaverLib(sec.key) })) }) },
     prefRow(tr("Start In"), "startMode", [{ v: "last", l: tr("The mode I used last") }, { v: "pc", l: tr("PC mode") }, { v: "tv", l: tr("TV mode") }]),
     prefRow(tr("Switch Mode by Itself"), "autoMode", "toggle", tr("Controller → TV mode, mouse → PC mode")),
   ] }) },
@@ -1708,6 +1711,23 @@ function toast(text) {
 }
 
 // ---- screensaver: your artwork, slowly, with the time --------------------------------
+// Which libraries: your choice (Settings → Experience), per profile. Until you choose:
+// the movie / TV libraries pinned in the side menu, so unpinned ones never show up.
+const saverChoices = () => sections.filter((s) => s.type === "movie" || s.type === "show");
+function saverLibs() {
+  let chosen = null;
+  try { const v = localStorage.getItem(userKey("tvSaverLibs")); if (v !== null) chosen = JSON.parse(v); } catch {}
+  const keys = saverChoices().map((s) => s.key);
+  if (Array.isArray(chosen)) return chosen.filter((k) => keys.includes(k));
+  const hidden = readList("tvMenuHidden");
+  return keys.filter((k) => !hidden.includes(`lib-${k}`));
+}
+function toggleSaverLib(key) {
+  const now = saverLibs();
+  writeList("tvSaverLibs", now.includes(key) ? now.filter((k) => k !== key) : [...now, key]);
+  saverItems = [];   // pick new artwork next time
+  drawProfPanel();
+}
 let nativePlaying = false;   // the native (mpv) player is open on top
 let lastInput = Date.now(), saverOn = false, saverTimer = null, saverItems = [], saverI = 0, saverFlip = false;
 async function startSaver() {
@@ -1715,8 +1735,9 @@ async function startSaver() {
   saverOn = true;
   $("saver").hidden = false;
   if (!saverItems.length) {
-    const libs = sections.filter((s) => s.type === "movie" || s.type === "show");
-    const picks = await Promise.all(libs.slice(0, 6).map((s) => api(`/library/sections/${s.key}/all`, { sort: "random", "X-Plex-Container-Size": 12 }).catch(() => null)));
+    const chosen = saverLibs();
+    const libs = saverChoices().filter((s) => chosen.includes(s.key));
+    const picks = await Promise.all(libs.map((s) => api(`/library/sections/${s.key}/all`, { sort: "random", "X-Plex-Container-Size": 12 }).catch(() => null)));
     saverItems = picks.flatMap((r) => mc(r).Metadata || []).filter((m) => m.art);
   }
   const step = () => {
@@ -1912,6 +1933,7 @@ function applyPrefs(s) {
 let askedWho = false;   // "Who's watching" is asked once, when TV mode starts
 async function start(force = false, { picked = false } = {}) {
   if (picked) askedWho = true;
+  saverItems = [];   // another profile may see other libraries
   clearError();
   busy(true);
   $("messageText").textContent = tr("Connecting to your Plex server…");

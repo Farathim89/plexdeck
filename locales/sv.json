@@ -593,5 +593,9 @@
   "Sleep Timer": "Insomningstimer",
   "Still watching? Press OK to play": "Tittar du fortfarande? Tryck OK",
   "Custom…": "Anpassad…",
-  "← / →  change   ·   OK  save": "← / →  ändra   ·   OK  spara"
+  "← / →  change   ·   OK  save": "← / →  ändra   ·   OK  spara",
+  "Screensaver Libraries": "Bibliotek för skärmsläckaren",
+  "1 library": "1 bibliotek",
+  "{n} libraries": "{n} bibliotek",
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Skärmsläckaren visar bilder från biblioteken som är på här. Är inget på visas bara klockan."
 }

@@ -593,5 +593,9 @@
   "Sleep Timer": "Temporizador",
   "Still watching? Press OK to play": "¿Sigues viendo? Pulsa OK",
   "Custom…": "Personalizado…",
-  "← / →  change   ·   OK  save": "← / →  cambiar   ·   OK  guardar"
+  "← / →  change   ·   OK  save": "← / →  cambiar   ·   OK  guardar",
+  "Screensaver Libraries": "Bibliotecas del salvapantallas",
+  "1 library": "1 biblioteca",
+  "{n} libraries": "{n} bibliotecas",
+  "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "El salvapantallas muestra imágenes de las bibliotecas activadas aquí. Si no hay ninguna, solo muestra el reloj."
 }
