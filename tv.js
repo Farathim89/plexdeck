@@ -316,8 +316,8 @@ function drawMenu() {
   const sel = list.children[menuOpen ? menuIndex : Math.max(0, menuItems.findIndex((m) => m.id === currentMenuId))];
   if (!menuOpen) { menuScroll = 0; list.style.transform = ""; list.style.clipPath = ""; }
   else if (sel) {
-    const stageH = innerHeight / (innerWidth / 1920);
-    const viewH = stageH - list.offsetTop - 24;
+    // what the open panel shows (it floats, with space above and below it on the screen)
+    const viewH = $("menu").clientHeight - list.offsetTop - 24;
     const itemH = sel.offsetHeight + 8;
     let shift = menuScroll;
     if (sel.offsetTop - shift < itemH) shift = Math.max(0, sel.offsetTop - itemH);
