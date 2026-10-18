@@ -49,8 +49,11 @@ if (PORTABLE_DIR) {
 }
 
 // Only one copy at a time — launching it again focuses the open one.
+// "PlexDeck.exe --quit" quits the open one for real, like the tray's Quit (a TV front end closing it:
+// its ✕ only hides PlexDeck to the tray); with none open it just ends.
+const quitOnly = process.argv.includes("--quit");
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) app.quit();
+if (!gotLock || quitOnly) app.quit();
 
 const APP_ID = "com.farathim.plexplayer";
 app.setAppUserModelId(APP_ID);
@@ -1194,6 +1197,7 @@ app.on("web-contents-created", (_e, contents) => {
 });
 
 app.on("second-instance", (_ev, argv) => {
+  if ((argv || []).includes("--quit")) { app.quit(); return; }   // see quitOnly
   if (!win) return;
   if (win.isMinimized()) win.restore();
   win.show();
@@ -1202,7 +1206,7 @@ app.on("second-instance", (_ev, argv) => {
 });
 
 app.whenReady().then(() => {
-  if (!gotLock) return;
+  if (!gotLock || quitOnly) return;
   config = loadConfig();
   useLanguage();
   hardenSession();
