@@ -1931,6 +1931,7 @@ function applyPrefs(s) {
 
 // ---- start ----------------------------------------------------------------------------
 let askedWho = false;   // "Who's watching" is asked once, when TV mode starts
+let sentToSignIn = false;   // not signed in: PC mode's Plex sign-in opened by itself once
 async function start(force = false, { picked = false } = {}) {
   if (picked) askedWho = true;
   saverItems = [];   // another profile may see other libraries
@@ -1944,8 +1945,14 @@ async function start(force = false, { picked = false } = {}) {
     const s = await desktop.tvSession(force);
     if (!s || !s.ok) {
       busy(false);
-      const why = s && s.error === "signin" ? tr("Sign in to Plex in PC mode first, then come back to TV mode.")
-        : s && s.error === "noserver" ? tr("No Plex server found on your account.")
+      // Not signed in (a new PlexDeck): Plex's sign-in is in PC mode - go there once by itself, and the button
+      // takes you there again
+      if (s && s.error === "signin") {
+        showError(tr("Sign in to Plex in PC mode first, then come back to TV mode."), tr("Sign in"), () => desktop.tvOpenPc(""));
+        if (!sentToSignIn) { sentToSignIn = true; desktop.tvOpenPc(""); }
+        return;
+      }
+      const why = s && s.error === "noserver" ? tr("No Plex server found on your account.")
         : tr("Couldn't reach your Plex server.");
       showError(why, tr("Try again"), () => start(true));
       return;

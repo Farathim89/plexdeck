@@ -334,6 +334,7 @@
   "Show: {value}": "Afficher : {value}",
   "Shows what PlexDeck reads from your controller. If a button shows the wrong name here, tell me what this box says.": "Affiche ce que PlexDeck lit de votre manette. Si un bouton affiche un mauvais nom ici, indiquez-moi ce que contient ce cadre.",
   "Shuffle": "Aléatoire",
+  "Sign in": "Se connecter",
   "Sign in to Plex first.": "Connectez-vous d'abord à Plex.",
   "Sign in to Plex in PC mode first, then come back to TV mode.": "Connectez-vous d'abord à Plex en mode PC, puis revenez en mode TV.",
   "Skip Credits": "Passer le générique",

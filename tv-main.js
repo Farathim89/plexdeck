@@ -80,8 +80,20 @@ async function readAccountToken() {
   await d.plexReady();
   const wc = d.plexContents();
   if (!wc || wc.isDestroyed()) return null;
+  // Not signed in, Plex Web still keeps a guest token (an anonymous account, for its free films and TV):
+  // that's no account of yours - it has no servers - so it counts as not signed in.
   try {
-    return await wc.executeJavaScript("localStorage.getItem('myPlexAccessToken')");
+    const got = await wc.executeJavaScript(`(() => {
+      const token = localStorage.getItem('myPlexAccessToken');
+      let anonymous = false;
+      try {
+        const users = JSON.parse(localStorage.getItem('users') || '{}').users || [];
+        const me = users.find((u) => u.authToken === token);
+        anonymous = !!(me && me.anonymous);
+      } catch {}
+      return { token, anonymous };
+    })()`);
+    return got && got.token && !got.anonymous ? got.token : null;
   } catch { return null; }
 }
 async function connectSession() {
