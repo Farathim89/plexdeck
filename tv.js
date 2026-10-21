@@ -537,8 +537,8 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Hardware Decoding"), "hwDecode", [{ v: "auto", l: tr("Automatic") }, { v: "d3d11", l: "Direct3D 11" }, { v: "off", l: tr("Software") }]),
     { header: tr("Audio") },
     prefRow(tr("Passthrough"), "passthrough", [{ v: "off", l: tr("Off") }, { v: "dolby-dts", l: "Dolby Digital / DTS" }, { v: "all", l: tr("All (TrueHD, Atmos, DTS-HD)") }]),
-    prefRow(tr("Audio Channels"), "audioChannels", [{ v: "auto", l: tr("Automatic") }, { v: "stereo", l: tr("Stereo") }, { v: "5.1", l: "5.1" }, { v: "7.1", l: "7.1" }],
-      tr("Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.")),
+    prefRow(tr("Audio Channels"), "audioChannels", [{ v: "auto", l: tr("Automatic") }, { v: "stereo", l: tr("Stereo") }, { v: "5.1", l: tr("Up to {layout}", { layout: "5.1" }) }, { v: "7.1", l: tr("Up to {layout}", { layout: "7.1" }) }],
+      tr("Automatic follows Windows' speaker setup. Stereo / 5.1 / 7.1 take the sound device while playing.")),
     { label: tr("Speakers"),
       value: () => (pn.audio ? [pn.audio.layout, pn.audio.device].filter(Boolean).join(" · ") : pn.loaded ? tr("Unknown") : "…"),
       sub: pn.audio && pn.audio.channels < 8 && lastPrefs.passthrough !== "all"
@@ -694,7 +694,10 @@ function freshen(p) {
   p.ver = dataVer;
   if (p.refresh) p.refresh(); else if (p.reload) p.reload();
 }
-function watchedChanged() { dataVer++; freshen(page); }
+function watchedChanged() { dataVer++; autoFreshen(page); }
+// Pages from Plex's online services (Live TV, Discover) don't change with what you watched, and
+// Plex limits how often they may be asked: they refresh only when you open them again.
+function autoFreshen(p) { if (!p) return; if (p.online) p.ver = dataVer; else freshen(p); }
 function makePage({ rows = [], tabs = null, heroItem = null, pinned = true, onTab = null, loadMore = null, pinFrom = null }) {
   const p = {
     ver: dataVer,
@@ -828,7 +831,7 @@ function showPage(p, { push = false } = {}) {
   page = p;
   page.rendered = false;
   drawPage(page);
-  if (p.ver < dataVer) freshen(p);
+  if (p.ver < dataVer) autoFreshen(p);
 }
 
 // ---- moving around -------------------------------------------------------------------
@@ -884,7 +887,7 @@ function back() {
   if (menuOpen) return menuBack();
   // Who's watching (no menu there): Back goes Home.
   if (page && page.noMenu && !stack.length) { const h = menuItems.find((m) => m.id === "home"); currentMenuId = "home"; h.open(); drawMenu(); return; }
-  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); if (prev.ver < dataVer) freshen(prev); return; }
+  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); if (prev.ver < dataVer) autoFreshen(prev); return; }
   if (!page) return openMenu();
   // On a page: first back to the top row, then the sidebar.
   const first = page.tabs ? 1 : 0;
@@ -1605,6 +1608,7 @@ const PROVIDER = {
 function providerPage(kind) {
   const P = PROVIDER[kind];
   const p = makePage({});
+  p.online = true;
   loadInto(p, async () => {
     const home = mc(await desktop.tvProvider(`${P.base}/hubs/sections/home?count=20`));
     const hubs = (home.Hub || []).slice(0, 10);
@@ -1948,17 +1952,20 @@ desktop.onTv("tv:refresh", () => {
   // Back from the player: progress has changed — reload the page you're on now, and again a
   // moment later (the server may not have saved where you stopped yet; Continue Watching
   // would still show the old spot). Pages further back reload when you return to them.
+  afterPlayback();
+});
+let afterPlayTimer = null;
+function afterPlayback() {
   watchedChanged();
   clearTimeout(afterPlayTimer);
   afterPlayTimer = setTimeout(watchedChanged, 4000);
-});
-let afterPlayTimer = null;
+}
 // Back from PC mode (you may have watched something there): bring the page up to date.
 desktop.onTv("tv:shown", () => { if (S) watchedChanged(); });
 // Sitting on a page: refresh it quietly every 2 minutes (things watched on other devices,
 // new episodes) — only while TV mode is on screen and nothing plays.
 setInterval(() => {
-  if (!S || !page || document.hidden || nativePlaying || Player.isActive() || saverOn || menuOpen) return;
+  if (!S || !page || page.online || document.hidden || nativePlaying || Player.isActive() || saverOn || menuOpen) return;
   freshen(page);
 }, 120000);
 let homePageRef = null;
@@ -2003,7 +2010,7 @@ async function start(force = false, { picked = false } = {}) {
     Player.init({
       S, api, put: (p, q) => desktop.tvApiPut(p, q), prefs: () => lastPrefs,
       // Back from the player: progress changed, so reload the page you're on.
-      onClose: () => { if (page && page.refresh) page.refresh(); else if (page && page.reload) page.reload(); },
+      onClose: () => afterPlayback(),   // same as after the native player (see tv:refresh)
       // Couldn't play it here: hand it to Plex's own player instead.
       fallback: (it) => desktop.tvPlay({ ratingKey: it.ratingKey, resume: true }),
     });

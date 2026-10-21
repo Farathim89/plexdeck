@@ -183,11 +183,14 @@ function settingsArgs(c) {
   a.push(`--hwdec=${c.hwDecode === "off" ? "no" : c.hwDecode === "d3d11" ? "d3d11va" : "auto-safe"}`);
   if (c.passthrough === "dolby-dts") a.push("--audio-spdif=ac3,eac3,dts", "--audio-exclusive=yes");
   if (c.passthrough === "all") a.push("--audio-spdif=ac3,eac3,dts,dts-hd,truehd", "--audio-exclusive=yes");
-  // Speakers: Automatic = Windows' speaker setup for the device. Stereo / 5.1 / 7.1 send that
-  // layout whatever Windows is set to — only possible with the device to ourselves (exclusive
-  // mode; in shared mode Windows takes its own layout, e.g. 5.1 even when stereo is asked for).
-  if (["stereo", "5.1", "7.1"].includes(c.audioChannels)) a.push(`--audio-channels=${c.audioChannels}`, "--audio-exclusive=yes");
-  a.push(`--volume=${Math.max(0, Math.min(100, Number(c.defaultVolume) || 100))}`);
+  // Speakers: Automatic = Windows' speaker setup for the device. Stereo / 5.1 / 7.1 work whatever
+  // Windows is set to — only possible with the device to ourselves (exclusive mode; in shared
+  // mode Windows keeps its own layout, e.g. 5.1 even when stereo is asked for). 5.1 / 7.1 mean
+  // "up to": a 5.1 or stereo source goes out as it is (the receiver can then upmix it its way).
+  const layouts = { stereo: "stereo", "5.1": "5.1,stereo", "7.1": "7.1,5.1,stereo" }[c.audioChannels];
+  if (layouts) a.push(`--audio-channels=${layouts}`, "--audio-exclusive=yes");
+  const vol = Number(c.defaultVolume);   // 0 is a real choice (it was taken as "not set" → 100)
+  a.push(`--volume=${Number.isFinite(vol) && c.defaultVolume !== "" && c.defaultVolume != null ? Math.max(0, Math.min(100, vol)) : 100}`);
   const size = { Small: 0.8, Normal: 1, Large: 1.3, Huge: 1.6 }[c.subSize] || 1;
   const colour = { White: "#FFFFFF", Yellow: "#FFE14D", Cyan: "#7FE7FF", Green: "#8CFF8C", Gray: "#C8C8C8" }[c.subColor] || "#FFFFFF";
   a.push(`--sub-scale=${size}`, `--sub-color=${colour}`, `--sub-pos=${c.subPosition === "Raised" ? 88 : 100}`);

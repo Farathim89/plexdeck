@@ -607,5 +607,10 @@
   "Automatic (Windows speaker setup)": "Automatique (configuration des haut-parleurs de Windows)",
   "Speakers": "Haut-parleurs",
   "Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.": "Automatique suit la configuration des haut-parleurs de Windows. 5.1 / 7.1 occupent le périphérique audio pendant la lecture.",
-  "7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.": "Le 7.1 est réduit en {layout} (configuration des haut-parleurs de Windows). Haut-parleurs 7.1 ? Réglez Canaux audio sur 7.1."
+  "7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.": "Le 7.1 est réduit en {layout} (configuration des haut-parleurs de Windows). Haut-parleurs 7.1 ? Réglez Canaux audio sur 7.1.",
+  "Up to {layout}": "Jusqu’à {layout}",
+  "Up to 5.1": "Jusqu’à 5.1",
+  "Up to 7.1": "Jusqu’à 7.1",
+  "Automatic follows Windows' speaker setup. Stereo / 5.1 / 7.1 take the sound device while playing.": "Automatique suit la configuration des haut-parleurs de Windows. Stéréo / 5.1 / 7.1 occupent le périphérique audio pendant la lecture.",
+  "Stereo, 5.1 and 7.1 work whatever Windows is set to (PlexDeck has the sound device to itself while playing). A source with fewer channels goes out as it is, so your receiver can upmix it.": "Stéréo, 5.1 et 7.1 fonctionnent quel que soit le réglage de Windows (PlexDeck utilise le périphérique audio en exclusivité pendant la lecture). Un son avec moins de canaux sort tel quel, pour que votre ampli puisse le convertir."
 }
