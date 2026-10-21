@@ -632,5 +632,11 @@
   "Play at the screen's full resolution": "Lire à la pleine résolution de l'écran",
   "Switch HDR on for HDR videos": "Activer le HDR pour les vidéos HDR",
   "Switch Windows HDR on for HDR videos": "Activer le HDR de Windows pour les vidéos HDR",
-  "Windows HDR on while an HDR video plays.": "HDR de Windows activé pendant la lecture d'une vidéo HDR."
+  "Windows HDR on while an HDR video plays.": "HDR de Windows activé pendant la lecture d'une vidéo HDR.",
+  "Like a TV box: while a video plays full screen, a 4K TV that Windows runs at a lower resolution plays at 4K, and HDR videos get Windows HDR. The screen is put back when the player closes. With an NVIDIA RTX card, Super Resolution upscales videos smaller than the screen with AI, and Video HDR turns SDR videos into HDR (on an HDR screen, with HDR switching or Windows HDR on).": "Comme un boîtier TV : pendant la lecture d'une vidéo en plein écran, un téléviseur 4K que Windows utilise à une résolution plus basse passe en 4K, et les vidéos HDR ont le HDR de Windows. L'écran est rétabli à la fermeture du lecteur. Avec une carte NVIDIA RTX, Super Resolution agrandit par IA les vidéos plus petites que l'écran, et Video HDR transforme les vidéos SDR en HDR (sur un écran HDR, avec la bascule HDR ou le HDR de Windows activé).",
+  "(NVIDIA RTX)": "(NVIDIA RTX)",
+  "RTX Super Resolution": "RTX Super Resolution",
+  "RTX Video HDR": "RTX Video HDR",
+  "NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).": "Cartes NVIDIA RTX : les vidéos SDR sont lues en HDR (avec la bascule HDR, ou le HDR de Windows activé).",
+  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "Cartes NVIDIA RTX : les vidéos plus petites que l'écran sont agrandies par IA."
 }

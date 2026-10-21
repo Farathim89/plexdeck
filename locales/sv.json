@@ -632,5 +632,11 @@
   "Play at the screen's full resolution": "Spela i skärmens fulla upplösning",
   "Switch HDR on for HDR videos": "Slå på HDR för HDR-videor",
   "Switch Windows HDR on for HDR videos": "Slå på Windows HDR för HDR-videor",
-  "Windows HDR on while an HDR video plays.": "Windows HDR på medan en HDR-video spelas."
+  "Windows HDR on while an HDR video plays.": "Windows HDR på medan en HDR-video spelas.",
+  "Like a TV box: while a video plays full screen, a 4K TV that Windows runs at a lower resolution plays at 4K, and HDR videos get Windows HDR. The screen is put back when the player closes. With an NVIDIA RTX card, Super Resolution upscales videos smaller than the screen with AI, and Video HDR turns SDR videos into HDR (on an HDR screen, with HDR switching or Windows HDR on).": "Som en TV-box: när en video spelas i helskärm spelar en 4K-TV som Windows kör med lägre upplösning i 4K, och HDR-videor får Windows HDR. Skärmen återställs när spelaren stängs. Med ett NVIDIA RTX-kort skalar Super Resolution upp videor som är mindre än skärmen med AI, och Video HDR gör SDR-videor till HDR (på en HDR-skärm, med HDR-växling eller Windows HDR på).",
+  "(NVIDIA RTX)": "(NVIDIA RTX)",
+  "RTX Super Resolution": "RTX Super Resolution",
+  "RTX Video HDR": "RTX Video HDR",
+  "NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).": "NVIDIA RTX-kort: SDR-videor spelas som HDR (med HDR-växling, eller Windows HDR på).",
+  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "NVIDIA RTX-kort: videor som är mindre än skärmen skalas upp med AI."
 }

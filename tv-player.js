@@ -129,6 +129,8 @@ const Player = (() => {
     return {
       fps: (v && Number(v.frameRate)) || named || 0,
       hdr: !!v && (/smpte2084|arib-std-b67/i.test(v.colorTrc || "") || !!v.DOVIPresent),
+      width: Number((v && v.width) || (media && media.width)) || 0,
+      height: Number((v && v.height) || (media && media.height)) || 0,
     };
   }
   async function mpvLoad(offset) {

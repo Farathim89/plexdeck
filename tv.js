@@ -578,6 +578,8 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Refresh Rate Switching"), "matchRefresh", "toggle"),
     prefRow(tr("Full Resolution for Videos"), "videoNativeRes", "toggle", tr("A 4K TV that Windows runs at a lower resolution plays videos at 4K.")),
     prefRow(tr("HDR Switching"), "autoHdr", "toggle", tr("Windows HDR on while an HDR video plays.")),
+    prefRow(tr("RTX Super Resolution"), "rtxUpscale", "toggle", tr("NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.")),
+    prefRow(tr("RTX Video HDR"), "rtxHdr", "toggle", tr("NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).")),
     prefRow(tr("Hardware Decoding"), "hwDecode", [{ v: "auto", l: tr("Automatic") }, { v: "d3d11", l: "Direct3D 11" }, { v: "off", l: tr("Software") }]),
     { header: tr("Audio") },
     prefRow(tr("Passthrough"), "passthrough", [{ v: "off", l: tr("Off") }, { v: "dolby-dts", l: "Dolby Digital / DTS" }, { v: "all", l: tr("All (TrueHD, Atmos, DTS-HD)") }]),

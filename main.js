@@ -720,7 +720,7 @@ const SETTING_NAMES = {
   keyboardNav: N_("Arrow-key navigation"), controller: N_("Game controller"), startMaximized: N_("Start maximised"), theme: N_("Theme"),
   closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"), askUserAtStart: N_("Ask who's watching"), heroTitle: N_("Title Style"),
   pcPlayerEngine: N_("PC mode player"), playerEngine: N_("TV mode player"), hdr: N_("HDR"), passthrough: N_("Surround passthrough"),
-  matchRefresh: N_("Match refresh rate"), videoNativeRes: N_("Play at full resolution"), autoHdr: N_("Switch HDR on for HDR videos"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
+  matchRefresh: N_("Match refresh rate"), videoNativeRes: N_("Play at full resolution"), autoHdr: N_("Switch HDR on for HDR videos"), rtxUpscale: N_("RTX Super Resolution"), rtxHdr: N_("RTX Video HDR"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
   preferredAudioLang: N_("Audio language"), autoSubtitles: N_("Subtitles on by themselves"), preferredSubtitleLang: N_("Subtitle language"),
   preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), themeVolume: N_("Theme music volume"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), language: N_("Language"),

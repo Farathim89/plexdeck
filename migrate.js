@@ -46,6 +46,8 @@ const DEFAULTS = {
   matchRefresh: false,       // switch the screen's refresh rate to the video's
   videoNativeRes: false,     // play at the screen's full resolution (a 4K TV the PC runs at 1080p)
   autoHdr: false,            // Windows HDR on while an HDR video plays
+  rtxUpscale: false,         // NVIDIA RTX Video Super Resolution for videos smaller than the screen
+  rtxHdr: false,             // NVIDIA RTX Video HDR: SDR videos as HDR (with Windows HDR on)
   defaultVolume: 100,
   hwDecode: "auto",          // "auto" | "off" | "d3d11"
   // Subtitles (text subtitles like SRT; styled ASS subtitles keep their own look)

@@ -240,6 +240,23 @@ async function prepareDisplay() {
   await wait(1600); refit();
   return true;
 }
+// NVIDIA's AI picture (an RTX card, through Windows' video processor, mpv's d3d11vpp): Super
+// Resolution upscales a video smaller than the screen (like a Shield's AI upscaling); Video HDR
+// turns SDR into HDR — only when the screen shows HDR, else it'd be turned back into SDR.
+// Needs the GPU's own decoding (d3d11va); without it mpv drops the filter and plays on.
+async function setRtx({ width, height, rtxHdr }) {
+  const c = d.config(), parts = [];
+  if (c.hwDecode !== "off" && host) {
+    const b = host.getBounds(), sf = screen.getDisplayMatching(b).scaleFactor;
+    const k = width && height ? Math.min((b.width * sf) / width, (b.height * sf) / height) : 0;
+    if (c.rtxUpscale && k > 1.1) parts.push(`scale=${Math.min(4, k).toFixed(3)}`, "scaling-mode=nvidia");
+    if (rtxHdr) {
+      const s = await (screenLook || (screenLook = refresh.look(hwndOf(d.win()))));
+      if (s && s.hdr === 1) parts.push("nvidia-true-hdr");
+    }
+  }
+  await send(["set_property", "vf", parts.length ? `d3d11vpp=${parts.join(":")}` : ""]);
+}
 function restoreDisplay() {
   screenLook = null;
   if (!refresh.pending()) return;
@@ -350,9 +367,14 @@ function init(deps) {
   // the screen is ready (switched or not).
   ipcMain.handle("native:prepare", async (e, v) => {
     if (!fromOsd(e)) return false;
-    const fps = Number(v && v.fps);
-    lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: !!(v && v.hdr) };
-    try { return await prepareDisplay(); } catch { return false; }
+    const c = d.config(), fps = Number(v && v.fps), hdr = !!(v && v.hdr);
+    // RTX Video HDR makes an SDR video HDR — so the screen gets Windows HDR for it too
+    const rtxHdr = !hdr && !!c.rtxHdr && c.hwDecode !== "off" && c.hdr !== false;
+    lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: hdr || rtxHdr };
+    let switched = false;
+    try { switched = await prepareDisplay(); } catch {}
+    try { await setRtx({ width: Number(v && v.width) || 0, height: Number(v && v.height) || 0, rtxHdr }); } catch {}
+    return switched;
   });
   ipcMain.on("native:fps", async (e, fps) => {
     if (!fromOsd(e) || !(fps > 10 && fps < 130)) return;
