@@ -170,10 +170,10 @@ const Player = (() => {
     const settle = Number(await Promise.race([window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => 0), new Promise((r) => setTimeout(r, 12000))])) || 0;
     if (!meta || meta.ratingKey !== forKey || !active) return;   // closed or moved on meanwhile
     // The screen is still settling: the file loads paused meanwhile and starts once the TV shows it.
-    if (settle) {
-      await mpvV.cmd(["set_property", "pause", true]);
-      setTimeout(() => { if (active && meta && meta.ratingKey === forKey) mpvV.cmd(["set_property", "pause", false]); }, settle);
-    }
+    // Otherwise it plays — also after the last episode's end, where mpv pauses by itself (keep-open):
+    // the next episode (Up Next "At the end") loaded paused and never started.
+    await mpvV.cmd(["set_property", "pause", !!settle]);
+    if (settle) setTimeout(() => { if (active && meta && meta.ratingKey === forKey) mpvV.cmd(["set_property", "pause", false]); }, settle);
     await mpvV.cmd(["set_property", "start", String(Math.max(0, Math.floor(offset)))]);
     await mpvV.cmd(["loadfile", `${ctx.S.uri}${part.key}?X-Plex-Token=${ctx.S.token}`, "replace"]);
   }
