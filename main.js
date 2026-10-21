@@ -716,7 +716,7 @@ function closeSettings() {
 const NOT_EXPORTED = new Set(["source", "serverUrl"]);
 const SETTING_NAMES = {
   autoSkipIntro: N_("Skip intros automatically"), skipIntroDelay: N_("Intro skip delay"), autoSkipCredits: N_("Skip credits automatically"),
-  skipCreditsDelay: N_("Credits skip delay"), autoPlay: N_("Auto Play"), autoPlayCountdown: N_("Auto Play Countdown"), passoutHours: N_("Passout Protection"), rewindOnResume: N_("Rewind Video on Resume"), jumpBack: N_("Jump back"), jumpForward: N_("Jump forward"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
+  skipCreditsDelay: N_("Credits skip delay"), autoPlay: N_("Auto Play"), autoPlayCountdown: N_("Auto Play Countdown"), upNextAt: N_("Show Up Next"), passoutHours: N_("Passout Protection"), rewindOnResume: N_("Rewind Video on Resume"), jumpBack: N_("Jump back"), jumpForward: N_("Jump forward"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
   keyboardNav: N_("Arrow-key navigation"), controller: N_("Game controller"), startMaximized: N_("Start maximised"), theme: N_("Theme"),
   closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"), askUserAtStart: N_("Ask who's watching"), heroTitle: N_("Title Style"),
   pcPlayerEngine: N_("PC mode player"), playerEngine: N_("TV mode player"), hdr: N_("HDR"), passthrough: N_("Surround passthrough"),

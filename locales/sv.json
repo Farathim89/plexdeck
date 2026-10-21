@@ -641,5 +641,9 @@
   "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "NVIDIA RTX-kort: videor som är mindre än skärmen skalas upp med AI.",
   "Screen": "Skärm",
   "Plays at the video's own rate (23.976 Hz for films), like a TV box, so the TV's motion smoothing works.": "Spelar i videons egen frekvens (23,976 Hz för filmer), som en TV-box, så att TV:ns rörelseutjämning fungerar.",
-  "(23.976 Hz for films, like a TV box)": "(23,976 Hz för filmer, som en TV-box)"
+  "(23.976 Hz for films, like a TV box)": "(23,976 Hz för filmer, som en TV-box)",
+  "Show Up Next": "Visa Härnäst",
+  "At the credits": "Vid eftertexterna",
+  "At the end": "I slutet",
+  "At the end leaves time for scenes after the credits (common in anime).": "I slutet ger tid åt scener efter eftertexterna (vanligt i anime)."
 }

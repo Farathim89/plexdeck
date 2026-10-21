@@ -641,5 +641,9 @@
   "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "Cartes NVIDIA RTX : les vidéos plus petites que l'écran sont agrandies par IA.",
   "Screen": "Écran",
   "Plays at the video's own rate (23.976 Hz for films), like a TV box, so the TV's motion smoothing works.": "Lit à la fréquence propre de la vidéo (23,976 Hz pour les films), comme un boîtier TV, pour que le lissage de mouvement du téléviseur fonctionne.",
-  "(23.976 Hz for films, like a TV box)": "(23,976 Hz pour les films, comme un boîtier TV)"
+  "(23.976 Hz for films, like a TV box)": "(23,976 Hz pour les films, comme un boîtier TV)",
+  "Show Up Next": "Afficher À suivre",
+  "At the credits": "Au générique",
+  "At the end": "À la fin",
+  "At the end leaves time for scenes after the credits (common in anime).": "À la fin laisse le temps aux scènes après le générique (fréquent dans les animés)."
 }

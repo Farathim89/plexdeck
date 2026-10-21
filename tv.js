@@ -559,6 +559,8 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
   { label: tr("Player Experience"), action: () => pushPanel({ title: tr("Player Experience"), rows: () => [
     prefRow(tr("Auto Play"), "autoPlay", "toggle", tr('Play "Up Next" videos automatically')),
     prefRow(tr("Auto Play Countdown"), "autoPlayCountdown", [2, 5, 10, 15, 20, 30].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 120 }),
+    prefRow(tr("Show Up Next"), "upNextAt", [{ v: "credits", l: tr("At the credits") }, { v: "end", l: tr("At the end") }],
+      tr("At the end leaves time for scenes after the credits (common in anime).")),
     prefRow(tr("Passout Protection"), "passoutHours", [{ v: 0, l: tr("Off") }, ...[1, 2, 3, 4].map((n) => ({ v: n, l: n === 1 ? tr("After 1 hour") : tr("After {n} hours", { n }) }))]),
     prefRow(tr("Rewind Video on Resume"), "rewindOnResume", [{ v: 0, l: tr("None") }, ...[2, 5, 10, 15, 30].map((n) => ({ v: n, l: secs(n) }))], null, { min: 0, max: 300 }),
     prefRow(tr("Skip Intros"), "autoSkipIntro", [{ v: false, l: tr("Manual") }, { v: true, l: tr("Automatic") }]),

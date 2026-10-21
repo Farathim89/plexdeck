@@ -612,7 +612,10 @@ const Player = (() => {
     const cur = markers.find((mk) => (mk.type === "intro" || mk.type === "credits") && ms >= mk.startTimeOffset && ms < mk.endTimeOffset - 1000);
     const prefs = ctx.prefs() || {};
     const finalCredits = cur && cur.type === "credits" && (cur.final || mk_last(cur));
-    if (cur && !(finalCredits && nextEp)) {
+    // Show Up Next "At the end": the final credits get a Skip Credits button like any others (a
+    // scene after them — common in anime — still plays) and Up Next waits for the end
+    const atEnd = prefs.upNextAt === "end";
+    if (cur && !(finalCredits && nextEp && !atEnd)) {
       const key = `${cur.type}-${cur.startTimeOffset}`;
       if (skipKey !== key) { skipKey = key; skipShownAt = Date.now(); }
       $("pSkip").hidden = false;
@@ -624,7 +627,7 @@ const Player = (() => {
     // Up Next: at the final credits, or 30 s before the end.
     const d = duration();
     const creditsStart = finalCredits ? cur.startTimeOffset / 1000 : d - 30;
-    if (nextEp && !upNextShown && !upNextCancelled && d && pos >= creditsStart) showUpNext();
+    if (!atEnd && nextEp && !upNextShown && !upNextCancelled && d && pos >= creditsStart) showUpNext();
   }
   const mk_last = (mk) => (meta.Marker || []).filter((x) => x.type === "credits").pop() === mk;
   function showUpNext() {
@@ -752,7 +755,10 @@ const Player = (() => {
     v.addEventListener("timeupdate", () => { if (controls) draw(); drawMini(); markerCheck(); });
     v.addEventListener("ended", () => {
       if (mpvMode && !fileLoaded) return;   // an old file's end while the next one loads
-      const pr = ctx.prefs() || {}, passout = Number(pr.passoutHours) || 0;
+      const pr = ctx.prefs() || {};
+      // Up Next "At the end": its card now, over the last picture (countdown, or Press OK)
+      if (pr.upNextAt === "end" && nextEp && !upNextCancelled && !upNextShown && !sleepEnd) { showUpNext(); return; }
+      const passout = Number(pr.passoutHours) || 0;
       const waitForOk = pr.autoPlay === false || sleepEnd || (passout && Date.now() - lastAct > passout * 3600000);
       if (nextEp && !upNextCancelled && !waitForOk) playNext();
       else if (nextEp && !upNextCancelled && !$("pUpNext").hidden) { if (sleepEnd) { sleepEnd = false; close(); } }   // Up Next stays, waiting for OK
