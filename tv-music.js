@@ -16,10 +16,16 @@ const Music = (() => {
   // The visualiser needs the sound "CORS-clean", so the element asks for it (crossOrigin).
   // If that ever fails, a plain element takes over and the visualiser stays off.
   let vizBroken = false;
+  // Volume (the right stick, up / down), remembered on this PC. With the visualiser the sound goes
+  // through the page's audio graph and the level is set there (after the bars, so they keep their
+  // size); without it, on the element itself.
+  let vol = 1, gain = null, volTimer = null;
+  try { const v = localStorage.getItem("ppd-music-volume"); if (v !== null && Number(v) >= 0 && Number(v) <= 1) vol = Number(v); } catch {}
   let audio = makeAudio(true);
   function makeAudio(cors) {
     const a = new Audio();
     a.preload = "auto";
+    a.volume = gain ? 1 : vol;
     if (cors) a.crossOrigin = "anonymous";
     a.addEventListener("timeupdate", () => { if (screen) { progress(); syncLyrics(); } });
     a.addEventListener("play", () => { draw(); timeline("playing"); startViz(); });
@@ -35,8 +41,8 @@ const Music = (() => {
   function swapToPlainAudio() {
     const at = audio.currentTime;
     audio.removeAttribute("src"); audio.load();
+    analyser = null; gain = null;   // the graph belonged to the old element
     audio = makeAudio(false);
-    analyser = null;
     playIndex(index, at);
   }
   const DIRECT = ["mp3", "flac", "aac", "m4a", "mp4", "ogg", "opus", "wav"];
@@ -221,7 +227,10 @@ const Music = (() => {
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.8;
         src.connect(analyser);
-        analyser.connect(actx.destination);
+        gain = actx.createGain();
+        analyser.connect(gain);
+        gain.connect(actx.destination);
+        applyVolume();
         bins = new Uint8Array(analyser.frequencyBinCount);
       }
       actx.resume().catch(() => {});
@@ -261,8 +270,23 @@ const Music = (() => {
     $("mFill").style.width = d ? `${Math.min(100, (audio.currentTime / d) * 100)}%` : "0%";
   }
 
-  // Keys while the Now Playing screen is open.
+  function applyVolume() {
+    if (gain) { gain.gain.value = vol; audio.volume = 1; } else audio.volume = vol;
+  }
+  function changeVolume(delta) {
+    vol = Math.max(0, Math.min(1, Math.round((vol + delta) * 100) / 100));
+    applyVolume();
+    try { localStorage.setItem("ppd-music-volume", String(vol)); } catch {}
+    $("mVolText").textContent = `${Math.round(vol * 100)} %`;
+    $("mVolFill").style.width = `${Math.round(vol * 100)}%`;
+    $("mVol").hidden = false;
+    clearTimeout(volTimer);
+    volTimer = setTimeout(() => { $("mVol").hidden = true; }, 1500);
+  }
+
+  // Keys while the Now Playing screen is open (the volume also while you browse).
   function act(name) {
+    if ((name === "VolUp" || name === "VolDown") && queue.length) { changeVolume(name === "VolUp" ? 0.02 : -0.02); return true; }
     if (!screen) return false;
     if (name === "OK") toggle();
     else if (name === "Left" || name === "L1") prev();
