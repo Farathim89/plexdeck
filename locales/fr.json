@@ -639,5 +639,7 @@
   "RTX Video HDR": "RTX Video HDR",
   "NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).": "Cartes NVIDIA RTX : les vidéos SDR sont lues en HDR (avec la bascule HDR, ou le HDR de Windows activé).",
   "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "Cartes NVIDIA RTX : les vidéos plus petites que l'écran sont agrandies par IA.",
-  "Screen": "Écran"
+  "Screen": "Écran",
+  "Plays at the video's own rate (23.976 Hz for films), like a TV box, so the TV's motion smoothing works.": "Lit à la fréquence propre de la vidéo (23,976 Hz pour les films), comme un boîtier TV, pour que le lissage de mouvement du téléviseur fonctionne.",
+  "(23.976 Hz for films, like a TV box)": "(23,976 Hz pour les films, comme un boîtier TV)"
 }

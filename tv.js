@@ -575,7 +575,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     rows: (pn) => [
     { header: tr("Video") },
     prefRow(tr("HDR"), "hdr", "toggle"),
-    prefRow(tr("Refresh Rate Switching"), "matchRefresh", "toggle"),
+    prefRow(tr("Refresh Rate Switching"), "matchRefresh", "toggle", tr("Plays at the video's own rate (23.976 Hz for films), like a TV box, so the TV's motion smoothing works.")),
     prefRow(tr("Full Resolution for Videos"), "videoNativeRes", "toggle", tr("A 4K TV that Windows runs at a lower resolution plays videos at 4K.")),
     prefRow(tr("HDR Switching"), "autoHdr", "toggle", tr("Windows HDR on while an HDR video plays.")),
     prefRow(tr("RTX Super Resolution"), "rtxUpscale", "toggle", tr("NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.")),

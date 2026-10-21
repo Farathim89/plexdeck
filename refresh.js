@@ -144,15 +144,19 @@ async function listModes() {
 // Windows reports 23.976 Hz as "23", 59.94 as "59" and so on.
 const actual = (r) => ([23, 29, 47, 59, 119].includes(r) ? (r + 1) / 1.001 : r);
 
-// The best rate for a video's frame rate: a whole multiple of it, closest to the current rate.
-function pick(fps, m) {
+// The best rate for a video's frame rate: a whole multiple of it — the video's own rate, like a
+// TV box (23.976 Hz for a film: the TV then knows it's a film and its motion smoothing / de-judder
+// works), or ("near") the one closest to the current rate. A screen without the video's own
+// rate gets its smallest multiple (48 / 72 Hz…).
+function pick(fps, m, prefer = "own") {
   if (!m || !fps) return null;
   const err = (r) => { const k = actual(r) / fps; return Math.abs(k - Math.round(k)) / Math.round(k); };
   const fits = m.rates.filter((r) => actual(r) / fps >= 0.99 && err(r) < 0.0008);
   if (!fits.length) return null;
   // The exact fit first (59.94 over 60 for 29.97 fps), then the one closest to the current rate.
   // (errors this close are the same fit: Plex's 23.976 is rounded, so 23.976 and 119.88 Hz differ a hair)
-  fits.sort((a, b) => (Math.abs(err(a) - err(b)) > 0.0001 ? err(a) - err(b) : 0) || (Math.abs(a - m.current) - Math.abs(b - m.current)));
+  const pref = prefer === "near" ? (r) => Math.abs(r - m.current) : (r) => r;
+  fits.sort((a, b) => (Math.abs(err(a) - err(b)) > 0.0001 ? err(a) - err(b) : 0) || (pref(a) - pref(b)));
   return fits[0];
 }
 async function setRate(hz) {
@@ -196,8 +200,9 @@ function plan(s, { fps, hdrVideo, native, matchRate, autoHdr }) {
   const rates = [...new Set(s.modes.filter((m) => m[0] === w && m[1] === h).map((m) => m[2]))];
   let hz = s.hz;
   if (w !== s.w || h !== s.h) {
-    // a new resolution needs a rate anyway: one that fits the video, else as close to now as it gets
-    hz = pick(fps, { current: s.hz, rates }) || rates.sort((a, b) => Math.abs(a - s.hz) - Math.abs(b - s.hz))[0] || s.hz;
+    // a new resolution needs a rate anyway: one that fits the video (its own with Refresh Rate
+    // Switching, else the one nearest to now), else as close to now as it gets
+    hz = pick(fps, { current: s.hz, rates }, matchRate ? "own" : "near") || rates.sort((a, b) => Math.abs(a - s.hz) - Math.abs(b - s.hz))[0] || s.hz;
   } else if (matchRate) hz = pick(fps, { current: s.hz, rates }) || s.hz;
   const hdr = autoHdr && hdrVideo && s.hdr === 0;
   if (w === s.w && h === s.h && hz === s.hz && !hdr) return null;
