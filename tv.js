@@ -905,7 +905,12 @@ function move(dir) {
     if (r.col < r.items.length - 1) r.col++;
   } else {
     const next = page.row + (dir === "Down" ? 1 : -1);
-    if (next >= 0 && next < all.length && all[next].items.length) page.row = next;
+    if (next >= 0 && next < all.length && all[next].items.length) {
+      // within a grid (Browse, Collections, Categories…): straight down / up, the same column
+      // (the last row can be shorter: its last card) — like Plex. Other rows keep their own place.
+      if (r.grid && all[next].grid) all[next].col = Math.min(r.col, all[next].items.length - 1);
+      page.row = next;
+    }
   }
   page.draw();
 }
