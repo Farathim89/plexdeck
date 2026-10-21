@@ -166,7 +166,8 @@ const Player = (() => {
     // The screen first, by your settings (its full resolution, a refresh rate that fits, Windows
     // HDR for HDR) — like a Shield. The answer comes once the TV shows the new signal.
     const forKey = meta.ratingKey;
-    await window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => false);
+    // (never more than 12 s: the video starts whatever the screen does)
+    await Promise.race([window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => false), new Promise((r) => setTimeout(r, 12000))]);
     if (!meta || meta.ratingKey !== forKey || !active) return;   // closed or moved on meanwhile
     await mpvV.cmd(["set_property", "start", String(Math.max(0, Math.floor(offset)))]);
     await mpvV.cmd(["loadfile", `${ctx.S.uri}${part.key}?X-Plex-Token=${ctx.S.token}`, "replace"]);

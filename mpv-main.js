@@ -40,6 +40,19 @@ function mpvPath() {
 }
 const available = () => !!mpvPath();
 
+// A short log of each playback — what PlexDeck asked for, what the screen did — next to mpv's
+// own log of the last video, for when something goes wrong: plexdeck-data\player-log.txt and
+// plexdeck-data\mpv\last-video.log (the newest 400 lines / the last video only).
+function plog(msg) {
+  try {
+    const f = path.join(app.getPath("userData"), "player-log.txt");
+    let old = "";
+    try { old = fs.readFileSync(f, "utf8"); } catch {}
+    const lines = (old + `${new Date().toISOString().slice(0, 19).replace("T", " ")}  ${msg}\n`).split("\n");
+    fs.writeFileSync(f, lines.slice(-401).join("\n"));
+  } catch {}
+}
+
 // ---- the two layers --------------------------------------------------------------
 // Mini player: 16:9 in a corner of the window, three sizes; corner and size are remembered.
 const MINI_WIDTHS = [320, 480, 640];
@@ -138,8 +151,8 @@ function onLine(line) {
     if (m.name === "pause") now.paused = !!m.data;
     toOsd({ prop: m.name, value: m.data });
   }
-  else if (m.event === "end-file") toOsd({ event: "end-file", reason: m.reason });
-  else if (m.event === "file-loaded") { toOsd({ event: "file-loaded" }); armSpdifGuard(); }
+  else if (m.event === "end-file") { plog(`mpv: end of file (${m.reason}${m.file_error ? `: ${m.file_error}` : ""})`); toOsd({ event: "end-file", reason: m.reason }); }
+  else if (m.event === "file-loaded") { plog("mpv: file loaded"); toOsd({ event: "file-loaded" }); armSpdifGuard(); }
 }
 function connectPipe(tries = 0) {
   const c = net.connect(pipeName);
@@ -172,9 +185,17 @@ function armSpdifGuard() {
   spdifTimer = setTimeout(async () => {
     if (!pipe) return;
     const get = async (p) => { const r = await send(["get_property", p]); return r && r.error === "success" ? r.data : null; };
-    const [ao, aid, paused, t, spdif] = await Promise.all([get("current-ao"), get("aid"), get("pause"), get("time-pos"), get("audio-spdif")]);
-    if (ao || aid === false || aid === "no" || paused || (t || 0) > 0.5 || !spdif) return;   // fine, no sound to play, or paused
+    const [ao, aid, paused, spdif] = await Promise.all([get("current-ao"), get("aid"), get("pause"), get("audio-spdif")]);
+    if (ao || aid === false || aid === "no" || paused || !spdif) return;   // fine, no sound to play, or paused
+    // No sound device yet: stuck only if the picture doesn't move either. (The position alone
+    // doesn't tell: a resumed video starts far from 0 — that read as playing, and a TrueHD film
+    // resumed with the receiver off stayed frozen.)
+    const t1 = await get("time-pos");
+    await new Promise((r) => setTimeout(r, 1000));
+    const t2 = await get("time-pos");
+    if (!pipe || (await get("current-ao")) || (await get("pause")) || (t1 != null && t2 != null && t2 > t1 + 0.5)) return;
     const next = /eac3|truehd|dts-hd/.test(spdif) ? "ac3,dts" : "";
+    plog(`sound: passthrough ${spdif} couldn't open the sound device — now ${next || "off"}`);
     await send(["set_property", "audio-spdif", next]);
     if (next) armSpdifGuard();   // still nothing? then without passthrough
   }, 3500);
@@ -230,9 +251,11 @@ async function prepareDisplay() {
   if (!lastVideo || mini || !proc || !win.isFullScreen()) return false;
   if (!c.videoNativeRes && !c.autoHdr && !c.matchRefresh) return false;
   const s = await (screenLook || (screenLook = refresh.look(hwndOf(win))));
+  plog(s ? `screen: ${s.dev} ${s.w}x${s.h} ${s.hz} Hz, HDR ${s.hdr === 1 ? "on" : s.hdr === 0 ? "off" : "not possible"}` : "screen: couldn't read it");
   if (!s || !proc) return false;
   if (lastVideo.fps && c.matchRefresh) rateDone = true;
   const done = await refresh.prepare(s, { ...lastVideo, native: !!c.videoNativeRes, matchRate: !!c.matchRefresh, autoHdr: !!c.autoHdr && c.hdr !== false });
+  plog(done ? `screen switched: ${done.mode ? `${done.mode.w}x${done.mode.h} ${done.mode.hz} Hz` : "same mode"}${done.hdr ? ", HDR on" : ""}` : "screen: nothing to switch");
   rememberDisplay();
   if (!done) return false;
   // the TV (and a receiver in between) take a moment to show the new signal
@@ -255,11 +278,14 @@ async function setRtx({ width, height, rtxHdr }) {
       if (s && s.hdr === 1) parts.push("nvidia-true-hdr");
     }
   }
-  await send(["set_property", "vf", parts.length ? `d3d11vpp=${parts.join(":")}` : ""]);
+  const vf = parts.length ? `d3d11vpp=${parts.join(":")}` : "";
+  plog(`video filter: ${vf || "none"}`);
+  await send(["set_property", "vf", vf]);
 }
 function restoreDisplay() {
   screenLook = null;
   if (!refresh.pending()) return;
+  plog("screen: putting it back");
   refresh.restore().then(() => { setTimeout(refit, 1500); setTimeout(refit, 3500); });
   rememberDisplay();
 }
@@ -283,17 +309,18 @@ function open(item) {
     // mpv's own settings and caches live in PlexDeck's data folder (for the portable
     // version: inside its folder), not in %APPDATA% / %LOCALAPPDATA%\mpv.
     `--config-dir=${mpvDir}`, `--gpu-shader-cache-dir=${path.join(mpvDir, "cache")}`, `--icc-cache-dir=${path.join(mpvDir, "cache")}`,
-    `--watch-later-dir=${path.join(mpvDir, "watch_later")}`,
+    `--watch-later-dir=${path.join(mpvDir, "watch_later")}`, `--log-file=${path.join(mpvDir, "last-video.log")}`,
     ...settingsArgs(d.config()),
   ];
   now.paused = false; now.title = ""; lastFps = 0; lastVideo = null; rateDone = false;
   // which screen, and how it is now — ready by the time the video's details are in
   const win = d.win();
   screenLook = win.isFullScreen() ? refresh.look(hwndOf(win)) : null;
+  plog(`open: ${origin} mode, item ${item.key}, ${d.win().isFullScreen() ? "full screen" : "in a window"}`);
   const child = proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
   // Only if it's still the current mpv: the previous one closes a moment after the next one
   // starts, and must not make us forget the new one (then it never got stopped, and played on).
-  child.on("exit", () => { if (proc !== child) return; proc = null; pipe = null; if (osd) toOsd({ event: "mpv-exit" }); });
+  child.on("exit", (code) => { plog(`mpv: exited (${code})`); if (proc !== child) return; proc = null; pipe = null; if (osd) toOsd({ event: "mpv-exit" }); });
   host.showInactive();
   // What to play goes along in the address, so the controls have it as soon as they're ready.
   osd.loadFile(path.join(__dirname, "tv.html"), { query: {
@@ -371,9 +398,11 @@ function init(deps) {
     // RTX Video HDR makes an SDR video HDR — so the screen gets Windows HDR for it too
     const rtxHdr = !hdr && !!c.rtxHdr && c.hwDecode !== "off" && c.hdr !== false;
     lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: hdr || rtxHdr };
+    plog(`prepare: ${lastVideo.fps || "?"} fps, ${hdr ? "HDR" : "SDR"}, ${Number(v && v.width) || "?"}x${Number(v && v.height) || "?"}`);
     let switched = false;
-    try { switched = await prepareDisplay(); } catch {}
-    try { await setRtx({ width: Number(v && v.width) || 0, height: Number(v && v.height) || 0, rtxHdr }); } catch {}
+    try { switched = await prepareDisplay(); } catch (err) { plog(`prepare failed: ${err && err.message}`); }
+    try { await setRtx({ width: Number(v && v.width) || 0, height: Number(v && v.height) || 0, rtxHdr }); } catch (err) { plog(`video filter failed: ${err && err.message}`); }
+    plog("prepare: done, the file loads now");
     return switched;
   });
   // The screen the player is on, for the info under the title: { w, h, hz, hdr }
@@ -443,6 +472,7 @@ function init(deps) {
   // Our controls closed the player: back to TV mode.
   ipcMain.on("native:close", (e, changed) => {
     if (!fromOsd(e)) return;
+    plog("close: from the controls");
     stop();
     if (origin === "pc") { const wc = d.plexContents(); wc.focus(); wc.send("plex:native-closed"); }
     else d.onClosed(!!changed);
@@ -450,6 +480,7 @@ function init(deps) {
   // The controls couldn't play it with mpv: let TV mode use the built-in player.
   ipcMain.on("native:fallback", (e, item) => {
     if (!fromOsd(e)) return;
+    plog("fallback: the controls couldn't play it with mpv");
     stop();
     if (origin === "pc") { d.plexContents().send("plex:native-failed", item); return; }
     const tv = d.tvView();

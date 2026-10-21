@@ -122,9 +122,11 @@ function ps(body) {
   return new Promise((resolve) => {
     const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", CS + body], { windowsHide: true });
     let out = "";
+    // a display call that hangs mustn't hold up the video (or the screen being put back)
+    const t = setTimeout(() => { try { p.kill(); } catch {} resolve(out.trim()); }, 15000);
     p.stdout.on("data", (d) => { out += d; });
-    p.on("close", () => resolve(out.trim()));
-    p.on("error", () => resolve(""));
+    p.on("close", () => { clearTimeout(t); resolve(out.trim()); });
+    p.on("error", () => { clearTimeout(t); resolve(""); });
   });
 }
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;   // a PowerShell string
