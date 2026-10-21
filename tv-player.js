@@ -61,6 +61,8 @@ const Player = (() => {
       buffered: { length: 0 }, seekable: { length: 0 }, readyState: 4,
       addEventListener: (t, f) => ev.addEventListener(t, f), cmd,
       removeAttribute() {}, load() {},
+      // the next file is coming: forget the old one's time (it's checked against the new episode)
+      reset() { st.time = 0; st.duration = 0; },
     };
   }
   // Pick Plex's chosen audio / subtitle tracks in mpv (embedded ones by their
@@ -360,6 +362,11 @@ const Player = (() => {
     if (native && !mpvV) mpvV = MpvVideo();
     if (native) { mpvMode = true; wireEvents(mpvV); }
     plExpected = null; plFor = null;   // our own file change mustn't count as Next / Previous
+    // Another episode (Up Next, Next): the old one stops now. It used to play on while the new
+    // one loaded (longer since the screen switches first), and its end — credits time, the end
+    // of the file — was taken for the new episode's: Up Next came again at once and skipped it.
+    fileLoaded = false;
+    if (mpvMode && mpvV && active) { mpvV.cmd(["stop"]).catch(() => {}); mpvV.reset(); }
     active = true;
     $("player").hidden = false;
     $("pSpinner").hidden = false;
@@ -599,7 +606,7 @@ const Player = (() => {
 
   // ---- Skip Intro / Credits, Up Next --------------------------------------------------------
   function markerCheck() {
-    if (!meta) return;
+    if (!meta || (mpvMode && !fileLoaded)) return;   // not before this episode's file is playing
     const pos = position(), ms = pos * 1000;
     const markers = meta.Marker || [];
     const cur = markers.find((mk) => (mk.type === "intro" || mk.type === "credits") && ms >= mk.startTimeOffset && ms < mk.endTimeOffset - 1000);
@@ -744,6 +751,7 @@ const Player = (() => {
     v.addEventListener("playing", drawMini);
     v.addEventListener("timeupdate", () => { if (controls) draw(); drawMini(); markerCheck(); });
     v.addEventListener("ended", () => {
+      if (mpvMode && !fileLoaded) return;   // an old file's end while the next one loads
       const pr = ctx.prefs() || {}, passout = Number(pr.passoutHours) || 0;
       const waitForOk = pr.autoPlay === false || sleepEnd || (passout && Date.now() - lastAct > passout * 3600000);
       if (nextEp && !upNextCancelled && !waitForOk) playNext();
