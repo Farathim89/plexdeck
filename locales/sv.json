@@ -645,5 +645,6 @@
   "Show Up Next": "Visa Härnäst",
   "At the credits": "Vid eftertexterna",
   "At the end": "I slutet",
-  "At the end leaves time for scenes after the credits (common in anime).": "I slutet ger tid åt scener efter eftertexterna (vanligt i anime)."
+  "At the end leaves time for scenes after the credits (common in anime).": "I slutet ger tid åt scener efter eftertexterna (vanligt i anime).",
+  "The receiver sets the volume (passthrough)": "Receivern styr volymen (passthrough)"
 }

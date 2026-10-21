@@ -261,6 +261,16 @@ body.who-mode #main { visibility: hidden; }
 #pJump { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 18px;
   padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: 26px; pointer-events: none; }
 #pJump[hidden] { display: none; }
+/* Volume (the right stick): a small pill at the top while it changes */
+#pVol { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px;
+  padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: 26px; pointer-events: none; z-index: 5; }
+#pVol[hidden] { display: none; }
+#pVol svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#pVol .vbar { width: 260px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25); overflow: hidden; }
+#pVol .vbar i { display: block; height: 100%; background: #fff; }
+#pVol b { min-width: 72px; text-align: right; font-weight: 600; }
+#pVol.ext .vbar { display: none; }
+#pVol.ext b { min-width: 0; font-weight: 400; }
 #pJump b { font-size: 32px; color: var(--accent); }
 #pJump span { color: var(--dim); }
 #pUpNext { position: absolute; right: 80px; bottom: 300px; width: 760px; display: flex; gap: 24px; align-items: center;

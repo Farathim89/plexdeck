@@ -679,6 +679,7 @@ const Player = (() => {
   function act(name) {
     lastAct = Date.now();
     if (!active) return false;
+    if (name === "VolUp" || name === "VolDown") { changeVolume(name === "VolUp" ? 2 : -2); return true; }
     if (mini) {
       if (name === "Back") setMini(false);
       else if (name === "OK") { togglePause(); drawMini(); }
@@ -741,6 +742,35 @@ const Player = (() => {
     }
     draw();
     return true;
+  }
+  // Volume (the right stick up / down): mpv's own, or the built-in player's. Remembered for the
+  // next video (Settings → Volume), like Plex. With passthrough the sound goes to the receiver
+  // as it is — its volume, not ours: the pill says so.
+  let volNow = null, volHideTimer = null, volSaveTimer = null;
+  async function changeVolume(delta) {
+    let v;
+    if (mpvMode) {
+      const fmt = String((await mpvV.cmd(["get_property", "audio-params/format"]).catch(() => "")) || "");
+      if (/^spdif/.test(fmt)) return showVolume(null);
+      if (volNow == null) volNow = Number(await mpvV.cmd(["get_property", "volume"]).catch(() => 100));
+      v = volNow = Math.max(0, Math.min(100, Math.round((Number.isFinite(volNow) ? volNow : 100) + delta)));
+      mpvV.cmd(["set_property", "volume", v]).catch(() => {});
+    } else {
+      const el = video();
+      v = Math.max(0, Math.min(100, Math.round(el.volume * 100 + delta)));
+      el.volume = v / 100;
+    }
+    showVolume(v);
+    clearTimeout(volSaveTimer);
+    volSaveTimer = setTimeout(() => window.ppDesktop.setSetting("defaultVolume", v), 1500);
+  }
+  function showVolume(v) {
+    $("pVol").classList.toggle("ext", v == null);
+    $("pVolText").textContent = v == null ? tr("The receiver sets the volume (passthrough)") : `${v} %`;
+    $("pVolFill").style.width = `${v || 0}%`;
+    $("pVol").hidden = false;
+    clearTimeout(volHideTimer);
+    volHideTimer = setTimeout(() => { $("pVol").hidden = true; }, 1500);
   }
   function buttonOff(name) {
     if (name === "chapters") return !(meta && meta.Chapter && meta.Chapter.length);

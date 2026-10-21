@@ -2024,8 +2024,9 @@ function padLoop() {
   if (!padPrimed && pads.length) { padPrimed = true; if (now < 1500) for (const n of down) held.set(n, Infinity); }
   for (const n of down) {
     const name = n === "A" ? "OK" : n === "B" || n === "Back" ? "Back" : n;
-    if (!held.has(n)) { held.set(n, now + 380); act(name); }
-    else if (["Up", "Down", "Left", "Right"].includes(n) && now >= held.get(n)) { held.set(n, now + 110); act(name); }
+    const vol = n === "VolUp" || n === "VolDown";   // the right stick: held, the volume keeps moving
+    if (!held.has(n)) { held.set(n, now + (vol ? 300 : 380)); act(name); }
+    else if ((vol || ["Up", "Down", "Left", "Right"].includes(n)) && now >= held.get(n)) { held.set(n, now + (vol ? 80 : 110)); act(name); }
   }
   for (const n of [...held.keys()]) if (!down.has(n)) held.delete(n);
   requestAnimationFrame(padLoop);

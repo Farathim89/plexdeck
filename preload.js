@@ -51,6 +51,9 @@ function padButtons(pad) {
   const [ax = 0, ay = 0] = pad.axes;
   if (ax < -0.6) out.add("Left"); else if (ax > 0.6) out.add("Right");
   if (ay < -0.6) out.add("Up"); else if (ay > 0.6) out.add("Down");
+  // the right stick, up / down: volume in the player (a raw DualShock / DualSense has it on axis 5)
+  const ry = layout === "ds4-raw" ? pad.axes[5] : pad.axes[3];
+  if (ry < -0.6) out.add("VolUp"); else if (ry > 0.6) out.add("VolDown");
   return out;
 }
 // What the settings tester shows.
