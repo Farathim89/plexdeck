@@ -682,3 +682,13 @@ body.shortest #main:has(#tabs:not(:empty)) #heroSummary { display: none; }
 #azBar { bottom: 24px; width: 44px; container-type: size; }
 #azBar div { height: min(32px, calc(100cqh / 28)); font-size: min(22px, calc(100cqh / 40)); }
 #azBar div.cur, #azBar div.focus { height: min(44px, calc(100cqh / 22)); }
+/* Now Playing on a smaller stage (bigger text): the cover, the gaps and the lyrics box shrink with
+   the stage (at 100 % they stay 620px / 90px / 140px / 380px), tighter spacing in the info column,
+   and with lyrics on, the album line and the key help make room for the lyrics */
+#music { container-type: size; gap: min(90px, 5.5%); padding: 0 min(140px, 7.3%); }
+body.short #mArt { width: min(620px, 64cqh, 34cqw); height: min(620px, 64cqh, 34cqw); }
+body.short .mBar { margin-top: 36px; }
+body.short .mControls { margin-top: 28px; }
+body.short #mQueue, body.short .mHelp { margin-top: 24px; }
+body.short #music.lyrics #mAlbum, body.short #music.lyrics .mHelp { display: none; }
+body.short #mLyrics { height: max(160px, min(380px, calc(100cqh - 420px))); margin-top: 20px; }
