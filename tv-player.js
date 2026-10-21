@@ -21,7 +21,9 @@ const Player = (() => {
   let hls = null, session = null, base = 0, absolute = null;
   let quality = 0;           // index into QUALITIES
   let active = false, controls = false, menu = null;
-  let zone = 1, btn = 0;     // 0 = seek bar, 1 = buttons; btn index in BUTTONS (0 = play)
+  // Two rows, as on screen: 0 = the bottom row (Play + seek bar: ←/→ move through the video,
+  // A pauses), 1 = the buttons above it (chapters, quality, audio, subtitles, settings).
+  let zone = 0, btn = 0;     // btn = index in TOP (the row above)
   let hideTimer = null, tlTimer = null, scrobbled = false;
   let scrub = null, scrubTimer = null;
   let nextEp = null, upNextTimer = null, upNextShown = false, upNextCancelled = false;
@@ -137,7 +139,10 @@ const Player = (() => {
     { label: "720p HD", sub: "2 Mbps", bitrate: 2000, res: "1280x720" },
     { label: "480p", sub: "1.5 Mbps", bitrate: 1500, res: "720x480" },
   ];
-  const BUTTONS = ["play", "chapters", "mini", "quality", "audio", "subs", "more"];   // left to right, as on screen
+  const TOP = ["chapters", "mini", "quality", "audio", "subs", "more"];   // the row above the bar, left to right
+  const topVisible = () => TOP.filter((b) => !buttonOff(b));
+  // leaving the bar drops a move you didn't confirm (it used to jump there a moment later)
+  function cancelScrub() { clearTimeout(scrubTimer); scrub = null; }
   // Playback speed, audio / subtitle sync and subtitle size (the ⋯ button).
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const DELAYS = [-1, -0.5, -0.3, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.3, 0.5, 1];
@@ -343,7 +348,7 @@ const Player = (() => {
     const start = at != null ? at : resume && m.viewOffset ? Math.max(0, m.viewOffset / 1000 - rewind) : 0;
     load(start);
     if (ep) findNext(); else { neighboursKnown = true; syncPlaylist(); }
-    btn = BUTTONS.indexOf("play"); zone = 1;
+    btn = 0; zone = 0;
     showControls(false);
     clearInterval(tlTimer);
     tlTimer = setInterval(() => timeline(video().paused ? "paused" : "playing"), 10000);
@@ -405,7 +410,7 @@ const Player = (() => {
     endJump();   // the bar shows the time itself
     controls = true;
     $("player").classList.add("osd");
-    if (focusButtons) zone = 1;
+    if (focusButtons) zone = 0;
     draw();
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => { if (!video().paused && !menu) hideControls(); }, 5000);
@@ -419,10 +424,11 @@ const Player = (() => {
     $("pFill").style.width = `${pct}%`;
     $("pKnob").style.left = `${pct}%`;
     $("pBar").classList.toggle("focus", controls && zone === 0);
+    $("bPlay").classList.toggle("focus", controls && zone === 0);
     const v = video();
     $("bPlay").innerHTML = v.paused ? ICONS.play : ICONS.pause;
-    document.querySelectorAll("#pButtons .pb").forEach((el) => {
-      el.classList.toggle("focus", controls && zone === 1 && BUTTONS[btn] === el.dataset.b);
+    document.querySelectorAll("#pButtons .pgroup.right .pb").forEach((el) => {
+      el.classList.toggle("focus", controls && zone === 1 && TOP[btn] === el.dataset.b);
     });
     $("bChapters").hidden = !(meta && meta.Chapter && meta.Chapter.length);
     document.querySelector('.pb[data-b="quality"]').hidden = mpvMode;
@@ -639,7 +645,12 @@ const Player = (() => {
     showControls(false);
     if (name === "Back") { hideControls(); return true; }
     if (zone === 0) {
-      if (name === "Down") { zone = 1; }
+      if (name === "Up" && topVisible().length) {
+        cancelScrub();
+        zone = 1;
+        if (buttonOff(TOP[btn])) btn = TOP.indexOf(topVisible()[0]);
+      }
+      else if (name === "Down") { cancelScrub(); hideControls(); return true; }
       else if (name === "Left" || name === "Right") {
         // Scrub: move a preview point, jump there when you stop (or press A).
         scrub = Math.max(0, Math.min(duration(), (scrub != null ? scrub : position()) + (name === "Left" ? -jumpSecs(true) : jumpSecs(false))));
@@ -648,14 +659,12 @@ const Player = (() => {
       } else if (name === "OK" && scrub != null) { clearTimeout(scrubTimer); const t = scrub; scrub = null; seekTo(t); }
       else if (name === "OK") togglePause();
     } else {
-      if (name === "Up") zone = 0;
-      else if (name === "Down") { hideControls(); return true; }
+      if (name === "Down") zone = 0;
       else if (name === "Left" || name === "Right") {
-        let i = btn;
-        do { i = Math.max(0, Math.min(BUTTONS.length - 1, i + (name === "Left" ? -1 : 1))); }
-        while (i !== btn && buttonOff(BUTTONS[i]) && i > 0 && i < BUTTONS.length - 1);
-        if (!buttonOff(BUTTONS[i])) btn = i;
-      } else if (name === "OK") pressButton(BUTTONS[btn]);
+        const vis = topVisible(), i = vis.indexOf(TOP[btn]);
+        const next = vis[Math.max(0, Math.min(vis.length - 1, i + (name === "Left" ? -1 : 1)))];
+        if (next) btn = TOP.indexOf(next);
+      } else if (name === "OK") pressButton(TOP[btn]);
     }
     draw();
     return true;
@@ -703,7 +712,7 @@ const Player = (() => {
   function init(c) {
     ctx = c;
     wireEvents($("video"));
-    document.querySelectorAll("#pButtons .pb").forEach((el) => el.addEventListener("click", () => { btn = BUTTONS.indexOf(el.dataset.b); pressButton(el.dataset.b); }));
+    document.querySelectorAll("#pButtons .pb").forEach((el) => el.addEventListener("click", () => { if (el.dataset.b === "play") zone = 0; else { zone = 1; btn = TOP.indexOf(el.dataset.b); } pressButton(el.dataset.b); }));
     $("pSkip").addEventListener("click", () => act("OK"));
     wireMini();
   }

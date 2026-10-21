@@ -612,5 +612,9 @@
   "Up to 5.1": "Bis 5.1",
   "Up to 7.1": "Bis 7.1",
   "Automatic follows Windows' speaker setup. Stereo / 5.1 / 7.1 take the sound device while playing.": "Automatisch folgt der Windows-Lautsprechereinrichtung. Stereo / 5.1 / 7.1 belegen das Audiogerät während der Wiedergabe.",
-  "Stereo, 5.1 and 7.1 work whatever Windows is set to (PlexDeck has the sound device to itself while playing). A source with fewer channels goes out as it is, so your receiver can upmix it.": "Stereo, 5.1 und 7.1 funktionieren unabhängig von der Windows-Einstellung (PlexDeck hat das Audiogerät während der Wiedergabe für sich allein). Ton mit weniger Kanälen wird unverändert ausgegeben, damit dein Receiver ihn hochmischen kann."
+  "Stereo, 5.1 and 7.1 work whatever Windows is set to (PlexDeck has the sound device to itself while playing). A source with fewer channels goes out as it is, so your receiver can upmix it.": "Stereo, 5.1 und 7.1 funktionieren unabhängig von der Windows-Einstellung (PlexDeck hat das Audiogerät während der Wiedergabe für sich allein). Ton mit weniger Kanälen wird unverändert ausgegeben, damit dein Receiver ihn hochmischen kann.",
+  "Text Size": "Textgröße",
+  "Makes everything in TV mode bigger or smaller.": "Macht alles im TV-Modus größer oder kleiner.",
+  "TV mode text size": "Textgröße im TV-Modus",
+  "Text size (TV mode)": "Textgröße (TV-Modus)"
 }

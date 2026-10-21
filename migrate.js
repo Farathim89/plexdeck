@@ -57,6 +57,7 @@ const DEFAULTS = {
   preferredSubtitleLang: "English",
   preferNonSdh: false,
   // TV mode extras
+  tvTextSize: 1,             // TV mode's text size: 0.85 … 1.5 (everything grows, like a TV's display size)
   themeMusic: true,          // a show's theme tune plays quietly on its page
   screensaver: 5,            // minutes idle before the artwork screensaver (0 = off)
   musicVisualiser: true,     // soft bars that move with the music on Now Playing (TV mode)

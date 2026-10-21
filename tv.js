@@ -26,12 +26,22 @@ let page = null;            // the page on screen
 const stack = [];           // pages to go Back to
 let overlayOpen = false;
 
-// ---- the 1920-wide stage, scaled to the window --------------------------------
+// ---- the stage, scaled to the window --------------------------------------------
+// Laid out for a 1920-wide TV screen. Text Size (Settings → Experience) changes that width:
+// at 130 % the stage is 1920 / 1.3 wide and scaled up more, so everything grows and rows hold
+// fewer cards — like a TV's own display size setting.
+let textScale = 1, STAGE_W = 1920;
 function fit() {
-  const scale = innerWidth / 1920;
+  STAGE_W = Math.round(1920 / textScale);
+  stage.style.width = `${STAGE_W}px`;
+  const scale = innerWidth / STAGE_W, h = innerHeight / scale;
   stage.style.transform = `scale(${scale})`;
-  stage.style.height = `${innerHeight / scale}px`;
+  stage.style.height = `${h}px`;
+  stage.style.setProperty("--short", `${Math.max(0, 1080 - h)}px`);   // height lost to bigger text (see tv.css)
+  document.body.classList.toggle("short", 1080 - h > 100);
 }
+// How many cards fit across a grid row (cards `step` apart; `reserve` keeps room on the right).
+const perRow = (step, reserve = 40) => Math.max(3, Math.floor((STAGE_W - 128 - reserve) / step));
 addEventListener("resize", fit);
 fit();
 
@@ -504,6 +514,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
   { label: tr("Experience"), action: () => pushPanel({ title: tr("Experience"), rows: () => [
     { label: tr("Theme"), value: () => { const t = (lastPrefs.themes || []).find((x) => x.id === lastPrefs.theme); return t ? tr(t.label || t.name || "") : ""; },
       action: () => pushPanel({ title: tr("Theme"), rows: () => (lastPrefs.themes || []).map((t) => ({ label: tr(t.label || t.name || t.id), radio: () => lastPrefs.theme === t.id, action: () => { setPref("theme", t.id); popPanel(); } })) }) },
+    prefRow(tr("Text Size"), "tvTextSize", [0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Makes everything in TV mode bigger or smaller.")),
     prefRow(tr("Title Style"), "heroTitle", [{ v: "logo", l: tr("Logo artwork") }, { v: "text", l: tr("Text") }]),
     prefRow(tr("Theme Music"), "themeMusic", "toggle"),
     prefRow(tr("Music Visualiser"), "musicVisualiser", "toggle"),
@@ -803,7 +814,7 @@ function drawPage(p) {
     if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track") {
       const step = r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248;
       const contentX = 128;
-      const visible = Math.floor((1920 - contentX - 120) / step);
+      const visible = Math.floor((STAGE_W - contentX - 120) / step);
       const shift = Math.max(0, Math.min(r.col - (visible - 2), r.items.length - visible)) * step;
       el.querySelector(".strip").style.transform = `translateX(${-Math.max(0, shift)}px)`;
     }
@@ -970,7 +981,8 @@ function manageHome() {
 // Rows of 7 posters (a grid you move through like rows).
 function gridRows(items, title) {
   const rows = [];
-  for (let i = 0; i < items.length; i += 7) rows.push({ kind: "posters", grid: true, title: i === 0 ? title : "", col: 0, items: items.slice(i, i + 7) });
+  const n = perRow(248);   // 7 at 100 % text size
+  for (let i = 0; i < items.length; i += n) rows.push({ kind: "posters", grid: true, title: i === 0 ? title : "", col: 0, items: items.slice(i, i + n) });
   return rows;
 }
 // A plain list of things as a poster grid (a collection, a playlist, a genre, an actor).
@@ -1001,8 +1013,11 @@ function libraryPage(sec) {
   const loadRecommended = (o = {}) => loadInto(p, async () => hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []), { ...o, done: keep(0) });
   // The Library tab pages in 84 titles at a time; the old grid stays up until the first batch is in.
   let libLoad = null;
+  // posters across the Browse grid (6 at 100 % text size; the A–Z bar keeps the right edge)
+  const libPer = () => perRow(248, 160);
   const loadLibrary = ({ quiet = false } = {}) => {
     p.loadSeq = (p.loadSeq || 0) + 1;   // drops answers still on their way for the other tabs
+    const per = libPer();
     let start = 0, total = Infinity, loading = false;
     const old = p.rows[0] && p.rows[0].kind === "options" ? p.rows[0] : null;
     const opts = {
@@ -1036,8 +1051,8 @@ function libraryPage(sec) {
         // 6 to a row (the A–Z bar has the right edge), no heading — like Plex
         const last = rows[rows.length - 1];
         let rest = items;
-        if (rows.length > 1 && last.items.length < 6) { const fill = 6 - last.items.length; last.items.push(...rest.slice(0, fill)); rest = rest.slice(fill); }
-        for (let i = 0; i < rest.length; i += 6) rows.push({ kind: "posters", grid: true, title: "", col: 0, items: rest.slice(i, i + 6) });
+        if (rows.length > 1 && last.items.length < per) { const fill = per - last.items.length; last.items.push(...rest.slice(0, fill)); rest = rest.slice(fill); }
+        for (let i = 0; i < rest.length; i += per) rows.push({ kind: "posters", grid: true, title: "", col: 0, items: rest.slice(i, i + per) });
         tabRows[1] = { rows, loadMore };
         if (p.tabs.selected !== 1 || (!first && p.rows !== rows)) return;
         if (first) {
@@ -1082,9 +1097,10 @@ function libraryPage(sec) {
     for (let tries = 0; tries < 60 && gridItems().length <= e.start && p.loadMore; tries++) { await p.loadMore(); await new Promise((r) => setTimeout(r, 60)); }
     const idx = Math.min(e.start, gridItems().length - 1);
     if (idx < 0) return;
-    p.row = 2 + Math.floor(idx / 6);
+    const per = libPer();
+    p.row = 2 + Math.floor(idx / per);
     const r = p.allRows()[p.row];
-    if (r) r.col = idx % 6;
+    if (r) r.col = idx % per;
     p.azFocus = false;
     p.draw();
   }
@@ -1140,7 +1156,8 @@ function libraryPage(sec) {
     const genres = mc(await api(`/library/sections/${sec.key}/genre`)).Directory || [];
     const tiles = genres.map((g) => ({ title: g.title, open: () => showPage(listPage(g.title, `/library/sections/${sec.key}/all`, null, { genre: g.key, sort: "titleSort" }), { push: true }) }));
     const rows = [];
-    for (let i = 0; i < tiles.length; i += 4) rows.push({ kind: "tiles", grid: true, title: i === 0 ? tr("Genres") : "", col: 0, items: tiles.slice(i, i + 4) });
+    const n = perRow(368);   // 4 at 100 % text size
+    for (let i = 0; i < tiles.length; i += n) rows.push({ kind: "tiles", grid: true, title: i === 0 ? tr("Genres") : "", col: 0, items: tiles.slice(i, i + n) });
     return rows;
   }, { ...o, done: keep(3) });
   const loaders = [loadRecommended, loadLibrary, loadCollections, loadCategories];
@@ -1542,8 +1559,8 @@ function userPickerPage(atStart, focusUser = null) {
     // the row is centred on screen; too many users to fit → the focused one stays in the middle
     const row = $("whoRow"), el = row.children[at];
     const w = row.scrollWidth;
-    let x = (1920 - w) / 2;
-    if (w > 1920 - 160 && el) x = 960 - (el.offsetLeft + el.offsetWidth / 2);   // the chosen one in the middle
+    let x = (STAGE_W - w) / 2;
+    if (w > STAGE_W - 160 && el) x = STAGE_W / 2 - (el.offsetLeft + el.offsetWidth / 2);   // the chosen one in the middle
     row.style.transform = `translateX(${x}px)`;
     const pad = $("whoPad"), u = cur();
     pad.hidden = !(u && u.protected);
@@ -1975,6 +1992,14 @@ function applyPrefs(s) {
   lastPrefs = s;
   const t = s.themes.find((x) => x.id === s.theme);
   if (t) document.documentElement.style.setProperty("--accent", t.accent);
+  // Text Size: refit the stage, then rebuild what's on screen (grids count their cards again)
+  const ts = Math.max(0.7, Math.min(1.6, Number(s.tvTextSize) || 1));
+  if (ts !== textScale) {
+    textScale = ts;
+    fit();
+    if (page && S) { page.rendered = false; drawPage(page); freshen(page); }
+    if (typeof drawMenu === "function" && S) drawMenu();
+  }
 }
 
 // ---- start ----------------------------------------------------------------------------

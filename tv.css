@@ -658,3 +658,13 @@ body.details #hero { top: 150px; }
 #profPanel .pp.stepbox .t { font-size: 19px; color: rgba(255,255,255,.65); }
 #profPanel .pp.stepbox.focus .t { color: rgba(0,0,0,.6); }
 #profPanel .pp.stepbox .box { align-self: stretch; text-align: center; font-size: 40px; font-weight: 700; padding: 10px; border-radius: 12px; box-shadow: inset 0 0 0 2px currentColor; }
+
+/* ---- Text Size: bigger text on a wide screen leaves a shorter stage (fit() sets --short =
+   1080 − its height). The hero moves up and the rows follow, so a whole row of cards fits. */
+#hero { top: max(48px, calc(112px - var(--short, 0px) * .3)); }
+#rowsWindow { top: calc(486px - var(--short, 0px) * .5); }
+body.details #hero { top: max(48px, calc(150px - var(--short, 0px) * .4)); }
+body.details #rowsWindow { top: calc(566px - var(--short, 0px) * .6); }
+/* much shorter (big text): details pages keep a 2-line summary and drop the cast line (it's in Cast & Crew) */
+body.short.details #heroSummary { -webkit-line-clamp: 2; }
+body.short.details #heroCast { display: none; }
