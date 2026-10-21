@@ -240,16 +240,19 @@ async function prepare(s, opts) {
 // What has to be put back (kept in a file while switched, so a crash can be undone next start).
 const pending = () => (original || hdrDev ? { original, hdrDev, now: switchedTo } : null);
 
-// Back to how it was.
+// Back to how it was. Returns what couldn't be put back (the screen off or gone — kept, so the
+// next start tries again), or null.
 async function restore(info = pending()) {
-  if (!info) return;
+  if (!info) return null;
   const o = info.original, hd = info.hdrDev;
   original = null; hdrDev = null; switchedTo = null;
   const cmds = [];
-  if (hd) cmds.push(`[PPDisp]::Hdr(${qd(hd)}, 0)`);
-  if (o && o.dev) cmds.push(`[PPDisp]::SetMode(${qd(o.dev)}, ${o.w}, ${o.h}, ${o.hz})`);
-  if (cmds.length) await ps(cmds.join("; "));
+  if (hd) cmds.push(`"hdr=" + [PPDisp]::Hdr(${qd(hd)}, 0)`);
+  if (o && o.dev) cmds.push(`"mode=" + [PPDisp]::SetMode(${qd(o.dev)}, ${o.w}, ${o.h}, ${o.hz})`);
+  const out = cmds.length ? await ps(cmds.join("; ")) : "";
   if (o && !o.dev) await setRate(o.hz);
+  const left = { original: o && o.dev && !/mode=0/.test(out) ? o : null, hdrDev: hd && !/hdr=0/.test(out) ? hd : null, now: info.now };
+  return left.original || left.hdrDev ? left : null;
 }
 
 // At the next start after PlexDeck closed while switched: only what's still ours (a mode you've
@@ -259,9 +262,9 @@ async function restoreAfterCrash(info) {
   const dev = (o && o.dev) || hd;
   if (!dev) return;
   const s = await stateOf(dev);
-  if (!s) return;
+  if (!s || !s.w) return info;   // the screen isn't there now (the TV off): later
   const n = info.now;
-  await restore({ original: o && n && s.w === n.w && s.h === n.h && s.hz === n.hz ? o : null, hdrDev: hd && s.hdr === 1 ? hd : null });
+  return restore({ original: o && n && s.w === n.w && s.h === n.h && s.hz === n.hz ? o : null, hdrDev: hd && s.hdr === 1 ? hd : null, now: n });
 }
 
 module.exports = { listModes, pick, match, look, stateOf, plan, prepare, pending, restore, restoreAfterCrash };

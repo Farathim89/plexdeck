@@ -257,7 +257,7 @@ async function prepareDisplay() {
   const c = d.config(), win = d.win();
   if (!lastVideo || mini || !proc || !win.isFullScreen()) return 0;
   if (!c.videoNativeRes && !c.autoHdr && !c.matchRefresh) return 0;
-  const s = await (screenLook || (screenLook = refresh.look(hwndOf(win))));
+  const s = await (screenLook || (screenLook = Promise.resolve(restoring).then(() => refresh.look(hwndOf(win)))));
   plog(s ? `screen: ${s.dev} ${s.w}x${s.h} ${s.hz} Hz, HDR ${s.hdr === 1 ? "on" : s.hdr === 0 ? "off" : "not possible"}` : "screen: couldn't read it");
   if (!s || !proc) return 0;
   if (lastVideo.fps && c.matchRefresh) rateDone = true;
@@ -291,12 +291,20 @@ async function setRtx({ width, height, rtxHdr }) {
   plog(`video filter: ${vf || "none"}`);
   await send(["set_property", "vf", vf]);
 }
+let restoring = null;   // the screen being put back (quitting waits for it)
 function restoreDisplay() {
   screenLook = null;
   if (!refresh.pending()) return;
   plog("screen: putting it back");
-  refresh.restore().then(() => { setTimeout(refit, 1500); setTimeout(refit, 3500); });
-  rememberDisplay();
+  // The note goes only once it's done: PlexDeck closing meanwhile (MediaDeck quitting it right
+  // after a film) left Windows HDR on with nothing to remember it. What can't go back now (the
+  // TV off) stays noted, and the next start tries again.
+  restoring = refresh.restore().then((left) => {
+    if (refresh.pending()) rememberDisplay();   // the next video switched it again meanwhile
+    else try { if (left) fs.writeFileSync(DISPLAY_FILE(), JSON.stringify(left)); else fs.rmSync(DISPLAY_FILE(), { force: true }); } catch {}
+    plog(left ? "screen: couldn't put it all back (screen off?), the next start tries again" : "screen: put back");
+    setTimeout(refit, 1500); setTimeout(refit, 3500);
+  }).finally(() => { restoring = null; });
 }
 
 // Start playing: the layers, mpv inside the bottom one, our controls loaded on top.
@@ -324,7 +332,8 @@ function open(item) {
   now.paused = false; now.title = ""; lastFps = 0; lastVideo = null; rateDone = false;
   // which screen, and how it is now — ready by the time the video's details are in
   const win = d.win();
-  screenLook = win.isFullScreen() ? refresh.look(hwndOf(win)) : null;
+  // (after the last video's screen is put back — else it reads HDR still on and doesn't switch)
+  screenLook = win.isFullScreen() ? Promise.resolve(restoring).then(() => refresh.look(hwndOf(win))) : null;
   plog(`open: ${origin} mode, item ${item.key}, ${d.win().isFullScreen() ? "full screen" : "in a window"}`);
   const child = proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
   // Only if it's still the current mpv: the previous one closes a moment after the next one
@@ -390,7 +399,12 @@ function init(deps) {
   // PlexDeck closed while a video had the screen switched: put it back (only what's still ours)
   let saved = null;
   try { saved = fs.readFileSync(DISPLAY_FILE(), "utf8"); fs.rmSync(DISPLAY_FILE(), { force: true }); } catch {}
-  try { if (saved) refresh.restoreAfterCrash(JSON.parse(saved)); } catch {}
+  try {
+    if (saved) refresh.restoreAfterCrash(JSON.parse(saved)).then((left) => {
+      if (left) try { fs.writeFileSync(DISPLAY_FILE(), JSON.stringify(left)); } catch {}   // still off: next time
+      plog(left ? "start: the screen PlexDeck switched isn't back yet (off?), trying again next start" : "start: put the screen back from last time");
+    });
+  } catch {}
   ipcMain.handle("native:audio-info", (e) => {
     const tv = d.tvView();
     if (!tv || e.sender !== tv.webContents || proc) return audioInfo;   // not while a video plays
@@ -505,7 +519,12 @@ function init(deps) {
     const tv = d.tvView();
     if (tv) tv.webContents.send("native:failed", item);
   });
-  app.on("before-quit", () => { if (proc) stop(); });
+  // Quitting with the screen switched: put it back first (else Windows HDR stays on)
+  let quitWait = false;
+  app.on("before-quit", (e) => {
+    if (proc) stop();
+    if (restoring && !quitWait) { quitWait = true; e.preventDefault(); restoring.finally(() => app.quit()); }
+  });
 }
 
 // The tray menu: what's playing, and play/pause / back / forward.
