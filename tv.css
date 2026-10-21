@@ -662,9 +662,23 @@ body.details #hero { top: 150px; }
 /* ---- Text Size: bigger text on a wide screen leaves a shorter stage (fit() sets --short =
    1080 − its height). The hero moves up and the rows follow, so a whole row of cards fits. */
 #hero { top: max(48px, calc(112px - var(--short, 0px) * .3)); }
-#rowsWindow { top: calc(486px - var(--short, 0px) * .5); }
+#rowsWindow { top: calc(474px - var(--short, 0px) * .5); }
 body.details #hero { top: max(48px, calc(150px - var(--short, 0px) * .4)); }
-body.details #rowsWindow { top: calc(566px - var(--short, 0px) * .6); }
+body.details #rowsWindow { top: calc(554px - var(--short, 0px) * .6); }
 /* much shorter (big text): details pages keep a 2-line summary and drop the cast line (it's in Cast & Crew) */
 body.short.details #heroSummary { -webkit-line-clamp: 2; }
 body.short.details #heroCast { display: none; }
+/* a long tab bar (many seasons) stops before the clock and scrolls (tv.js keeps the chosen tab in view) */
+#tabs { max-width: calc(100% - var(--content-x) - 290px); overflow: hidden; }
+/* very big text: a one-line summary, so a whole row of cards still fits under the hero */
+body.shortest #heroSummary { -webkit-line-clamp: 1; }
+/* very big text on a page with tabs (a library, a show's seasons): no summary under the title */
+body.shortest #main:has(#tabs:not(:empty)) #heroSummary { display: none; }
+/* the rows sit 12px into their window (which starts 12px higher, so nothing moves): room above
+   for the white frame of a focused card in a row without a heading (episodes) — it was cut off */
+#rows { top: 12px; }
+/* the A–Z bar fits the height there is (bigger text = a shorter stage): letters shrink to fit
+   (100 %: 32px each as before) */
+#azBar { bottom: 24px; width: 44px; container-type: size; }
+#azBar div { height: min(32px, calc(100cqh / 28)); font-size: min(22px, calc(100cqh / 40)); }
+#azBar div.cur, #azBar div.focus { height: min(44px, calc(100cqh / 22)); }

@@ -30,15 +30,45 @@ let overlayOpen = false;
 // Laid out for a 1920-wide TV screen. Text Size (Settings → Experience) changes that width:
 // at 130 % the stage is 1920 / 1.3 wide and scaled up more, so everything grows and rows hold
 // fewer cards — like a TV's own display size setting.
-let textScale = 1, STAGE_W = 1920;
+let textScale = 1, STAGE_W = 1920, gridGen = 0;   // gridGen: +1 when the stage width changes
 function fit() {
-  STAGE_W = Math.round(1920 / textScale);
+  const w = Math.round(1920 / textScale);
+  if (w !== STAGE_W) { STAGE_W = w; gridGen++; }
   stage.style.width = `${STAGE_W}px`;
   const scale = innerWidth / STAGE_W, h = innerHeight / scale;
   stage.style.transform = `scale(${scale})`;
   stage.style.height = `${h}px`;
   stage.style.setProperty("--short", `${Math.max(0, 1080 - h)}px`);   // height lost to bigger text (see tv.css)
+  // how much shorter: a little (≥ ~115 %), or very (≥ ~150 % on a 16:9 screen) — see tv.css
   document.body.classList.toggle("short", 1080 - h > 100);
+  document.body.classList.toggle("shortest", 1080 - h > 300);
+  layoutGen++;   // pages kept in memory work out their rows' place again
+  if (typeof page !== "undefined" && page) fitLayout(page);
+}
+let layoutGen = 0;
+// On a shorter stage the hero and the rows can't keep their 100 % places: the hero goes under
+// the tab bar (library tabs, seasons) and the rows under the hero, with room for the highlight.
+// Within a page the rows only ever move down (not up and down as you move between items).
+function fitLayout(p) {
+  const hero = $("hero"), win = $("rowsWindow"), tabs = $("tabs");
+  hero.style.top = ""; win.style.top = "";
+  if (!document.body.classList.contains("short") || document.body.classList.contains("no-hero") || !hero.offsetHeight) return;
+  if (tabs.children.length && tabs.offsetHeight) {
+    const min = tabs.offsetTop + tabs.offsetHeight + 18;
+    if (hero.offsetTop < min) hero.style.top = `${min}px`;
+  }
+  const kept = p && p.rowsMin && p.rowsMin.gen === layoutGen ? p.rowsMin.top : 0;
+  const need = Math.max(hero.offsetTop + hero.offsetHeight + 8, kept);   // (+12 inside the window, see tv.css)
+  if (p) p.rowsMin = { gen: layoutGen, top: need };
+  if (win.offsetTop < need) win.style.top = `${need}px`;
+}
+// A new stage width (Text Size): a page's grids count their cards again the next time it's shown
+// (pages kept in memory too — a library's tabs, pages further back).
+function resizePage(p) {
+  if (!p) return;
+  p.gridGen = gridGen;
+  if (p.onResize) p.onResize();
+  else { p.rendered = false; drawPage(p); freshen(p); }
 }
 // How many cards fit across a grid row (cards `step` apart; `reserve` keeps room on the right).
 const perRow = (step, reserve = 40) => Math.max(3, Math.floor((STAGE_W - 128 - reserve) / step));
@@ -711,7 +741,7 @@ function watchedChanged() { dataVer++; autoFreshen(page); }
 function autoFreshen(p) { if (!p) return; if (p.online) p.ver = dataVer; else freshen(p); }
 function makePage({ rows = [], tabs = null, heroItem = null, pinned = true, onTab = null, loadMore = null, pinFrom = null }) {
   const p = {
-    ver: dataVer,
+    ver: dataVer, gridGen,
     rows, tabs, heroItem, pinned, onTab, loadMore, pinFrom,
     row: tabs ? 1 : 0,                 // row 0 is the tab bar when there is one
     draw() { drawPage(this); },
@@ -802,6 +832,14 @@ function drawPage(p) {
     el.classList.toggle("selected", i === p.tabs.selected);
     el.classList.toggle("focus", !menuOpen && p.row === 0 && i === p.tabs.col);
   });
+  if (p.tabs) {   // a long tab bar (many seasons) scrolls: keep the focused / chosen tab in view
+    const bar = $("tabs"), el = bar.children[p.row === 0 ? p.tabs.col : p.tabs.selected];
+    if (el) {
+      const l = el.offsetLeft, r = l + el.offsetWidth;
+      if (l < bar.scrollLeft + 6) bar.scrollLeft = Math.max(0, l - 6);
+      else if (r > bar.scrollLeft + bar.clientWidth - 6) bar.scrollLeft = r - bar.clientWidth + 6;
+    }
+  }
   // focus marks
   p.rows.forEach((r, ri) => {
     const el = r.fixed ? $("libBar") : rowEls[ri];
@@ -835,6 +873,7 @@ function drawPage(p) {
   // near the end of what's loaded (library grid): load more
   if (p.loadMore && contentRow >= p.rows.length - 3) p.loadMore();
   if (p.after) p.after(); else $("azBar").hidden = true;
+  fitLayout(p);
 }
 function showPage(p, { push = false } = {}) {
   if (push && page) stack.push(page);
@@ -842,7 +881,8 @@ function showPage(p, { push = false } = {}) {
   page = p;
   page.rendered = false;
   drawPage(page);
-  if (p.ver < dataVer) autoFreshen(p);
+  if (p.gridGen !== gridGen) resizePage(p);
+  else if (p.ver < dataVer) autoFreshen(p);
 }
 
 // ---- moving around -------------------------------------------------------------------
@@ -898,7 +938,7 @@ function back() {
   if (menuOpen) return menuBack();
   // Who's watching (no menu there): Back goes Home.
   if (page && page.noMenu && !stack.length) { const h = menuItems.find((m) => m.id === "home"); currentMenuId = "home"; h.open(); drawMenu(); return; }
-  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); if (prev.ver < dataVer) autoFreshen(prev); return; }
+  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); if (prev.gridGen !== gridGen) resizePage(prev); else if (prev.ver < dataVer) autoFreshen(prev); return; }
   if (!page) return openMenu();
   // On a page: first back to the top row, then the sidebar.
   const first = page.tabs ? 1 : 0;
@@ -1173,6 +1213,13 @@ function libraryPage(sec) {
       p.loadMore = null;   // the old tab stays on screen until the new one arrives
       loaders[i]();
     }
+  };
+  // A new Text Size: forget what the tabs showed (their grids hold the old number of cards per
+  // row) and load the tab you're on again.
+  p.onResize = () => {
+    tabRows.length = 0;
+    if (p.tabs.selected === 1) p.row = 1;
+    loaders[p.tabs.selected]({ quiet: true });
   };
   // Coming back to this library from the menu or the player: refresh the tab you're on.
   p.refresh = () => {
@@ -1997,7 +2044,7 @@ function applyPrefs(s) {
   if (ts !== textScale) {
     textScale = ts;
     fit();
-    if (page && S) { page.rendered = false; drawPage(page); freshen(page); }
+    if (page && S) resizePage(page);
     if (typeof drawMenu === "function" && S) drawMenu();
   }
 }
