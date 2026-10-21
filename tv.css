@@ -252,6 +252,11 @@ body.who-mode #main { visibility: hidden; }
 #pSkip { position: absolute; right: 80px; bottom: 300px; font: inherit; font-size: 28px; font-weight: 600; color: #fff;
   background: rgba(0,0,0,.6); border: 3px solid #fff; border-radius: 10px; padding: 16px 34px; }
 #pSkip[hidden] { display: none; }
+/* Skip Intro / Credits, like Plex: the bottom-right corner on its own (10 s); with the controls
+   up, above the option buttons — selected with Up from them */
+#pSkip { right: 72px; bottom: 76px; font-size: 26px; padding: 14px 30px; border-width: 2px; }
+#player.osd #pSkip { bottom: 236px; border-color: rgba(255,255,255,.45); }
+#player.osd #pSkip.focus { background: #000; border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
 /* Jumping with ← / → while the controls are hidden: a small hint instead of the whole bar */
 #pJump { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 18px;
   padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: 26px; pointer-events: none; }

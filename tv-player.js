@@ -483,6 +483,7 @@ const Player = (() => {
     document.querySelectorAll("#pButtons .pgroup.right .pb").forEach((el) => {
       el.classList.toggle("focus", controls && zone === 1 && TOP[btn] === el.dataset.b);
     });
+    drawSkip();
     $("bChapters").hidden = !(meta && meta.Chapter && meta.Chapter.length);
     document.querySelector('.pb[data-b="quality"]').hidden = mpvMode;
     $("bMini").hidden = !(mpvMode && FROM_PC);
@@ -624,18 +625,29 @@ const Player = (() => {
     if (cur && !(finalCredits && nextEp && !atEnd)) {
       const key = `${cur.type}-${cur.startTimeOffset}`;
       if (skipKey !== key) { skipKey = key; skipShownAt = Date.now(); }
-      $("pSkip").hidden = false;
       $("pSkip").textContent = cur.type === "intro" ? tr("Skip Intro") : tr("Skip Credits");
+      drawSkip();
       const auto = cur.type === "intro" ? prefs.autoSkipIntro : prefs.autoSkipCredits;
       const delay = (cur.type === "intro" ? prefs.skipIntroDelay : prefs.skipCreditsDelay) || 0;
       if (auto && !skipped.has(key) && Date.now() - skipShownAt >= delay * 1000) { skipped.add(key); seekTo(cur.endTimeOffset / 1000); }
-    } else { $("pSkip").hidden = true; skipKey = null; }
+    } else if (skipKey) { skipKey = null; if (zone === 2) zone = topVisible().length ? 1 : 0; drawSkip(); draw(); }
     // Up Next: at the final credits, or 30 s before the end.
     const d = duration();
     const creditsStart = finalCredits ? cur.startTimeOffset / 1000 : d - 30;
     if (!atEnd && nextEp && !upNextShown && !upNextCancelled && d && pos >= creditsStart) showUpNext();
   }
   const mk_last = (mk) => (meta.Marker || []).filter((x) => x.type === "credits").pop() === mk;
+  // Skip Intro / Credits, like Plex: in the bottom-right corner on its own for 10 s, then only
+  // with the controls up — above the option buttons (Up from them reaches it).
+  const skipShown = () => !!skipKey && (controls || Date.now() - skipShownAt < 10000);
+  function drawSkip() {
+    $("pSkip").hidden = !skipShown();
+    $("pSkip").classList.toggle("focus", controls && zone === 2);
+  }
+  function doSkip() {
+    const mk = (meta && meta.Marker || []).find((x) => `${x.type}-${x.startTimeOffset}` === skipKey);
+    if (mk) { skipped.add(skipKey); seekTo(mk.endTimeOffset / 1000); }
+  }
   function showUpNext() {
     upNextShown = true;
     const n = nextEp;
@@ -686,7 +698,7 @@ const Player = (() => {
     }
     if (!controls) {
       if (name === "OK") {
-        if (!$("pSkip").hidden) { const k = skipKey; const mk = (meta.Marker || []).find((x) => `${x.type}-${x.startTimeOffset}` === k); if (mk) { skipped.add(k); seekTo(mk.endTimeOffset / 1000); } return true; }
+        if (!$("pSkip").hidden) { doSkip(); return true; }
         togglePause(); showControls(); return true;
       }
       if (name === "Left" || name === "L2") { jump(true); return true; }
@@ -706,6 +718,7 @@ const Player = (() => {
         zone = 1;
         if (buttonOff(TOP[btn])) btn = TOP.indexOf(topVisible()[0]);
       }
+      else if (name === "Up" && skipShown()) { cancelScrub(); zone = 2; }
       else if (name === "Down") { cancelScrub(); hideControls(); return true; }
       else if (name === "Left" || name === "Right") {
         // Scrub: move a preview point, jump there when you stop (or press A).
@@ -714,13 +727,17 @@ const Player = (() => {
         scrubTimer = setTimeout(() => { if (scrub != null) { const t = scrub; scrub = null; seekTo(t); } }, 900);
       } else if (name === "OK" && scrub != null) { clearTimeout(scrubTimer); const t = scrub; scrub = null; seekTo(t); }
       else if (name === "OK") togglePause();
-    } else {
+    } else if (zone === 1) {
       if (name === "Down") zone = 0;
+      else if (name === "Up" && skipShown()) zone = 2;   // the Skip button above the row
       else if (name === "Left" || name === "Right") {
         const vis = topVisible(), i = vis.indexOf(TOP[btn]);
         const next = vis[Math.max(0, Math.min(vis.length - 1, i + (name === "Left" ? -1 : 1)))];
         if (next) btn = TOP.indexOf(next);
       } else if (name === "OK") pressButton(TOP[btn]);
+    } else {   // zone 2: Skip Intro / Credits
+      if (name === "Down") zone = topVisible().length ? 1 : 0;
+      else if (name === "OK") { doSkip(); zone = topVisible().length ? 1 : 0; }
     }
     draw();
     return true;
@@ -775,7 +792,7 @@ const Player = (() => {
     ctx = c;
     wireEvents($("video"));
     document.querySelectorAll("#pButtons .pb").forEach((el) => el.addEventListener("click", () => { if (el.dataset.b === "play") zone = 0; else { zone = 1; btn = TOP.indexOf(el.dataset.b); } pressButton(el.dataset.b); }));
-    $("pSkip").addEventListener("click", () => act("OK"));
+    $("pSkip").addEventListener("click", () => doSkip());
     wireMini();
   }
 
