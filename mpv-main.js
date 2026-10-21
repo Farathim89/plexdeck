@@ -9,7 +9,7 @@
 // same as the built-in player. We talk to mpv over its JSON control pipe.
 // ===========================================================================
 
-const { BrowserWindow, ipcMain, app } = require("electron");
+const { BrowserWindow, ipcMain, app, screen } = require("electron");
 const { spawn } = require("child_process");
 const net = require("net");
 const path = require("path");
@@ -22,6 +22,9 @@ let osd = null;         // our controls, on top
 let origin = "tv";      // where playback started: "tv" or "pc"
 let mini = false;       // PC mode: playing small in a corner while you browse
 let lastFps = 0;        // the video's frame rate (refresh-rate matching after the mini player)
+let lastVideo = null;   // { fps, hdrVideo } from Plex, for the screen (see prepareDisplay)
+let screenLook = null;  // the screen PlexDeck plays on and how it is: looked at while the player opens
+let rateDone = false;   // prepareDisplay() already matched the refresh rate for this video
 const now = { paused: false, title: "" };   // for the tray menu
 let proc = null, pipe = null, pipeName = null, buf = "", reqId = 0;
 const pending = new Map();
@@ -68,12 +71,13 @@ function setMini(on) {
   toOsd({ event: "mini", value: mini });
   if (mini) {
     // Browsing again: Plex gets the keyboard; the screen goes back to its own refresh rate.
-    if (d.config().matchRefresh) refresh.restore();
+    restoreDisplay();
     d.win().focus();
     d.plexContents().focus();
   } else {
     osd.focus();
-    if (d.config().matchRefresh && lastFps) refresh.match(lastFps).then(() => setTimeout(place, 1500));
+    if (lastVideo) prepareDisplay();
+    else if (d.config().matchRefresh && lastFps) refresh.match(lastFps).then(() => setTimeout(place, 1500));
   }
 }
 function createLayers() {
@@ -198,6 +202,51 @@ function settingsArgs(c) {
   return a;
 }
 
+const hwndOf = (w) => { const b = w.getNativeWindowHandle(); return process.arch === "x64" ? b.readBigUInt64LE(0).toString() : String(b.readUInt32LE(0)); };
+
+// ---- the screen while a video plays (like a Shield) -----------------------------------
+// Before the video starts (its frame rate and HDR from Plex), by your settings: the screen's
+// full resolution (a 4K TV the PC runs at 1080p), a refresh rate that fits the video, Windows
+// HDR on for HDR videos. Only in full screen, only the screen PlexDeck is on. Put back when the
+// player closes (or goes small). While switched it's written down, so a crash is undone at the
+// next start.
+const DISPLAY_FILE = () => path.join(app.getPath("userData"), "display-restore.json");
+function rememberDisplay() {
+  const info = refresh.pending();
+  try { if (info) fs.writeFileSync(DISPLAY_FILE(), JSON.stringify(info)); else fs.rmSync(DISPLAY_FILE(), { force: true }); } catch {}
+}
+// The main window fills the screen again after the screen changed (and the layers follow).
+function refit() {
+  const win = d.win();
+  if (win && !win.isDestroyed() && win.isFullScreen()) {
+    const b = screen.getDisplayMatching(win.getBounds()).bounds, w = win.getBounds();
+    if (w.x !== b.x || w.y !== b.y || w.width !== b.width || w.height !== b.height) win.setBounds(b);
+  }
+  place();
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function prepareDisplay() {
+  const c = d.config(), win = d.win();
+  if (!lastVideo || mini || !proc || !win.isFullScreen()) return false;
+  if (!c.videoNativeRes && !c.autoHdr && !c.matchRefresh) return false;
+  const s = await (screenLook || (screenLook = refresh.look(hwndOf(win))));
+  if (!s || !proc) return false;
+  if (lastVideo.fps && c.matchRefresh) rateDone = true;
+  const done = await refresh.prepare(s, { ...lastVideo, native: !!c.videoNativeRes, matchRate: !!c.matchRefresh, autoHdr: !!c.autoHdr && c.hdr !== false });
+  rememberDisplay();
+  if (!done) return false;
+  // the TV (and a receiver in between) take a moment to show the new signal
+  await wait(1200); refit();
+  await wait(1600); refit();
+  return true;
+}
+function restoreDisplay() {
+  screenLook = null;
+  if (!refresh.pending()) return;
+  refresh.restore().then(() => { setTimeout(refit, 1500); setTimeout(refit, 3500); });
+  rememberDisplay();
+}
+
 // Start playing: the layers, mpv inside the bottom one, our controls loaded on top.
 function open(item) {
   const exe = mpvPath();
@@ -207,8 +256,7 @@ function open(item) {
   const mpvDir = path.join(app.getPath("userData"), "mpv");
   try { fs.mkdirSync(path.join(mpvDir, "cache"), { recursive: true }); } catch {}
   createLayers();
-  const hwnd = host.getNativeWindowHandle();
-  const wid = process.arch === "x64" ? hwnd.readBigUInt64LE(0).toString() : String(hwnd.readUInt32LE(0));
+  const wid = hwndOf(host);
   pipeName = `\\\\.\\pipe\\plexplayer-mpv-${process.pid}-${Date.now()}`;
   const args = [
     `--wid=${wid}`, `--input-ipc-server=${pipeName}`, "--idle=yes", "--force-window=yes",
@@ -221,7 +269,10 @@ function open(item) {
     `--watch-later-dir=${path.join(mpvDir, "watch_later")}`,
     ...settingsArgs(d.config()),
   ];
-  now.paused = false; now.title = ""; lastFps = 0;
+  now.paused = false; now.title = ""; lastFps = 0; lastVideo = null; rateDone = false;
+  // which screen, and how it is now — ready by the time the video's details are in
+  const win = d.win();
+  screenLook = win.isFullScreen() ? refresh.look(hwndOf(win)) : null;
   const child = proc = spawn(exe, args, { windowsHide: true, stdio: "ignore" });
   // Only if it's still the current mpv: the previous one closes a moment after the next one
   // starts, and must not make us forget the new one (then it never got stopped, and played on).
@@ -237,7 +288,7 @@ function open(item) {
 }
 function stop() {
   clearTimeout(spdifTimer);
-  if (d.config().matchRefresh) refresh.restore();
+  restoreDisplay();
   if (pipe) { try { pipe.write(JSON.stringify({ command: ["quit"] }) + "\n"); } catch {} }
   const p = proc;
   setTimeout(() => { try { if (p && !p.killed) p.kill(); } catch {} }, 800);
@@ -283,6 +334,10 @@ function probeAudio() {
 
 function init(deps) {
   d = deps;
+  // PlexDeck closed while a video had the screen switched: put it back (only what's still ours)
+  let saved = null;
+  try { saved = fs.readFileSync(DISPLAY_FILE(), "utf8"); fs.rmSync(DISPLAY_FILE(), { force: true }); } catch {}
+  try { if (saved) refresh.restoreAfterCrash(JSON.parse(saved)); } catch {}
   ipcMain.handle("native:audio-info", (e) => {
     const tv = d.tvView();
     if (!tv || e.sender !== tv.webContents || proc) return audioInfo;   // not while a video plays
@@ -291,10 +346,18 @@ function init(deps) {
   const fromOsd = (e) => osd && e.sender === osd.webContents;
   ipcMain.handle("native:available", () => available());
   // The controls tell us the video's frame rate once it's loaded.
+  // The controls, just before loading the video: its frame rate and HDR from Plex. Answers once
+  // the screen is ready (switched or not).
+  ipcMain.handle("native:prepare", async (e, v) => {
+    if (!fromOsd(e)) return false;
+    const fps = Number(v && v.fps);
+    lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: !!(v && v.hdr) };
+    try { return await prepareDisplay(); } catch { return false; }
+  });
   ipcMain.on("native:fps", async (e, fps) => {
     if (!fromOsd(e) || !(fps > 10 && fps < 130)) return;
     lastFps = Number(fps);
-    if (!d.config().matchRefresh || mini) return;
+    if (!d.config().matchRefresh || mini || rateDone) return;
     await refresh.match(lastFps);
     setTimeout(place, 1500);   // the window may move while the screen switches
   });

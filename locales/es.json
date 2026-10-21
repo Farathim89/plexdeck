@@ -623,5 +623,14 @@
   "Loud": "Muy alto",
   "Theme Music Volume": "Volumen de la música del tema",
   "Theme music volume": "Volumen de la música de tema",
-  "How loud a show's theme tune plays on its page.": "Lo alto que suena el tema de una serie en su página."
+  "How loud a show's theme tune plays on its page.": "Lo alto que suena el tema de una serie en su página.",
+  "A 4K TV that Windows runs at a lower resolution plays videos at 4K.": "Una TV 4K que Windows usa a menor resolución reproduce los vídeos en 4K.",
+  "Full Resolution for Videos": "Resolución completa para vídeos",
+  "HDR Switching": "Cambio a HDR",
+  "Like a TV box: while a video plays full screen, a 4K TV that Windows runs at a lower resolution plays at 4K, and HDR videos get Windows HDR. The screen is put back when the player closes.": "Como un reproductor de TV: mientras un vídeo se reproduce a pantalla completa, una TV 4K que Windows usa a menor resolución reproduce en 4K, y los vídeos HDR reciben el HDR de Windows. La pantalla vuelve a su estado al cerrar el reproductor.",
+  "Play at full resolution": "Reproducir a resolución completa",
+  "Play at the screen's full resolution": "Reproducir a la resolución completa de la pantalla",
+  "Switch HDR on for HDR videos": "Activar HDR para vídeos HDR",
+  "Switch Windows HDR on for HDR videos": "Activar el HDR de Windows para vídeos HDR",
+  "Windows HDR on while an HDR video plays.": "HDR de Windows activado mientras se reproduce un vídeo HDR."
 }

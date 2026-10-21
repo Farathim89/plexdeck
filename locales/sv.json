@@ -623,5 +623,14 @@
   "Loud": "Mycket hög",
   "Theme Music Volume": "Volym för temamusik",
   "Theme music volume": "Volym för temamusik",
-  "How loud a show's theme tune plays on its page.": "Hur högt en series temalåt spelas på dess sida."
+  "How loud a show's theme tune plays on its page.": "Hur högt en series temalåt spelas på dess sida.",
+  "A 4K TV that Windows runs at a lower resolution plays videos at 4K.": "En 4K-TV som Windows kör med lägre upplösning spelar videor i 4K.",
+  "Full Resolution for Videos": "Full upplösning för videor",
+  "HDR Switching": "HDR-växling",
+  "Like a TV box: while a video plays full screen, a 4K TV that Windows runs at a lower resolution plays at 4K, and HDR videos get Windows HDR. The screen is put back when the player closes.": "Som en TV-box: när en video spelas i helskärm spelar en 4K-TV som Windows kör med lägre upplösning i 4K, och HDR-videor får Windows HDR. Skärmen återställs när spelaren stängs.",
+  "Play at full resolution": "Spela i full upplösning",
+  "Play at the screen's full resolution": "Spela i skärmens fulla upplösning",
+  "Switch HDR on for HDR videos": "Slå på HDR för HDR-videor",
+  "Switch Windows HDR on for HDR videos": "Slå på Windows HDR för HDR-videor",
+  "Windows HDR on while an HDR video plays.": "Windows HDR på medan en HDR-video spelas."
 }

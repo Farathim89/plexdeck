@@ -92,6 +92,9 @@
               </select></label>
             <p class="note">Stereo, 5.1 and 7.1 work whatever Windows is set to (PlexDeck has the sound device to itself while playing). A source with fewer channels goes out as it is, so your receiver can upmix it.</p>
             <label class="row"><span>Match screen refresh rate to the video</span><input type="checkbox" data-key="matchRefresh" /></label>
+            <label class="row"><span>Play at the screen's full resolution</span><input type="checkbox" data-key="videoNativeRes" /></label>
+            <label class="row"><span>Switch Windows HDR on for HDR videos</span><input type="checkbox" data-key="autoHdr" /></label>
+            <p class="note">Like a TV box: while a video plays full screen, a 4K TV that Windows runs at a lower resolution plays at 4K, and HDR videos get Windows HDR. The screen is put back when the player closes.</p>
             <label class="row"><span>Default volume</span><span class="slider"><input type="range" min="0" max="100" step="5" data-key="defaultVolume" /><output></output></span></label>
             <label class="row"><span>Video decoding</span>
               <select data-key="hwDecode"><option value="auto">Automatic (graphics card)</option><option value="d3d11">Direct3D 11</option><option value="off">Software (most compatible)</option></select></label>

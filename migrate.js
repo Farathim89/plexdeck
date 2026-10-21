@@ -44,6 +44,8 @@ const DEFAULTS = {
   passthrough: "off",        // "off" | "dolby-dts" | "all" — surround straight to your receiver
   audioChannels: "auto",     // "auto" (Windows' speaker setup) | "stereo" | "5.1" | "7.1" (exclusive mode)
   matchRefresh: false,       // switch the screen's refresh rate to the video's
+  videoNativeRes: false,     // play at the screen's full resolution (a 4K TV the PC runs at 1080p)
+  autoHdr: false,            // Windows HDR on while an HDR video plays
   defaultVolume: 100,
   hwDecode: "auto",          // "auto" | "off" | "d3d11"
   // Subtitles (text subtitles like SRT; styled ASS subtitles keep their own look)

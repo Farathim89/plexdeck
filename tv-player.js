@@ -121,11 +121,26 @@ const Player = (() => {
     return m.year ? `${m.title} (${m.year})` : m.title;
   }
 
+  // The video's frame rate and HDR, from Plex — known before the file is opened.
+  function videoInfo(m) {
+    const media = m.Media && m.Media[0], part = media && media.Part && media.Part[0];
+    const v = part && (part.Stream || []).find((x) => x.streamType === 1);
+    const named = { "24p": 23.976, PAL: 25, NTSC: 29.97, "50p": 50, "60p": 59.94 }[media && media.videoFrameRate];
+    return {
+      fps: (v && Number(v.frameRate)) || named || 0,
+      hdr: !!v && (/smpte2084|arib-std-b67/i.test(v.colorTrc || "") || !!v.DOVIPresent),
+    };
+  }
   async function mpvLoad(offset) {
     const part = meta.Media && meta.Media[0] && meta.Media[0].Part && meta.Media[0].Part[0];
     if (!part) return fail();
     base = 0; absolute = true;
     $("pSpinner").hidden = false;
+    // The screen first, by your settings (its full resolution, a refresh rate that fits, Windows
+    // HDR for HDR) — like a Shield. The answer comes once the TV shows the new signal.
+    const forKey = meta.ratingKey;
+    await window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => false);
+    if (!meta || meta.ratingKey !== forKey || !active) return;   // closed or moved on meanwhile
     await mpvV.cmd(["set_property", "start", String(Math.max(0, Math.floor(offset)))]);
     await mpvV.cmd(["loadfile", `${ctx.S.uri}${part.key}?X-Plex-Token=${ctx.S.token}`, "replace"]);
   }
