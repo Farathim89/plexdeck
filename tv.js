@@ -1766,7 +1766,7 @@ function addToPlaylistPage(item) {
         toast(tr("Added to \"{name}\"", { name: pl.title })); back();
       } })),
     ];
-    return [{ kind: "options", col: 0, items: opts.slice(0, 1) }, ...chunk(opts.slice(1), 4).map((g) => ({ kind: "options", col: 0, items: g }))];
+    return [{ kind: "options", col: 0, items: opts.slice(0, 1) }, ...chunk(opts.slice(1), 4).map((g) => ({ kind: "options", grid: true, col: 0, items: g }))];   // grid: Up / Down keep the column
   });
   return p;
 }
