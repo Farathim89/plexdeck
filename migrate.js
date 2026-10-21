@@ -42,6 +42,7 @@ const DEFAULTS = {
   // Native player: picture & sound
   hdr: true,                 // send HDR to HDR screens (Windows HDR on)
   passthrough: "off",        // "off" | "dolby-dts" | "all" — surround straight to your receiver
+  audioChannels: "auto",     // "auto" (Windows' speaker setup) | "stereo" | "5.1" | "7.1" (exclusive mode)
   matchRefresh: false,       // switch the screen's refresh rate to the video's
   defaultVolume: 100,
   hwDecode: "auto",          // "auto" | "off" | "d3d11"

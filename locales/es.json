@@ -599,5 +599,13 @@
   "1 library": "1 biblioteca",
   "{n} libraries": "{n} bibliotecas",
   "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "El salvapantallas muestra imágenes de las bibliotecas activadas aquí. Si no hay ninguna, solo muestra el reloj.",
-  "Updated to {version} (from {from}).": "Actualizado a {version} (desde {from})."
+  "Updated to {version} (from {from}).": "Actualizado a {version} (desde {from}).",
+  "5.1 and 7.1 play in that layout whatever Windows is set to (PlexDeck has the sound device to itself while playing).": "5.1 y 7.1 se reproducen en esa configuración sin importar cómo esté Windows (PlexDeck usa el dispositivo de sonido en exclusiva mientras reproduce).",
+  "7.1 sound is mixed down to {layout} — Windows' speaker setup for this device is {layout}. Have 7.1 speakers? Set Audio Channels to 7.1, or use Passthrough.": "El sonido 7.1 se mezcla a {layout}: la configuración de altavoces de Windows para este dispositivo es {layout}. ¿Tienes altavoces 7.1? Pon Canales de audio en 7.1 o usa Passthrough.",
+  "Audio Channels": "Canales de audio",
+  "Audio channels": "Canales de audio",
+  "Automatic (Windows speaker setup)": "Automático (configuración de altavoces de Windows)",
+  "Speakers": "Altavoces",
+  "Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.": "Automático sigue la configuración de altavoces de Windows. 5.1 / 7.1 ocupan el dispositivo de sonido mientras reproducen.",
+  "7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.": "El 7.1 se mezcla a {layout} (configuración de altavoces de Windows). ¿Altavoces 7.1? Pon Canales de audio en 7.1."
 }

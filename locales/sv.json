@@ -599,5 +599,13 @@
   "1 library": "1 bibliotek",
   "{n} libraries": "{n} bibliotek",
   "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Skärmsläckaren visar bilder från biblioteken som är på här. Är inget på visas bara klockan.",
-  "Updated to {version} (from {from}).": "Uppdaterad till {version} (från {from})."
+  "Updated to {version} (from {from}).": "Uppdaterad till {version} (från {from}).",
+  "5.1 and 7.1 play in that layout whatever Windows is set to (PlexDeck has the sound device to itself while playing).": "5.1 och 7.1 spelas i den uppställningen oavsett vad Windows är inställt på (PlexDeck har ljudenheten för sig själv medan något spelas).",
+  "7.1 sound is mixed down to {layout} — Windows' speaker setup for this device is {layout}. Have 7.1 speakers? Set Audio Channels to 7.1, or use Passthrough.": "7.1-ljud mixas ner till {layout} — Windows högtalarinställning för den här enheten är {layout}. Har du 7.1-högtalare? Ställ in Ljudkanaler på 7.1, eller använd Passthrough.",
+  "Audio Channels": "Ljudkanaler",
+  "Audio channels": "Ljudkanaler",
+  "Automatic (Windows speaker setup)": "Automatiskt (Windows högtalarinställning)",
+  "Speakers": "Högtalare",
+  "Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.": "Automatiskt följer Windows högtalarinställning. 5.1 / 7.1 tar ljudenheten medan något spelas.",
+  "7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.": "7.1 mixas ner till {layout} (Windows högtalarinställning). 7.1-högtalare? Ställ in Ljudkanaler på 7.1."
 }

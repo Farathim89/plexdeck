@@ -599,5 +599,13 @@
   "1 library": "1 Mediathek",
   "{n} libraries": "{n} Mediatheken",
   "The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock.": "Der Bildschirmschoner zeigt Bilder aus den hier eingeschalteten Mediatheken. Ist keine eingeschaltet, zeigt er nur die Uhr.",
-  "Updated to {version} (from {from}).": "Auf {version} aktualisiert (vorher {from})."
+  "Updated to {version} (from {from}).": "Auf {version} aktualisiert (vorher {from}).",
+  "5.1 and 7.1 play in that layout whatever Windows is set to (PlexDeck has the sound device to itself while playing).": "5.1 und 7.1 werden in dieser Anordnung ausgegeben, egal wie Windows eingestellt ist (PlexDeck hat das Audiogerät während der Wiedergabe für sich allein).",
+  "7.1 sound is mixed down to {layout} — Windows' speaker setup for this device is {layout}. Have 7.1 speakers? Set Audio Channels to 7.1, or use Passthrough.": "7.1-Ton wird auf {layout} heruntergemischt — die Windows-Lautsprechereinrichtung für dieses Gerät ist {layout}. Du hast 7.1-Lautsprecher? Stell Audiokanäle auf 7.1 oder nutze Passthrough.",
+  "Audio Channels": "Audiokanäle",
+  "Audio channels": "Audiokanäle",
+  "Automatic (Windows speaker setup)": "Automatisch (Windows-Lautsprechereinrichtung)",
+  "Speakers": "Lautsprecher",
+  "Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.": "Automatisch folgt der Windows-Lautsprechereinrichtung. 5.1 / 7.1 belegen das Audiogerät während der Wiedergabe.",
+  "7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.": "7.1 wird auf {layout} heruntergemischt (Windows-Lautsprechereinrichtung). 7.1-Lautsprecher? Stell Audiokanäle auf 7.1."
 }

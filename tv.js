@@ -456,7 +456,14 @@ const ONOFF = (v) => (v ? tr("On") : tr("Off"));
 const secs = (v) => (v === 0 ? tr("at once") : v === 1 ? tr("1 second") : tr("{n} seconds", { n: v }));
 const LANGS = ["Any", "English", "Japanese", "Swedish", "German", "French", "Spanish", "Italian", "Korean", "Chinese"];
 const steps = (from, to, by, fmt) => { const o = []; for (let n = from; n <= to; n += by) o.push({ v: n, l: fmt(n) }); return o; };
-function setPref(key, value) { lastPrefs = { ...lastPrefs, [key]: value }; desktop.setSetting(key, value); drawProfPanel(); }
+function setPref(key, value) {
+  lastPrefs = { ...lastPrefs, [key]: value }; desktop.setSetting(key, value); drawProfPanel();
+  // the Speakers line (Video & Audio) asks the player again
+  if (key === "audioChannels" || key === "passthrough") {
+    const pn = panels.find((x) => x.load && "audio" in x);
+    if (pn) { pn.audio = null; pn.loaded = false; pn.load(pn).then(() => drawProfPanel()); }
+  }
+}
 // a setting as a row: a switch, or a list you pick from (opens as the next panel)
 function prefRow(label, key, options, sub, custom = null) {
   if (options === "toggle") return { label, sub, toggle: () => !!lastPrefs[key], action: () => setPref(key, !lastPrefs[key]) };
@@ -520,13 +527,23 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Seek Forward Time"), "jumpForward", [2, 5, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 600 }),
     prefRow(tr("Player"), "playerEngine", [{ v: "mpv", l: tr("Native (mpv)") }, { v: "builtin", l: tr("Built-in") }]),
   ] }) },
-  { label: tr("Video & Audio"), action: () => pushPanel({ title: tr("Video & Audio"), rows: () => [
+  { label: tr("Video & Audio"), action: () => pushPanel({ title: tr("Video & Audio"),
+    // what the sound device gets (asked from the player each time this opens)
+    load: async (pn) => { pn.audio = await desktop.nativeAudioInfo().catch(() => null); pn.loaded = true; },
+    rows: (pn) => [
     { header: tr("Video") },
     prefRow(tr("HDR"), "hdr", "toggle"),
     prefRow(tr("Refresh Rate Switching"), "matchRefresh", "toggle"),
     prefRow(tr("Hardware Decoding"), "hwDecode", [{ v: "auto", l: tr("Automatic") }, { v: "d3d11", l: "Direct3D 11" }, { v: "off", l: tr("Software") }]),
     { header: tr("Audio") },
     prefRow(tr("Passthrough"), "passthrough", [{ v: "off", l: tr("Off") }, { v: "dolby-dts", l: "Dolby Digital / DTS" }, { v: "all", l: tr("All (TrueHD, Atmos, DTS-HD)") }]),
+    prefRow(tr("Audio Channels"), "audioChannels", [{ v: "auto", l: tr("Automatic") }, { v: "stereo", l: tr("Stereo") }, { v: "5.1", l: "5.1" }, { v: "7.1", l: "7.1" }],
+      tr("Automatic follows Windows' speaker setup. 5.1 / 7.1 take the sound device while playing.")),
+    { label: tr("Speakers"),
+      value: () => (pn.audio ? [pn.audio.layout, pn.audio.device].filter(Boolean).join(" · ") : pn.loaded ? tr("Unknown") : "…"),
+      sub: pn.audio && pn.audio.channels < 8 && lastPrefs.passthrough !== "all"
+        ? tr("7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.", { layout: pn.audio.layout })
+        : "" },
     prefRow(tr("Volume"), "defaultVolume", steps(0, 100, 10, (n) => `${n}%`)),
     prefRow(tr("Audio Language"), "preferredAudioLang", LANGS.map((x) => ({ v: x, l: tr(x) }))),
   ] }) },

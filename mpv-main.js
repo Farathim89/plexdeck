@@ -165,6 +165,10 @@ function settingsArgs(c) {
   a.push(`--hwdec=${c.hwDecode === "off" ? "no" : c.hwDecode === "d3d11" ? "d3d11va" : "auto-safe"}`);
   if (c.passthrough === "dolby-dts") a.push("--audio-spdif=ac3,eac3,dts", "--audio-exclusive=yes");
   if (c.passthrough === "all") a.push("--audio-spdif=ac3,eac3,dts,dts-hd,truehd", "--audio-exclusive=yes");
+  // Speakers: Automatic = Windows' speaker setup for the device. 5.1 / 7.1 send that layout
+  // whatever Windows is set to — only possible with the device to ourselves (exclusive mode).
+  if (c.audioChannels === "stereo") a.push("--audio-channels=stereo");
+  else if (c.audioChannels === "5.1" || c.audioChannels === "7.1") a.push(`--audio-channels=${c.audioChannels}`, "--audio-exclusive=yes");
   a.push(`--volume=${Math.max(0, Math.min(100, Number(c.defaultVolume) || 100))}`);
   const size = { Small: 0.8, Normal: 1, Large: 1.3, Huge: 1.6 }[c.subSize] || 1;
   const colour = { White: "#FFFFFF", Yellow: "#FFE14D", Cyan: "#7FE7FF", Green: "#8CFF8C", Gray: "#C8C8C8" }[c.subColor] || "#FFFFFF";
@@ -219,8 +223,41 @@ function stop() {
   destroyLayers();
 }
 
+// What the sound device gets from a 7.1 source with your settings: a second of silent
+// test tone, then mpv says which device and layout it opened ("5.1 · DENON-AVR").
+let audioInfo = null;
+function probeAudio() {
+  const audioArgs = settingsArgs(d.config()).filter((x) => /^--audio-(channels|exclusive)/.test(x));
+  const key = audioArgs.join(" ");
+  if (audioInfo && audioInfo.key === key && Date.now() - audioInfo.at < 30000) return Promise.resolve(audioInfo);
+  const exe = mpvPath();
+  if (!exe) return Promise.resolve(null);
+  const args = ["--no-config", "--vo=null", "--volume=0", "--length=0.4", "--msg-level=all=no,cplayer=info,ao/wasapi=v", ...audioArgs,
+    "av://lavfi:sine=frequency=440:sample_rate=48000,aformat=channel_layouts=7.1"];
+  return new Promise((resolve) => {
+    let out = "";
+    const p = spawn(exe, args, { windowsHide: true });
+    p.stdout.on("data", (b) => { out += b; });
+    p.stderr.on("data", (b) => { out += b; });
+    const done = () => {
+      const ao = /AO: \[\w+\] (\d+)Hz (\S+) (\d+)ch/.exec(out);
+      const dev = /Selecting device '[^']*' \((.+)\)\s*$/m.exec(out);
+      audioInfo = ao ? { key, at: Date.now(), layout: ao[2], channels: Number(ao[3]), device: dev ? dev[1].replace(/ \((?:NVIDIA|AMD|Intel|Realtek)[^)]*\)$/i, "") : "" } : null;
+      resolve(audioInfo);
+    };
+    p.on("exit", done);
+    p.on("error", () => resolve(null));
+    setTimeout(() => { try { p.kill(); } catch {} }, 8000);
+  });
+}
+
 function init(deps) {
   d = deps;
+  ipcMain.handle("native:audio-info", (e) => {
+    const tv = d.tvView();
+    if (!tv || e.sender !== tv.webContents || proc) return audioInfo;   // not while a video plays
+    return probeAudio();
+  });
   const fromOsd = (e) => osd && e.sender === osd.webContents;
   ipcMain.handle("native:available", () => available());
   // The controls tell us the video's frame rate once it's loaded.

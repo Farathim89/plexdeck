@@ -111,6 +111,7 @@ if (location.protocol === "file:") {
     nativeFallback: (item) => ipcRenderer.send("native:fallback", item),
     nativeFps: (fps) => ipcRenderer.send("native:fps", fps),
     nativePrefs: () => ipcRenderer.invoke("native:prefs"),
+    nativeAudioInfo: () => ipcRenderer.invoke("native:audio-info"),
     nativeMini: (on) => ipcRenderer.send("native:mini", !!on),
     nativeMiniSize: () => ipcRenderer.send("native:mini-size"),
     nativeMiniDrag: (dx, dy) => ipcRenderer.send("native:mini-drag", { dx, dy }),
