@@ -1048,11 +1048,26 @@ const SORTS = [
   { label: tr("Rating"), v: "rating:desc" }, { label: tr("Recently watched"), v: "lastViewedAt:desc" },
 ];
 const SHOWS = [{ label: tr("All"), q: {} }, { label: tr("Unwatched Only"), q: { unwatched: 1 } }, { label: tr("In progress"), q: { inProgress: 1 } }];
+// What each library had chosen — its tab, and Browse's "All ▾ by Title ▾" — is kept per library
+// (and per Plex user on this PC, like the menu), so it opens that way again, also after a restart.
+function libChoices(sec) {
+  const id = `${(S && S.machineId) || ""}/${sec.key}`;
+  const all = () => { try { const v = JSON.parse(localStorage.getItem(userKey("tvLibChoices")) || "{}"); return v && typeof v === "object" ? v : {}; } catch { return {}; } };
+  const c = all()[id] || {};
+  return {
+    tab: [0, 1, 2, 3].includes(c.tab) ? c.tab : 0,
+    sort: Math.max(0, SORTS.findIndex((x) => x.v === c.sort)),
+    show: [0, 1, 2].includes(c.show) ? c.show : 0,
+    save: (v) => { try { const a = all(); a[id] = { ...a[id], ...v }; localStorage.setItem(userKey("tvLibChoices"), JSON.stringify(a)); } catch {} },
+  };
+}
 function libraryPage(sec) {
-  const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Browse") }, { label: tr("Collections") }, { label: tr("Categories") }], col: 0, selected: 0 };
+  const kept = libChoices(sec);
+  const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Browse") }, { label: tr("Collections") }, { label: tr("Categories") }], col: kept.tab, selected: kept.tab };
   const p = makePage({ tabs });
   p.noHero = () => tabs.selected > 0;
-  let sort = 0, show = 0;
+  let sort = kept.sort, show = kept.show;
+  const remember = () => kept.save({ tab: tabs.selected, sort: SORTS[sort].v, show });
   // What each tab showed last time: switching back shows it at once (then refreshes quietly).
   const tabRows = [];
   const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
@@ -1071,10 +1086,10 @@ function libraryPage(sec) {
       items: [
         // like Plex: "All ▾  by  Title ▾" — each opens its list
         { label: SHOWS[show].label, action: () => Dialog.open({ layout: "list", title: sec.title, focus: show,
-          items: SHOWS.map((x, i) => ({ label: (i === show ? "✓  " : "") + x.label, action: () => { show = i; loadLibrary(); } })) }) },
+          items: SHOWS.map((x, i) => ({ label: (i === show ? "✓  " : "") + x.label, action: () => { show = i; remember(); loadLibrary(); } })) }) },
         { label: sec.type === "show" ? tr("Shows") : sec.type === "artist" ? tr("Artists") : tr("Movies"), plain: true, action: () => {} },
         { label: SORTS[sort].label, sortIcon: true, before: tr("by"), action: () => Dialog.open({ layout: "list", title: tr("Sort by"), focus: sort,
-          items: SORTS.map((x, i) => ({ label: (i === sort ? "✓  " : "") + x.label, action: () => { sort = i; loadLibrary(); } })) }) },
+          items: SORTS.map((x, i) => ({ label: (i === sort ? "✓  " : "") + x.label, action: () => { sort = i; remember(); loadLibrary(); } })) }) },
         // ⋮: play the library from the top, or something at random
         { icon: "dots", iconOnly: true, label: tr("More"), action: () => Dialog.open({ layout: "list", title: sec.title,
           items: [{ label: tr("Play"), action: () => playLibrary(false) }, { label: tr("Shuffle"), action: () => playLibrary(true) }] }) },
@@ -1208,6 +1223,7 @@ function libraryPage(sec) {
   }, { ...o, done: keep(3) });
   const loaders = [loadRecommended, loadLibrary, loadCollections, loadCategories];
   p.onTab = (i) => {
+    remember();
     const saved = tabRows[i];
     if (saved) {
       p.rows = saved.rows; p.loadMore = saved.loadMore;
@@ -1233,7 +1249,7 @@ function libraryPage(sec) {
     if (i === 1 && p.row > 1) return;
     loaders[i]({ quiet: true });
   };
-  loadRecommended();
+  loaders[tabs.selected]();   // the tab you had chosen last time
   return p;
 }
 
