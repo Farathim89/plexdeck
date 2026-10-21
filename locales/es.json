@@ -616,5 +616,12 @@
   "Text Size": "Tamaño del texto",
   "Makes everything in TV mode bigger or smaller.": "Hace todo más grande o más pequeño en el modo TV.",
   "TV mode text size": "Tamaño del texto en modo TV",
-  "Text size (TV mode)": "Tamaño del texto (modo TV)"
+  "Text size (TV mode)": "Tamaño del texto (modo TV)",
+  "Quiet": "Bajo",
+  "Medium": "Medio",
+  "High": "Alto",
+  "Loud": "Muy alto",
+  "Theme Music Volume": "Volumen de la música del tema",
+  "Theme music volume": "Volumen de la música de tema",
+  "How loud a show's theme tune plays on its page.": "Lo alto que suena el tema de una serie en su página."
 }

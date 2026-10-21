@@ -547,6 +547,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Text Size"), "tvTextSize", [0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Makes everything in TV mode bigger or smaller.")),
     prefRow(tr("Title Style"), "heroTitle", [{ v: "logo", l: tr("Logo artwork") }, { v: "text", l: tr("Text") }]),
     prefRow(tr("Theme Music"), "themeMusic", "toggle"),
+    prefRow(tr("Theme Music Volume"), "themeVolume", THEME_LEVELS.map((x) => ({ v: x.v, l: tr(x.l) })), tr("How loud a show's theme tune plays on its page.")),
     prefRow(tr("Music Visualiser"), "musicVisualiser", "toggle"),
     prefRow(tr("Screensaver"), "screensaver", [0, 2, 5, 10, 20].map((n) => ({ v: n, l: n ? tr("{n} minutes", { n }) : tr("Never") }))),
     { label: tr("Screensaver Libraries"), value: () => { const n = saverLibs().length; return n === 1 ? tr("1 library") : tr("{n} libraries", { n }); },
@@ -1718,6 +1719,10 @@ async function openDiscoverItem(m) {
 const themeAudio = new Audio();
 themeAudio.loop = false;
 let themeFor = null, themeFade = null;
+// Theme Music Volume: Plex's own levels (its TV apps have Quiet … Loud), as a share of PlexDeck's
+// sound in Windows. Theme tunes are often mastered loud and Plex doesn't level them out.
+const THEME_LEVELS = [{ v: 15, l: N_("Quiet") }, { v: 30, l: N_("Medium") }, { v: 50, l: N_("High") }, { v: 80, l: N_("Loud") }];
+const themeVol = () => Math.max(5, Math.min(100, Number(lastPrefs.themeVolume) || 30)) / 100;
 function fadeTo(target, then) {
   clearInterval(themeFade);
   themeFade = setInterval(() => {
@@ -1727,18 +1732,21 @@ function fadeTo(target, then) {
   }, 60);
 }
 function playTheme(showKey, path) {
-  if (!lastPrefs.themeMusic || !path || Music.isActive() || Player.isActive()) return;
+  // not under a video (the show can finish loading after you've pressed play) or while hidden
+  if (!lastPrefs.themeMusic || !path || Music.isActive() || Player.isActive() || nativePlaying || document.hidden) return;
   if (themeFor === showKey && !themeAudio.paused) return;
   themeFor = showKey;
   themeAudio.src = `${S.uri}${path}?X-Plex-Token=${S.token}`;
   themeAudio.volume = 0;
-  themeAudio.play().then(() => fadeTo(0.3)).catch(() => {});
+  themeAudio.play().then(() => fadeTo(themeVol())).catch(() => {});
 }
 function stopTheme() {
   if (themeAudio.paused) { themeFor = null; return; }
   themeFor = null;
   fadeTo(0, () => themeAudio.pause());
 }
+// TV mode hidden (PC mode, the tray): the tune stops too
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopTheme(); });
 
 // ---- playlists: add to one, make a new one, remove items -------------------------------
 const itemUri = (key) => `server://${S.machineId}/com.plexapp.plugins.library/library/metadata/${key}`;
@@ -2039,6 +2047,9 @@ function applyPrefs(s) {
   lastPrefs = s;
   const t = s.themes.find((x) => x.id === s.theme);
   if (t) document.documentElement.style.setProperty("--accent", t.accent);
+  // Theme Music switched off, or a new level: at once (you hear it while you choose)
+  if (!s.themeMusic) stopTheme();
+  else if (themeFor && !themeAudio.paused) fadeTo(themeVol());
   // Text Size: refit the stage, then rebuild what's on screen (grids count their cards again)
   const ts = Math.max(0.7, Math.min(1.6, Number(s.tvTextSize) || 1));
   if (ts !== textScale) {

@@ -242,7 +242,15 @@ function stop() {
   const p = proc;
   setTimeout(() => { try { if (p && !p.killed) p.kill(); } catch {} }, 800);
   proc = null; pipe = null;
+  // Back to the main window BEFORE the layers go. With the focused controls gone, Windows
+  // looked for another window to activate (the video layer can't take focus) and sometimes
+  // picked one outside PlexDeck — then the taskbar stayed on top of PlexDeck's full screen
+  // (Windows only hides it for the window in front). Only when PlexDeck is in front anyway.
+  const win = d.win(), focused = BrowserWindow.getFocusedWindow();
+  const front = !!focused && (focused === osd || focused === host || focused === win) && win && !win.isDestroyed() && win.isVisible() && !win.isMinimized();
+  if (front) win.focus();
   destroyLayers();
+  if (front) setTimeout(() => { if (!win.isDestroyed() && !proc && !BrowserWindow.getFocusedWindow()) { win.moveTop(); win.focus(); } }, 200);
 }
 
 // What the sound device gets from a 7.1 source with your settings: a second of silent

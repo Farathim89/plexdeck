@@ -723,7 +723,7 @@ const SETTING_NAMES = {
   matchRefresh: N_("Match refresh rate"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
   preferredAudioLang: N_("Audio language"), autoSubtitles: N_("Subtitles on by themselves"), preferredSubtitleLang: N_("Subtitle language"),
-  preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), language: N_("Language"),
+  preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), themeVolume: N_("Theme music volume"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), language: N_("Language"),
   musicVisualiser: N_("Music visualiser"),
 };
 const showValue = (k, v) => (k === "theme" && THEMES[v] ? tr(THEMES[v].label) : typeof v === "boolean" ? (v ? tr("on") : tr("off")) : v === "" ? tr("(default)") : String(v));

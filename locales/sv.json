@@ -616,5 +616,12 @@
   "Text Size": "Textstorlek",
   "Makes everything in TV mode bigger or smaller.": "Gör allt i TV-läget större eller mindre.",
   "TV mode text size": "Textstorlek i TV-läget",
-  "Text size (TV mode)": "Textstorlek (TV-läge)"
+  "Text size (TV mode)": "Textstorlek (TV-läge)",
+  "Quiet": "Låg",
+  "Medium": "Medel",
+  "High": "Hög",
+  "Loud": "Mycket hög",
+  "Theme Music Volume": "Volym för temamusik",
+  "Theme music volume": "Volym för temamusik",
+  "How loud a show's theme tune plays on its page.": "Hur högt en series temalåt spelas på dess sida."
 }
