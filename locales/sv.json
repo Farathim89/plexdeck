@@ -638,5 +638,6 @@
   "RTX Super Resolution": "RTX Super Resolution",
   "RTX Video HDR": "RTX Video HDR",
   "NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).": "NVIDIA RTX-kort: SDR-videor spelas som HDR (med HDR-växling, eller Windows HDR på).",
-  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "NVIDIA RTX-kort: videor som är mindre än skärmen skalas upp med AI."
+  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "NVIDIA RTX-kort: videor som är mindre än skärmen skalas upp med AI.",
+  "Screen": "Skärm"
 }

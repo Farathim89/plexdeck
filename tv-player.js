@@ -129,13 +129,36 @@ const Player = (() => {
     return {
       fps: (v && Number(v.frameRate)) || named || 0,
       hdr: !!v && (/smpte2084|arib-std-b67/i.test(v.colorTrc || "") || !!v.DOVIPresent),
+      range: !v ? "" : v.DOVIPresent ? "Dolby Vision" : /smpte2084/i.test(v.colorTrc || "") ? "HDR10" : /arib-std-b67/i.test(v.colorTrc || "") ? "HLG" : "SDR",
       width: Number((v && v.width) || (media && media.width)) || 0,
       height: Number((v && v.height) || (media && media.height)) || 0,
     };
   }
+  // What's active for the picture, under the title (asked from mpv and Windows once it plays):
+  // the video, NVIDIA RTX upscaling / HDR, the screen. "1080p SDR · RTX Super Resolution → 4K ·
+  // Screen 4K · 120 Hz"
+  async function drawTech() {
+    const el = $("pTech");
+    if (!mpvMode || !meta) { el.textContent = ""; return; }
+    const forKey = meta.ratingKey;
+    const get = (p) => mpvV.cmd(["get_property", p]).catch(() => null);
+    const [vin, vout, vf, hz, scr] = await Promise.all([get("video-params"), get("video-out-params"), get("vf"), get("display-fps"),
+      window.ppDesktop.nativeScreen().catch(() => null)]);
+    if (!meta || meta.ratingKey !== forKey) return;
+    const name = (w, h) => (w >= 3800 ? "4K" : w >= 2500 ? "1440p" : w >= 1900 ? "1080p" : w >= 1200 ? "720p" : `${h}p`);
+    const f = JSON.stringify(vf || "");
+    const parts = [];
+    if (vin && vin.w) parts.push(`${name(vin.w, vin.h)} ${videoInfo(meta).range}`.trim());
+    if (/nvidia/.test(f) && /scaling-mode/.test(f) && vout && vin && vout.w > vin.w) parts.push(`${tr("RTX Super Resolution")} → ${name(vout.w, vout.h)}`);
+    if (/nvidia-true-hdr/.test(f) && vout && vout.gamma === "pq") parts.push(tr("RTX Video HDR"));
+    const rate = Number(hz) || (scr && scr.hz) || 0;
+    if (scr && scr.w) parts.push(`${tr("Screen")} ${name(scr.w, scr.h)}${rate ? ` · ${Math.round(rate * 1000) / 1000} Hz` : ""}${scr.hdr === 1 ? " · HDR" : ""}`);
+    el.textContent = parts.join("  ·  ");
+  }
   async function mpvLoad(offset) {
     const part = meta.Media && meta.Media[0] && meta.Media[0].Part && meta.Media[0].Part[0];
     if (!part) return fail();
+    $("pTech").textContent = "";
     base = 0; absolute = true;
     $("pSpinner").hidden = false;
     // The screen first, by your settings (its full resolution, a refresh rate that fits, Windows
@@ -707,6 +730,8 @@ const Player = (() => {
       mpvApplyTracks();
       const fps = await mpvV.cmd(["get_property", "container-fps"]);
       if (fps) window.ppDesktop.nativeFps(fps);
+      setTimeout(drawTech, 2500);   // once the first pictures are out (and a screen switch has settled)
+      setTimeout(drawTech, 8000);
     });
     v.addEventListener("error", () => { if (mpvMode && active) fail(); });
     v.addEventListener("playing", () => {

@@ -638,5 +638,6 @@
   "RTX Super Resolution": "RTX Super Resolution",
   "RTX Video HDR": "RTX Video HDR",
   "NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).": "Cartes NVIDIA RTX : les vidéos SDR sont lues en HDR (avec la bascule HDR, ou le HDR de Windows activé).",
-  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "Cartes NVIDIA RTX : les vidéos plus petites que l'écran sont agrandies par IA."
+  "NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.": "Cartes NVIDIA RTX : les vidéos plus petites que l'écran sont agrandies par IA.",
+  "Screen": "Écran"
 }

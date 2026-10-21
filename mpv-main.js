@@ -376,6 +376,12 @@ function init(deps) {
     try { await setRtx({ width: Number(v && v.width) || 0, height: Number(v && v.height) || 0, rtxHdr }); } catch {}
     return switched;
   });
+  // The screen the player is on, for the info under the title: { w, h, hz, hdr }
+  ipcMain.handle("native:screen", async (e) => {
+    if (!fromOsd(e)) return null;
+    const s = await (screenLook || (screenLook = refresh.look(hwndOf(d.win())))).catch(() => null);
+    return s ? { w: s.w, h: s.h, hz: s.hz, hdr: s.hdr } : null;
+  });
   ipcMain.on("native:fps", async (e, fps) => {
     if (!fromOsd(e) || !(fps > 10 && fps < 130)) return;
     lastFps = Number(fps);

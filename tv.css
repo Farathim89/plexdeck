@@ -230,6 +230,7 @@ body.who-mode #main { visibility: hidden; }
 .ptop { position: absolute; left: 80px; top: 60px; right: 80px; }
 #pTitle { font-size: 52px; font-weight: 700; }
 #pSub { margin-top: 8px; font-size: 28px; color: var(--dim); }
+#pTech { margin-top: 10px; font-size: 22px; color: var(--dimmer); }   /* what's active for the picture (native player) */
 .pbottom { position: absolute; left: 80px; right: 80px; bottom: 70px; }
 .pseek { height: 34px; display: flex; align-items: center; }
 #pBar { position: relative; flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25); }
