@@ -167,8 +167,13 @@ const Player = (() => {
     // HDR for HDR) — like a Shield. The answer comes once the TV shows the new signal.
     const forKey = meta.ratingKey;
     // (never more than 12 s: the video starts whatever the screen does)
-    await Promise.race([window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => false), new Promise((r) => setTimeout(r, 12000))]);
+    const settle = Number(await Promise.race([window.ppDesktop.nativePrepare(videoInfo(meta)).catch(() => 0), new Promise((r) => setTimeout(r, 12000))])) || 0;
     if (!meta || meta.ratingKey !== forKey || !active) return;   // closed or moved on meanwhile
+    // The screen is still settling: the file loads paused meanwhile and starts once the TV shows it.
+    if (settle) {
+      await mpvV.cmd(["set_property", "pause", true]);
+      setTimeout(() => { if (active && meta && meta.ratingKey === forKey) mpvV.cmd(["set_property", "pause", false]); }, settle);
+    }
     await mpvV.cmd(["set_property", "start", String(Math.max(0, Math.floor(offset)))]);
     await mpvV.cmd(["loadfile", `${ctx.S.uri}${part.key}?X-Plex-Token=${ctx.S.token}`, "replace"]);
   }

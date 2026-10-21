@@ -179,26 +179,34 @@ function connectPipe(tries = 0) {
 // mpv then waits for ever — no sound device, the picture stuck at 0:00. If a video hasn't got
 // its sound going a few seconds after it loads, step passthrough down (AC3 / DTS, then none).
 let spdifTimer = null;
-function armSpdifGuard() {
+// Passthrough that couldn't open the sound device (the receiver / TV off), and what worked
+// instead: the next videos start with that at once — while the sound devices are the same (the
+// receiver coming back changes the list, and passthrough is tried again).
+let spdifFallback = null;   // { from, to, devs }
+const getProp = async (p) => { const r = await send(["get_property", p]); return r && r.error === "success" ? r.data : null; };
+const audioDevices = async () => JSON.stringify(((await getProp("audio-device-list")) || []).map((x) => x.name));
+function armSpdifGuard(delay = 2000, tries = 0) {
   clearTimeout(spdifTimer);
   if (!d.config().passthrough || d.config().passthrough === "off") return;
   spdifTimer = setTimeout(async () => {
     if (!pipe) return;
-    const get = async (p) => { const r = await send(["get_property", p]); return r && r.error === "success" ? r.data : null; };
-    const [ao, aid, paused, spdif] = await Promise.all([get("current-ao"), get("aid"), get("pause"), get("audio-spdif")]);
-    if (ao || aid === false || aid === "no" || paused || !spdif) return;   // fine, no sound to play, or paused
+    const [ao, aid, paused, buffering, spdif] = await Promise.all([getProp("current-ao"), getProp("aid"), getProp("pause"), getProp("paused-for-cache"), getProp("audio-spdif")]);
+    if (ao || aid === false || aid === "no" || !spdif) return;   // the sound is out, or there's none to play
+    if (paused || buffering) { if (tries < 30) armSpdifGuard(1000, tries + 1); return; }   // look again once it plays
     // No sound device yet: stuck only if the picture doesn't move either. (The position alone
     // doesn't tell: a resumed video starts far from 0 — that read as playing, and a TrueHD film
     // resumed with the receiver off stayed frozen.)
-    const t1 = await get("time-pos");
-    await new Promise((r) => setTimeout(r, 1000));
-    const t2 = await get("time-pos");
-    if (!pipe || (await get("current-ao")) || (await get("pause")) || (t1 != null && t2 != null && t2 > t1 + 0.5)) return;
+    const t1 = await getProp("time-pos");
+    await new Promise((r) => setTimeout(r, 700));
+    const t2 = await getProp("time-pos");
+    if (!pipe || (await getProp("current-ao")) || (await getProp("pause")) || (t1 != null && t2 != null && t2 > t1 + 0.3)) return;
     const next = /eac3|truehd|dts-hd/.test(spdif) ? "ac3,dts" : "";
     plog(`sound: passthrough ${spdif} couldn't open the sound device — now ${next || "off"}`);
+    const devs = await audioDevices();
+    spdifFallback = { from: spdifFallback && spdifFallback.devs === devs && spdifFallback.to === spdif ? spdifFallback.from : spdif, to: next, devs };
     await send(["set_property", "audio-spdif", next]);
     if (next) armSpdifGuard();   // still nothing? then without passthrough
-  }, 3500);
+  }, delay);
 }
 
 // mpv options from PlexDeck's settings (picture, sound, subtitles).
@@ -245,23 +253,24 @@ function refit() {
   }
   place();
 }
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function prepareDisplay() {
   const c = d.config(), win = d.win();
-  if (!lastVideo || mini || !proc || !win.isFullScreen()) return false;
-  if (!c.videoNativeRes && !c.autoHdr && !c.matchRefresh) return false;
+  if (!lastVideo || mini || !proc || !win.isFullScreen()) return 0;
+  if (!c.videoNativeRes && !c.autoHdr && !c.matchRefresh) return 0;
   const s = await (screenLook || (screenLook = refresh.look(hwndOf(win))));
   plog(s ? `screen: ${s.dev} ${s.w}x${s.h} ${s.hz} Hz, HDR ${s.hdr === 1 ? "on" : s.hdr === 0 ? "off" : "not possible"}` : "screen: couldn't read it");
-  if (!s || !proc) return false;
+  if (!s || !proc) return 0;
   if (lastVideo.fps && c.matchRefresh) rateDone = true;
+  const before = { w: s.w, h: s.h };
   const done = await refresh.prepare(s, { ...lastVideo, native: !!c.videoNativeRes, matchRate: !!c.matchRefresh, autoHdr: !!c.autoHdr && c.hdr !== false });
   plog(done ? `screen switched: ${done.mode ? `${done.mode.w}x${done.mode.h} ${done.mode.hz} Hz` : "same mode"}${done.hdr ? ", HDR on" : ""}` : "screen: nothing to switch");
   rememberDisplay();
-  if (!done) return false;
-  // the TV (and a receiver in between) take a moment to show the new signal
-  await wait(1200); refit();
-  await wait(1600); refit();
-  return true;
+  if (!done) return 0;
+  // The TV (and a receiver in between) take a moment to show the new signal: the video loads
+  // meanwhile and starts after this long — a new refresh rate is quick, a new resolution or HDR
+  // takes longer. The window fills the screen again as it settles.
+  setTimeout(refit, 1200); setTimeout(refit, 2800);
+  return done.hdr || !done.mode || done.mode.w !== before.w || done.mode.h !== before.h ? 2500 : 1500;
 }
 // NVIDIA's AI picture (an RTX card, through Windows' video processor, mpv's d3d11vpp): Super
 // Resolution upscales a video smaller than the screen (like a Shield's AI upscaling); Video HDR
@@ -399,11 +408,21 @@ function init(deps) {
     const rtxHdr = !hdr && !!c.rtxHdr && c.hwDecode !== "off" && c.hdr !== false;
     lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: hdr || rtxHdr };
     plog(`prepare: ${lastVideo.fps || "?"} fps, ${hdr ? "HDR" : "SDR"}, ${Number(v && v.width) || "?"}x${Number(v && v.height) || "?"}`);
-    let switched = false;
-    try { switched = await prepareDisplay(); } catch (err) { plog(`prepare failed: ${err && err.message}`); }
+    let settle = 0;
+    try { settle = await prepareDisplay(); } catch (err) { plog(`prepare failed: ${err && err.message}`); }
+    try {
+      if (spdifFallback) {
+        const devs = await audioDevices();
+        if (devs !== spdifFallback.devs) spdifFallback = null;   // other sound devices now: try passthrough again
+        else if ((await getProp("audio-spdif")) === spdifFallback.from) {
+          await send(["set_property", "audio-spdif", spdifFallback.to]);
+          plog(`sound: passthrough ${spdifFallback.to || "off"} (it couldn't open this sound device before)`);
+        }
+      }
+    } catch {}
     try { await setRtx({ width: Number(v && v.width) || 0, height: Number(v && v.height) || 0, rtxHdr }); } catch (err) { plog(`video filter failed: ${err && err.message}`); }
-    plog("prepare: done, the file loads now");
-    return switched;
+    plog(settle ? `prepare: done, the file loads now and starts in ${settle / 1000} s` : "prepare: done, the file loads now");
+    return settle;
   });
   // The screen the player is on, for the info under the title: { w, h, hz, hdr }
   ipcMain.handle("native:screen", async (e) => {
