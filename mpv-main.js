@@ -135,7 +135,7 @@ function onLine(line) {
     toOsd({ prop: m.name, value: m.data });
   }
   else if (m.event === "end-file") toOsd({ event: "end-file", reason: m.reason });
-  else if (m.event === "file-loaded") toOsd({ event: "file-loaded" });
+  else if (m.event === "file-loaded") { toOsd({ event: "file-loaded" }); armSpdifGuard(); }
 }
 function connectPipe(tries = 0) {
   const c = net.connect(pipeName);
@@ -158,6 +158,24 @@ function connectPipe(tries = 0) {
   c.on("close", () => { if (pipe === c) pipe = null; });
 }
 
+// Passthrough guard: some outputs (optical S/PDIF) can't take E-AC3 / TrueHD / DTS-HD, and
+// mpv then waits for ever — no sound device, the picture stuck at 0:00. If a video hasn't got
+// its sound going a few seconds after it loads, step passthrough down (AC3 / DTS, then none).
+let spdifTimer = null;
+function armSpdifGuard() {
+  clearTimeout(spdifTimer);
+  if (!d.config().passthrough || d.config().passthrough === "off") return;
+  spdifTimer = setTimeout(async () => {
+    if (!pipe) return;
+    const get = async (p) => { const r = await send(["get_property", p]); return r && r.error === "success" ? r.data : null; };
+    const [ao, aid, paused, t, spdif] = await Promise.all([get("current-ao"), get("aid"), get("pause"), get("time-pos"), get("audio-spdif")]);
+    if (ao || aid === false || aid === "no" || paused || (t || 0) > 0.5 || !spdif) return;   // fine, no sound to play, or paused
+    const next = /eac3|truehd|dts-hd/.test(spdif) ? "ac3,dts" : "";
+    await send(["set_property", "audio-spdif", next]);
+    if (next) armSpdifGuard();   // still nothing? then without passthrough
+  }, 3500);
+}
+
 // mpv options from PlexDeck's settings (picture, sound, subtitles).
 function settingsArgs(c) {
   const a = ["--vo=gpu-next"];
@@ -165,10 +183,10 @@ function settingsArgs(c) {
   a.push(`--hwdec=${c.hwDecode === "off" ? "no" : c.hwDecode === "d3d11" ? "d3d11va" : "auto-safe"}`);
   if (c.passthrough === "dolby-dts") a.push("--audio-spdif=ac3,eac3,dts", "--audio-exclusive=yes");
   if (c.passthrough === "all") a.push("--audio-spdif=ac3,eac3,dts,dts-hd,truehd", "--audio-exclusive=yes");
-  // Speakers: Automatic = Windows' speaker setup for the device. 5.1 / 7.1 send that layout
-  // whatever Windows is set to — only possible with the device to ourselves (exclusive mode).
-  if (c.audioChannels === "stereo") a.push("--audio-channels=stereo");
-  else if (c.audioChannels === "5.1" || c.audioChannels === "7.1") a.push(`--audio-channels=${c.audioChannels}`, "--audio-exclusive=yes");
+  // Speakers: Automatic = Windows' speaker setup for the device. Stereo / 5.1 / 7.1 send that
+  // layout whatever Windows is set to — only possible with the device to ourselves (exclusive
+  // mode; in shared mode Windows takes its own layout, e.g. 5.1 even when stereo is asked for).
+  if (["stereo", "5.1", "7.1"].includes(c.audioChannels)) a.push(`--audio-channels=${c.audioChannels}`, "--audio-exclusive=yes");
   a.push(`--volume=${Math.max(0, Math.min(100, Number(c.defaultVolume) || 100))}`);
   const size = { Small: 0.8, Normal: 1, Large: 1.3, Huge: 1.6 }[c.subSize] || 1;
   const colour = { White: "#FFFFFF", Yellow: "#FFE14D", Cyan: "#7FE7FF", Green: "#8CFF8C", Gray: "#C8C8C8" }[c.subColor] || "#FFFFFF";
@@ -215,6 +233,7 @@ function open(item) {
   return true;
 }
 function stop() {
+  clearTimeout(spdifTimer);
   if (d.config().matchRefresh) refresh.restore();
   if (pipe) { try { pipe.write(JSON.stringify({ command: ["quit"] }) + "\n"); } catch {} }
   const p = proc;
