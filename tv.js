@@ -658,7 +658,7 @@ function menuPage(id, make) {
   const kept = pageCache.get(id);
   if (kept) {
     showPage(kept);
-    if (kept.refresh) kept.refresh(); else if (kept.reload) kept.reload();
+    if (kept.ver === dataVer) freshen(kept);   // (an older one already reloaded in showPage)
     return;
   }
   const p = make();
@@ -669,8 +669,18 @@ function menuPage(id, make) {
 // ---- pages: rows of items ----------------------------------------------------------
 // A page is a list of rows; a row is { kind: "posters"|"wide"|"tabs"|"buttons", title, items, col }.
 // Pages keep their own focus, so Back returns to exactly where you were.
+// What you've watched may have changed (a video played, marked watched, PC mode used): pages
+// older than this reload quietly when they're shown again (Back, the menu), keeping your place.
+let dataVer = 0;
+function freshen(p) {
+  if (!p) return;
+  p.ver = dataVer;
+  if (p.refresh) p.refresh(); else if (p.reload) p.reload();
+}
+function watchedChanged() { dataVer++; freshen(page); }
 function makePage({ rows = [], tabs = null, heroItem = null, pinned = true, onTab = null, loadMore = null, pinFrom = null }) {
   const p = {
+    ver: dataVer,
     rows, tabs, heroItem, pinned, onTab, loadMore, pinFrom,
     row: tabs ? 1 : 0,                 // row 0 is the tab bar when there is one
     draw() { drawPage(this); },
@@ -801,6 +811,7 @@ function showPage(p, { push = false } = {}) {
   page = p;
   page.rendered = false;
   drawPage(page);
+  if (p.ver < dataVer) freshen(p);
 }
 
 // ---- moving around -------------------------------------------------------------------
@@ -856,7 +867,7 @@ function back() {
   if (menuOpen) return menuBack();
   // Who's watching (no menu there): Back goes Home.
   if (page && page.noMenu && !stack.length) { const h = menuItems.find((m) => m.id === "home"); currentMenuId = "home"; h.open(); drawMenu(); return; }
-  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); return; }
+  if (stack.length) { const prev = stack.pop(); if (prev.themeFor !== themeFor) stopTheme(); page = prev; prev.rendered = false; drawPage(prev); if (prev.ver < dataVer) freshen(prev); return; }
   if (!page) return openMenu();
   // On a page: first back to the top row, then the sidebar.
   const first = page.tabs ? 1 : 0;
@@ -891,6 +902,7 @@ async function playItem(it, resume) {
 desktop.onNativeFailed((it) => { nativePlaying = false; if (it && it.key) Player.open(it, { resume: !!it.resume }); });
 async function setWatched(it, on) {
   await api(on ? "/:/scrobble" : "/:/unscrobble", { key: it.key, identifier: "com.plexapp.plugins.library" }).catch(() => {});
+  dataVer++;   // the page you're on refreshes itself; the others when you go back to them
 }
 
 // ---- Home ------------------------------------------------------------------------------
@@ -1916,10 +1928,22 @@ desktop.onTv("tv:prefs", (s) => applyPrefs(s));
 desktop.onTv("tv:refresh", () => {
   nativePlaying = false;
   lastInput = Date.now();
-  // Back from the player: progress has changed — reload the page you're on.
-  if (page && page.refresh) page.refresh();
-  else if (page && page.reload) page.reload();
+  // Back from the player: progress has changed — reload the page you're on now, and again a
+  // moment later (the server may not have saved where you stopped yet; Continue Watching
+  // would still show the old spot). Pages further back reload when you return to them.
+  watchedChanged();
+  clearTimeout(afterPlayTimer);
+  afterPlayTimer = setTimeout(watchedChanged, 4000);
 });
+let afterPlayTimer = null;
+// Back from PC mode (you may have watched something there): bring the page up to date.
+desktop.onTv("tv:shown", () => { if (S) watchedChanged(); });
+// Sitting on a page: refresh it quietly every 2 minutes (things watched on other devices,
+// new episodes) — only while TV mode is on screen and nothing plays.
+setInterval(() => {
+  if (!S || !page || document.hidden || nativePlaying || Player.isActive() || saverOn || menuOpen) return;
+  freshen(page);
+}, 120000);
 let homePageRef = null;
 let lastPrefs = {};
 function applyPrefs(s) {

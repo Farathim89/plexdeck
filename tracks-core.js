@@ -12,7 +12,7 @@ const Tracks = (() => {
   const put = (p, q) => window.ppDesktop.tvApiPut(p, q);
   const mc = (r) => (r && r.MediaContainer) || {};
   const tr = (typeof window !== "undefined" && window.tr) || ((x) => x);
-  const CH = { 1: tr("Mono"), 2: tr("Stereo"), 6: "5.1", 8: "7.1" };
+  const CH = { 1: tr("Mono"), 2: tr("Stereo"), 3: "2.1", 4: "4.0", 5: "4.1", 6: "5.1", 7: "6.1", 8: "7.1" };
 
   // The audio and subtitle tracks of one movie / episode.
   async function streams(ratingKey) {
