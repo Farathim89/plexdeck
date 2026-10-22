@@ -72,6 +72,14 @@ function resizePage(p) {
 }
 // How many cards fit across a grid row (cards `step` apart; `reserve` keeps room on the right).
 const perRow = (step, reserve = 40) => Math.max(3, Math.floor((STAGE_W - 128 - reserve) / step));
+// Poster grids (Browse, Collections, a genre…): as many as fit at full size, never fewer than 5 —
+// at a bigger Text Size the posters get a little narrower instead of dropping to 4 (or 3) a row.
+// { per: posters a row, cw: their width }
+function gridFit(reserve = 40) {
+  const room = STAGE_W - 128 - reserve;
+  const per = Math.max(5, Math.floor(room / 248));
+  return { per, cw: Math.min(220, Math.floor(room / per) - 28) };
+}
 addEventListener("resize", fit);
 fit();
 
@@ -805,6 +813,8 @@ function renderRows(p) {
     return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
   }).join("");
   box.querySelectorAll(".progress i").forEach((i) => { i.style.width = `${i.dataset.w}%`; });
+  // poster grids: their card width (gridFit) — set here, the page's CSP drops inline style="…"
+  p.rows.forEach((r, i) => { if (r.cw) { const el = box.querySelector(`.row[data-r="${i}"]`); if (el) el.style.setProperty("--cw", `${r.cw}px`); } });
   p.rows.forEach((r, ri) => r.items.forEach((it, ci) => {
     if (!it.swatch) return;
     const el = box.children[ri] && box.children[ri].querySelectorAll(".card")[ci];
@@ -858,7 +868,7 @@ function drawPage(p) {
     items.forEach((c, ci) => c.classList.toggle("focus", isFocusRow && ci === r.col));
     el.classList.toggle("dim", !isFocusRow);
     // keep the focused card in view: the row slides left once you pass the middle
-    if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track") {
+    if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track" && !r.grid) {   // (grids are sized to fit)
       const step = r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248;
       const contentX = 128;
       const visible = Math.floor((STAGE_W - contentX - 120) / step);
@@ -1035,8 +1045,8 @@ function manageHome() {
 // Rows of 7 posters (a grid you move through like rows).
 function gridRows(items, title) {
   const rows = [];
-  const n = perRow(248);   // 7 at 100 % text size
-  for (let i = 0; i < items.length; i += n) rows.push({ kind: "posters", grid: true, title: i === 0 ? title : "", col: 0, items: items.slice(i, i + n) });
+  const { per: n, cw } = gridFit();   // 7 at 100 % text size, at least 5
+  for (let i = 0; i < items.length; i += n) rows.push({ kind: "posters", grid: true, cw, title: i === 0 ? title : "", col: 0, items: items.slice(i, i + n) });
   return rows;
 }
 // A plain list of things as a poster grid (a collection, a playlist, a genre, an actor).
@@ -1083,10 +1093,10 @@ function libraryPage(sec) {
   // The Library tab pages in 84 titles at a time; the old grid stays up until the first batch is in.
   let libLoad = null;
   // posters across the Browse grid (6 at 100 % text size; the A–Z bar keeps the right edge)
-  const libPer = () => perRow(248, 160);
+  const libPer = () => gridFit(160).per;   // (at least 5)
   const loadLibrary = ({ quiet = false } = {}) => {
     p.loadSeq = (p.loadSeq || 0) + 1;   // drops answers still on their way for the other tabs
-    const per = libPer();
+    const { per, cw } = gridFit(160);
     let start = 0, total = Infinity, loading = false;
     const old = p.rows[0] && p.rows[0].kind === "options" ? p.rows[0] : null;
     const opts = {
@@ -1123,7 +1133,7 @@ function libraryPage(sec) {
         const last = rows[rows.length - 1];
         let rest = items;
         if (rows.length > 1 && last.items.length < per) { const fill = per - last.items.length; last.items.push(...rest.slice(0, fill)); rest = rest.slice(fill); }
-        for (let i = 0; i < rest.length; i += per) rows.push({ kind: "posters", grid: true, title: "", col: 0, items: rest.slice(i, i + per) });
+        for (let i = 0; i < rest.length; i += per) rows.push({ kind: "posters", grid: true, cw, title: "", col: 0, items: rest.slice(i, i + per) });
         tabRows[1] = { rows, loadMore };
         if (p.tabs.selected !== 1 || (!first && p.rows !== rows)) return;
         if (first) {
