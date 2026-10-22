@@ -781,7 +781,9 @@ function cardHtml(it, kind, grid = false) {
   const art = it.poster ? `<img src="${esc(img(it.poster, 330, it.square ? 330 : 495))}" alt="" loading="lazy">` : `<div class="fallback">${esc(it.title)}</div>`;
   // library grids: title and year under the poster (collections: how many items), like Plex
   if (grid && kind === "posters") {
-    const second = it.type === "collection" ? (it.childCount != null ? tr("{n} items", { n: it.childCount }) : "") : (it.year || "");
+    const n = it.childCount, of = it.raw && it.raw.subtype;   // a collection: "2 movies" / "3 shows", like Plex
+    const count = n == null ? "" : of === "movie" ? (n === 1 ? tr("1 movie") : tr("{n} movies", { n })) : of === "show" ? (n === 1 ? tr("1 show") : tr("{n} shows", { n })) : tr("{n} items", { n });
+    const second = it.type === "collection" ? count : (it.year || "");
     return `<div class="card g ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(it.title)}</div><div class="label small">${esc(second)}</div></div>`;
   }
   const label = it.labelBelow || (it.square ? it.title : "");
@@ -1108,7 +1110,9 @@ function libraryPage(sec) {
       const first = start === 0;
       if (first && !quiet) busy(true);
       try {
-        const r = mc(await api(`/library/sections/${sec.key}/all`, { "X-Plex-Container-Start": start, "X-Plex-Container-Size": 84, sort: SORTS[sort].v, ...SHOWS[show].q }));
+        // with collections, like Plex: a movie that's in a collection shows as the collection
+        // ("300 Collection · 2 movies"), as the library's collection setting on the server says
+        const r = mc(await api(`/library/sections/${sec.key}/all`, { "X-Plex-Container-Start": start, "X-Plex-Container-Size": 84, sort: SORTS[sort].v, includeCollections: 1, ...SHOWS[show].q }));
         if (libLoad !== loadMore) return;   // sort/show changed meanwhile
         total = r.totalSize ?? r.size ?? 0;
         opts.count = tr("{n} Items", { n: total });
@@ -1145,7 +1149,7 @@ function libraryPage(sec) {
     az = [];
     if (SORTS[sort].v !== "titleSort") { if (page === p) p.draw(); return; }
     try {
-      const d = mc(await api(`/library/sections/${sec.key}/firstCharacter`, { ...SHOWS[show].q })).Directory || [];
+      const d = mc(await api(`/library/sections/${sec.key}/firstCharacter`, { includeCollections: 1, ...SHOWS[show].q })).Directory || [];   // the same list as the grid
       let n = 0;
       az = d.map((x) => { const e = { ch: x.title, size: Number(x.size) || 0, start: n }; n += e.size; return e; });
     } catch {}
@@ -1173,9 +1177,8 @@ function libraryPage(sec) {
   }
   async function playLibrary(shuffle) {
     try {
-      let it = shuffle
-        ? (mc(await api(`/library/sections/${sec.key}/all`, { sort: "random", "X-Plex-Container-Size": 1, ...SHOWS[show].q })).Metadata || []).map(norm)[0]
-        : gridItems()[0];
+      // a real title (the grid can start with a collection)
+      let it = (mc(await api(`/library/sections/${sec.key}/all`, { sort: shuffle ? "random" : SORTS[sort].v, "X-Plex-Container-Size": 1, ...SHOWS[show].q })).Metadata || []).map(norm)[0];
       if (!it) return;
       // a show: its next episode (the first one not watched yet)
       if (it.type === "show") {

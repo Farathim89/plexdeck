@@ -646,5 +646,9 @@
   "At the credits": "En los créditos",
   "At the end": "Al final",
   "At the end leaves time for scenes after the credits (common in anime).": "Al final deja tiempo para escenas tras los créditos (habitual en anime).",
-  "The receiver sets the volume (passthrough)": "El receptor controla el volumen (passthrough)"
+  "The receiver sets the volume (passthrough)": "El receptor controla el volumen (passthrough)",
+  "1 movie": "1 película",
+  "{n} movies": "{n} películas",
+  "1 show": "1 serie",
+  "{n} shows": "{n} series"
 }

@@ -646,5 +646,9 @@
   "At the credits": "Vid eftertexterna",
   "At the end": "I slutet",
   "At the end leaves time for scenes after the credits (common in anime).": "I slutet ger tid åt scener efter eftertexterna (vanligt i anime).",
-  "The receiver sets the volume (passthrough)": "Receivern styr volymen (passthrough)"
+  "The receiver sets the volume (passthrough)": "Receivern styr volymen (passthrough)",
+  "1 movie": "1 film",
+  "{n} movies": "{n} filmer",
+  "1 show": "1 serie",
+  "{n} shows": "{n} serier"
 }
