@@ -650,5 +650,19 @@
   "1 movie": "1 film",
   "{n} movies": "{n} films",
   "1 show": "1 série",
-  "{n} shows": "{n} séries"
+  "{n} shows": "{n} séries",
+  "plex.tv/link": "plex.tv/link",
+  "Couldn't load this from Plex.": "Impossible de charger ceci depuis Plex.",
+  "Couldn't reach plex.tv. Trying again…": "Impossible de joindre plex.tv. Nouvel essai…",
+  "On your phone or computer, go to": "Sur votre téléphone ou ordinateur, allez sur",
+  "Sign in there and enter this code:": "Connectez-vous et saisissez ce code :",
+  "Sign in to Plex": "Se connecter à Plex",
+  "Sign in with mouse and keyboard (PC mode)": "Se connecter avec la souris et le clavier (mode PC)",
+  "Signed in": "Connecté",
+  "Trailer": "Bande-annonce",
+  "TV mode goes on by itself once the code is entered.": "Le mode TV continue tout seul dès que le code est saisi.",
+  "Watch free": "Regarder gratuitement",
+  "Watch it in the {service} app.": "Regardez-le dans l'app {service}.",
+  "Where to watch": "Où regarder",
+  "Where to watch {title}": "Où regarder {title}"
 }

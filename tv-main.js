@@ -25,6 +25,7 @@ let mode = "pc";
 let playingFromTv = false; // Plex Web's player was started from TV mode
 let session = null;        // { uri, token, machineId, serverName, accountToken, user }
 let profileToken = null;
+let linkToken = null;      // signed in with a code (plex.tv/link) in TV mode, this run
 let watchlistCache = null; // { at, data }
 const profileFile = () => path.join(app.getPath("userData"), "tv-profile.json");
 function saveProfile(token, user) {
@@ -96,8 +97,27 @@ async function readAccountToken() {
     return got && got.token && !got.anonymous ? got.token : null;
   } catch { return null; }
 }
+// Plex Web's sign-in, or the one TV mode just got with a code (this run only: Plex Web keeps it from then on)
+async function signedInToken() { return (await readAccountToken()) || linkToken; }
+// Plex Web signs in the same way itself: the token in its storage, then a reload.
+async function signInPlexWeb(token) {
+  const wc = d.plexContents();
+  if (!wc || wc.isDestroyed()) return;
+  const loaded = () => new Promise((res) => { wc.once("did-finish-load", res); setTimeout(res, 20000); });
+  try {
+    const home = d.plexUrl();
+    if (new URL(wc.getURL()).origin !== new URL(home).origin) { const l = loaded(); wc.loadURL(home); await l; }
+    // (its guest user goes, like Plex Web's own reset before a sign-in)
+    await wc.executeJavaScript(`(() => {
+      try { const u = JSON.parse(localStorage.getItem('users') || '{}').users || []; if (u.every((x) => x.anonymous)) localStorage.removeItem('users'); } catch {}
+      localStorage.setItem('myPlexAccessToken', ${JSON.stringify(token)});
+      return true;
+    })()`);
+    const l = loaded(); wc.reload(); await l;
+  } catch {}
+}
 async function connectSession() {
-  const accountToken = profileToken || await readAccountToken();
+  const accountToken = profileToken || await signedInToken();
   if (!accountToken) throw new Error("signin");
   const resources = await fetchJson("https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1", accountToken);
   const servers = (Array.isArray(resources) ? resources : []).filter((r) => String(r.provides || "").includes("server"));
@@ -291,25 +311,56 @@ function init(deps) {
     return fetchJson(url, s.accountToken, 15000);
   });
   // Play something from Plex's online services: Plex's own player handles it, then back to TV mode.
-  ipcMain.on("tv:play-provider", (e, hash) => {
+  ipcMain.on("tv:play-provider", (e, hash, opts) => {
     if (!fromTv(e) || typeof hash !== "string" || !/^#!\/provider\/tv\.plex\.provider\.(epg|discover|vod)\//.test(hash)) return;
     playingFromTv = true;
     const wc = d.plexContents();
     wc.executeJavaScript(`location.hash = ${JSON.stringify(hash)}`).catch(() => {});
-    wc.send("plex:autoplay", { resume: false });
+    wc.send("plex:autoplay", { resume: false, trailer: !!(opts && opts.trailer) });
     if (tvView) tvView.setVisible(false);
     wc.focus();
+  });
+  // Sign in with a code, like Plex's TV apps: plex.tv gives a 4-letter code, you enter it at
+  // plex.tv/link on your phone, and the code then carries your sign-in. No mouse or keyboard needed.
+  const linkFetch = async (url, method = "GET") => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 10000);
+    try {
+      const res = await net.fetch(url, { method, signal: ctl.signal, headers: {
+        Accept: "application/json", "X-Plex-Client-Identifier": clientId(), "X-Plex-Product": PRODUCT,
+        "X-Plex-Device-Name": "PlexDeck TV", "X-Plex-Platform": "Windows", "X-Plex-Version": app.getVersion(),
+      } });
+      if (res.status === 404) return { gone: true };
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  };
+  ipcMain.handle("tv:link-code", async (e) => {
+    if (!fromTv(e)) return null;
+    const r = await linkFetch("https://plex.tv/api/v2/pins?strong=false", "POST");
+    return r && r.id && r.code ? { id: r.id, code: r.code, expiresIn: Number(r.expiresIn) || 900 } : null;
+  });
+  ipcMain.handle("tv:link-check", async (e, id) => {
+    if (!fromTv(e) || !/^\d+$/.test(String(id || ""))) return { state: "expired" };
+    let r;
+    try { r = await linkFetch(`https://plex.tv/api/v2/pins/${id}`); } catch { return { state: "waiting" }; }   // offline a moment
+    if (r.gone || (!r.authToken && Number(r.expiresIn) <= 0)) return { state: "expired" };
+    if (!r.authToken) return { state: "waiting" };
+    linkToken = r.authToken;
+    session = null; sessionPromise = null;
+    await signInPlexWeb(r.authToken);   // PC mode is signed in too
+    return { state: "linked" };
   });
   // Plex Home users, and switching to one (with its PIN if it has one).
   ipcMain.handle("tv:home-users", async (e) => {
     if (!fromTv(e)) return null;
-    const token = await readAccountToken();
+    const token = await signedInToken();
     const r = await fetchJson("https://clients.plex.tv/api/v2/home/users", token, 15000);
     return (r.users || r || []).map((u) => ({ uuid: u.uuid, title: u.title || u.username, thumb: u.thumb, protected: !!u.protected, admin: !!u.admin }));
   });
   ipcMain.handle("tv:switch-user", async (e, { uuid, pin } = {}) => {
     if (!fromTv(e) || !/^[\w-]+$/.test(String(uuid || ""))) return { ok: false };
-    const token = await readAccountToken();
+    const token = await signedInToken();
     const url = `https://clients.plex.tv/api/v2/home/users/${uuid}/switch${pin ? `?pin=${encodeURIComponent(String(pin))}` : ""}`;
     try {
       const r = await fetchJson(url, token, 15000, "POST");

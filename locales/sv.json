@@ -650,5 +650,19 @@
   "1 movie": "1 film",
   "{n} movies": "{n} filmer",
   "1 show": "1 serie",
-  "{n} shows": "{n} serier"
+  "{n} shows": "{n} serier",
+  "plex.tv/link": "plex.tv/link",
+  "Couldn't load this from Plex.": "Kunde inte hämta det här från Plex.",
+  "Couldn't reach plex.tv. Trying again…": "Kunde inte nå plex.tv. Försöker igen…",
+  "On your phone or computer, go to": "Gå till den här sidan på din telefon eller dator:",
+  "Sign in there and enter this code:": "Logga in där och skriv in den här koden:",
+  "Sign in to Plex": "Logga in på Plex",
+  "Sign in with mouse and keyboard (PC mode)": "Logga in med mus och tangentbord (PC-läge)",
+  "Signed in": "Inloggad",
+  "Trailer": "Trailer",
+  "TV mode goes on by itself once the code is entered.": "TV-läget fortsätter av sig självt när koden är inskriven.",
+  "Watch free": "Se gratis",
+  "Watch it in the {service} app.": "Se den i {service}-appen.",
+  "Where to watch": "Var du kan se den",
+  "Where to watch {title}": "Var du kan se {title}"
 }

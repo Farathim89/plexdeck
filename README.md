@@ -35,7 +35,8 @@ Plex app on a Shield / Fire TV / Google TV:
   extras & trailers
 - Search (your own media only), Watchlist (what's on your server), Playlists,
   Music with a Now Playing screen, Photos with a slideshow
-- Live TV (Plex's free channels) and Discover
+- Live TV (Plex's free channels) and Discover: a title's own page with *Watch free*,
+  its trailer, your Watchlist and where to watch it
 - Plex Home profiles with PIN
 - theme music on show pages and an artwork screensaver
 
@@ -85,7 +86,8 @@ Grab the latest from [Releases](https://github.com/Farathim89/plexdeck/releases)
   `PlexDeck.exe`. Everything stays in that folder (settings in `plexdeck-data` next to it),
   nothing goes to Temp or AppData — you can carry it on a USB stick
 
-Sign in to Plex on first start. PlexDeck checks GitHub for new versions and shows an
+Sign in to Plex on first start: in TV mode with a code at **plex.tv/link** (no mouse
+needed), or in PC mode. PlexDeck checks GitHub for new versions and shows an
 **Update** button in the title bar when one is out (Help → *Check for updates…* checks now).
 Both versions update themselves with one click (from 5.3.4 on; they ask first). The
 portable one downloads the new zip, checks it against the SHA-256 on the release, and puts

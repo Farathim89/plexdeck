@@ -99,6 +99,8 @@ if (location.protocol === "file:") {
     openUpdate: () => ipcRenderer.send("titlebar:open-update"),
     // TV mode (tv.html)
     tvSession: (force) => ipcRenderer.invoke("tv:session", { force: !!force }),
+    tvLinkCode: () => ipcRenderer.invoke("tv:link-code"),
+    tvLinkCheck: (id) => ipcRenderer.invoke("tv:link-check", String(id)),
     tvApi: (path, params) => ipcRenderer.invoke("tv:api", { path, params }),
     tvApiPut: (path, params) => ipcRenderer.invoke("tv:api", { path, params, method: "PUT" }),
     tvApiSend: (method, path, params) => ipcRenderer.invoke("tv:api", { path, params, method }),
@@ -106,7 +108,7 @@ if (location.protocol === "file:") {
     tvWatchlistSet: (id, on) => ipcRenderer.invoke("tv:watchlist-set", { id: String(id), on: !!on }),
     tvProvider: (url) => ipcRenderer.invoke("tv:provider", url),
     tvLyrics: (streamId) => ipcRenderer.invoke("tv:lyrics", String(streamId)),
-    tvPlayProvider: (hash) => ipcRenderer.send("tv:play-provider", hash),
+    tvPlayProvider: (hash, opts) => ipcRenderer.send("tv:play-provider", hash, { trailer: !!(opts && opts.trailer) }),
     // native player (mpv)
     nativeAvailable: () => ipcRenderer.invoke("native:available"),
     nativePlay: (item) => ipcRenderer.send("native:play", item),
@@ -264,7 +266,7 @@ function plexExtras() {
     const app = document.getElementById("plex");
     return !!(app && app.classList.contains("show-video-player"));
   };
-  ipcRenderer.on("plex:autoplay", (_e, { resume } = {}) => {
+  ipcRenderer.on("plex:autoplay", (_e, { resume, trailer } = {}) => {
     const started = Date.now();
     let pressedPlay = false;
     const timer = setInterval(() => {
@@ -276,7 +278,8 @@ function plexExtras() {
       if (choice) { realClick(choice); clearInterval(timer); return; }
       if (inPlayerNow() && document.querySelector("video")) { clearInterval(timer); return; }
       if (!pressedPlay && /details|provider/.test(location.hash)) {
-        const play = buttons.find((b) => /^(resume|play|watch|watch live|watch now|tune in)$/i.test(label(b)));
+        // (a Discover title's trailer: its Play Trailer button)
+        const play = buttons.find((b) => (trailer ? /^play trailer$/i : /^(resume|play|watch|watch live|watch now|tune in)$/i).test(label(b)));
         if (play) { pressedPlay = true; realClick(play); }
       }
     }, 300);

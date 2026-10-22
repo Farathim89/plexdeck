@@ -1238,6 +1238,7 @@ app.whenReady().then(() => {
     config: () => config,
     setConfig: (patch) => { config = { ...config, ...patch }; writeJson(dataFile("config.json"), config); },
     plexReady: () => plexReady,
+    plexUrl: () => plexUrl(),
   });
   win.webContents.once("did-finish-load", () => {
     tv.startMode();

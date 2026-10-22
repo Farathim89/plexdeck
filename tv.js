@@ -154,7 +154,8 @@ const watched = (it) => ["artist", "album", "track", "photo", "photoalbum", "pla
 let artToken = 0;
 function showHero(it) {
   if (!it) return;
-  const logoSrc = it.logo && S && lastPrefs.heroTitle !== "text" ? `${S.uri}${it.logo}${it.logo.includes("?") ? "&" : "?"}X-Plex-Token=${S.token}` : "";
+  const logoSrc = !it.logo || !S || lastPrefs.heroTitle === "text" ? "" : /^https?:/.test(it.logo) ? it.logo   // (Discover: Plex's online artwork)
+    : `${S.uri}${it.logo}${it.logo.includes("?") ? "&" : "?"}X-Plex-Token=${S.token}`;
   $("heroTitle").classList.toggle("logo", !!logoSrc);
   if (logoSrc) $("heroTitle").innerHTML = `<img src="${esc(logoSrc)}" alt="${esc(it.title || "")}">`;
   else $("heroTitle").textContent = it.title || "";
@@ -1643,6 +1644,7 @@ async function openWatchlistItem(it) {
   try {
     const found = (mc(await api("/library/all", { guid: it.guid })).Metadata || [])[0];
     if (found) openItem(norm(found));
+    else if (it.raw && it.raw.ratingKey) showPage(discoverPage(it.raw), { push: true });   // where to watch it, its trailer…
     else showError(tr("\"{title}\" isn't on your Plex server yet.", { title: it.title }), tr("OK"), () => {});
   } finally { busy(false); }
 }
@@ -1819,14 +1821,93 @@ function providerPage(kind) {
   });
   return p;
 }
-// Discover: your server's copy if you have it, else Plex's page for it (PC mode).
+// Discover: your server's copy if you have it, else its Discover page here in TV mode.
+// A trailer card (Trending Trailers…) plays its title's trailer in Plex's player.
 async function openDiscoverItem(m) {
+  if (m.type === "clip") {
+    const of = /^\/library\/metadata\/([0-9a-f]+)\/extras\//.exec(m.key || "");
+    if (of) desktop.tvPlayProvider(discoverHash(`/library/metadata/${of[1]}`), { trailer: true });
+    return;
+  }
   busy(true);
   try {
     const found = m.guid && (mc(await api("/library/all", { guid: m.guid })).Metadata || [])[0];
     if (found) return openItem(norm(found));
-    desktop.tvOpenPc(`#!/provider/tv.plex.provider.discover/details?key=${encodeURIComponent(m.key)}`);
+    showPage(discoverPage(m), { push: true });
   } finally { busy(false); }
+}
+const discoverHash = (key) => `#!/provider/tv.plex.provider.discover/details?key=${encodeURIComponent(key)}`;
+
+// ---- a title from Plex's online catalogue (Discover, your Watchlist), like Plex's TV apps -------
+// What it is, Watch free (when it's free on Plex), its trailer, your Watchlist, where to watch it
+// (your services, buy / rent), the cast and Plex's related rows. Videos play in Plex's own player.
+function discoverPage(m0) {
+  const p = makePage({ heroItem: { ...norm(m0), details: true }, pinned: false, pinFrom: 1 });
+  p.online = true;
+  const base = `${PROVIDER.discover.base}/library/metadata/${m0.ratingKey}`;
+  const cloudItem = (x) => ({ ...norm(x), open: () => openDiscoverItem(x) });
+  const load = async () => {
+    const [meta, avail, related] = await Promise.all([
+      desktop.tvProvider(base),
+      desktop.tvProvider(`${base}/availabilities`).catch(() => null),
+      desktop.tvProvider(`${base}/related`).catch(() => null),
+    ]);
+    const m = (mc(meta).Metadata || [])[0] || m0;
+    const it = { ...norm(m), details: true };
+    p.heroItem = it;
+    const offers = mc(avail).Availability || [];
+    const free = offers.find((a) => a.platform === "plex" && /^provider:\/\/tv\.plex\.provider\.vod\//.test(a.playableKey || ""));
+    const b = [];
+    if (free) b.push({ icon: "play", label: tr("Watch free"), named: true,
+      action: () => desktop.tvPlayProvider(`#!/provider/tv.plex.provider.vod/details?key=${encodeURIComponent(free.playableKey.replace(/^provider:\/\/tv\.plex\.provider\.vod/, ""))}`) });
+    if (m.primaryExtraKey) b.push({ icon: free ? "movie" : "play", label: tr("Trailer"), named: !free,
+      action: () => desktop.tvPlayProvider(discoverHash(m.key), { trailer: true }) });
+    b.push({ icon: "bookmark", label: tr("Watchlist"), action: async () => {
+      const on = !(await onWatchlist(it));
+      const ok = await desktop.tvWatchlistSet(m.ratingKey, on).catch(() => false);
+      toast(ok ? (on ? tr("Added to your Watchlist") : tr("Removed from your Watchlist")) : tr("Couldn't change your Watchlist"));
+    } });
+    if (offers.length) b.push({ icon: "tv", label: tr("Where to watch"), action: () => whereToWatch(m, offers) });
+    const rows = [{ kind: "buttons", col: 0, items: b }];
+    const people = [...(m.Role || []), ...(m.Director || []).map((d) => ({ ...d, role: tr("Director") }))].slice(0, 20);
+    if (people.length) rows.push({ kind: "people", title: tr("Cast & Crew"), col: 0, items: people.map((r) => ({ title: r.tag, role: r.role || "", thumb: r.thumb, open: () => {} })) });
+    // Plex's related rows (more like it, the same cast, the collection, the studio): filled one by one
+    const hubs = (mc(related).Hub || []).filter((h) => h.type !== "clip" && h.key).slice(0, 5);
+    const filled = await Promise.all(hubs.map(async (h) => {
+      if (h.Metadata && h.Metadata.length) return h;
+      try { return { ...h, Metadata: mc(await desktop.tvProvider(`${PROVIDER.discover.base}${h.key}${h.key.includes("?") ? "&" : "?"}count=20`)).Metadata || [] }; } catch { return h; }
+    }));
+    for (const h of filled) if (h.Metadata && h.Metadata.length) rows.push({ kind: "posters", title: h.title, col: 0, items: h.Metadata.filter((x) => x.type !== "clip").map(cloudItem) });
+    const keepRow = p.rows.length ? p.row : 0;
+    p.rows = rows;
+    p.row = Math.min(keepRow, rows.length - 1);
+    if (page === p) { p.rendered = false; drawPage(p); }
+  };
+  busy(true);
+  load().catch(() => showError(tr("Couldn't load this from Plex."), tr("Try again"), () => load().catch(() => {}))).finally(() => busy(false));
+  p.refresh = () => load().catch(() => {});
+  return p;
+}
+// Where to watch: one line a service, its offers (free, subscription, rent, buy) after it.
+// Free on Plex plays here (in Plex's player); the others are in their own apps.
+function whereToWatch(m, offers) {
+  const by = new Map();
+  for (const a of offers) {
+    const name = a.platform === "plex" ? "Plex" : (a.title || a.platform || "");
+    if (!by.has(name)) by.set(name, { a, offers: [] });
+    const o = a.offerTitle || "";
+    if (o && !by.get(name).offers.includes(o)) by.get(name).offers.push(o);
+  }
+  Dialog.open({
+    layout: "list", title: tr("Where to watch {title}", { title: m.title }),
+    items: [...by.entries()].map(([name, { a, offers: o }]) => ({
+      label: `${name} · ${o.join(" · ")}`,
+      action: () => {
+        if (a.platform === "plex" && a.playableKey) desktop.tvPlayProvider(`#!/provider/tv.plex.provider.vod/details?key=${encodeURIComponent(a.playableKey.replace(/^provider:\/\/tv\.plex\.provider\.vod/, ""))}`);
+        else toast(tr("Watch it in the {service} app.", { service: name }));
+      },
+    })),
+  });
 }
 
 // ---- theme music on show pages ---------------------------------------------------------
@@ -2059,6 +2140,7 @@ function clearError() { $("message").classList.remove("error"); $("message").hid
 function act(name) {
   lastInput = Date.now();
   if (stopSaver()) return;
+  if (Link.act(name)) return;
   if (overlayOpen) return;
   if (nativePlaying) return;   // mpv's player is on top and has the controls: a stray key here must not start a second video
   if (Player.isActive()) { document.body.classList.remove("mouse"); Player.act(name); return; }
@@ -2165,7 +2247,7 @@ function afterPlayback() {
   afterPlayTimer = setTimeout(watchedChanged, 4000);
 }
 // Back from PC mode (you may have watched something there): bring the page up to date.
-desktop.onTv("tv:shown", () => { if (S) watchedChanged(); });
+desktop.onTv("tv:shown", () => { if (S) watchedChanged(); else if (Link.isOpen()) start(true); });   // (signed in with the mouse in PC mode meanwhile?)
 // Sitting on a page: refresh it quietly every 2 minutes (things watched on other devices,
 // new episodes) — only while TV mode is on screen and nothing plays.
 setInterval(() => {
@@ -2192,9 +2274,63 @@ function applyPrefs(s) {
   }
 }
 
+// ---- sign in with a code (plex.tv/link), like Plex's TV apps ---------------------------------
+// Not signed in: plex.tv gives a 4-letter code, you enter it at plex.tv/link on your phone, and TV
+// mode (and PC mode) are signed in - no mouse or keyboard. A new code comes by itself when one expires.
+const Link = (() => {
+  let on = false, pin = null, timer = null, gen = 0;
+  function draw() {
+    $("linkTitle").textContent = tr("Sign in to Plex");
+    $("linkStep1").textContent = tr("On your phone or computer, go to");
+    $("linkStep2").textContent = tr("Sign in there and enter this code:");
+    $("linkCode").innerHTML = pin ? [...pin.code].map((ch) => `<span>${esc(ch)}</span>`).join("") : `<div class="spinner"></div>`;
+    $("linkNote").textContent = tr("TV mode goes on by itself once the code is entered.");
+    $("linkPc").textContent = tr("Sign in with mouse and keyboard (PC mode)");
+  }
+  async function fresh() {
+    const my = ++gen;
+    clearTimeout(timer);
+    pin = null; draw();
+    const r = await desktop.tvLinkCode().catch(() => null);
+    if (my !== gen) return;
+    if (!r) { $("linkNote").textContent = tr("Couldn't reach plex.tv. Trying again…"); timer = setTimeout(fresh, 5000); return; }
+    pin = r; draw();
+    timer = setTimeout(check, 2000);
+  }
+  async function check() {
+    const my = gen;
+    if (document.hidden) { timer = setTimeout(check, 4000); return; }   // in PC mode for now
+    const r = await desktop.tvLinkCheck(pin.id).catch(() => null);
+    if (my !== gen) return;
+    if (r && r.state === "linked") { close(); toast(tr("Signed in")); start(true); return; }
+    if (r && r.state === "expired") { fresh(); return; }
+    timer = setTimeout(check, 2000);
+  }
+  function open() {
+    if (on) return;
+    on = true;
+    $("link").hidden = false;
+    document.body.classList.add("link-mode");
+    fresh();
+  }
+  function close() {
+    if (!on) return;
+    on = false; gen++; clearTimeout(timer);
+    $("link").hidden = true;
+    document.body.classList.remove("link-mode");
+  }
+  // OK: Plex's own sign-in in PC mode instead (the code keeps working meanwhile)
+  function act(name) {
+    if (!on) return false;
+    if (name === "OK") desktop.tvOpenPc("");
+    return true;
+  }
+  $("linkPc").addEventListener("click", () => desktop.tvOpenPc(""));
+  return { open, close, act, isOpen: () => on };
+})();
+
 // ---- start ----------------------------------------------------------------------------
 let askedWho = false;   // "Who's watching" is asked once, when TV mode starts
-let sentToSignIn = false;   // not signed in: PC mode's Plex sign-in opened by itself once
 async function start(force = false, { picked = false } = {}) {
   if (picked) askedWho = true;
   saverItems = [];   // another profile may see other libraries
@@ -2208,19 +2344,15 @@ async function start(force = false, { picked = false } = {}) {
     const s = await desktop.tvSession(force);
     if (!s || !s.ok) {
       busy(false);
-      // Not signed in (a new PlexDeck): Plex's sign-in is in PC mode - go there once by itself, and the button
-      // takes you there again
-      if (s && s.error === "signin") {
-        showError(tr("Sign in to Plex in PC mode first, then come back to TV mode."), tr("Sign in"), () => desktop.tvOpenPc(""));
-        if (!sentToSignIn) { sentToSignIn = true; desktop.tvOpenPc(""); }
-        return;
-      }
+      // Not signed in (a new PlexDeck): sign in with a code, like Plex's TV apps (or in PC mode)
+      if (s && s.error === "signin") { $("message").hidden = true; Link.open(); return; }
       const why = s && s.error === "noserver" ? tr("No Plex server found on your account.")
         : tr("Couldn't reach your Plex server.");
       showError(why, tr("Try again"), () => start(true));
       return;
     }
     S = s;
+    Link.close();
     Music.init({ S, api, img, prefs: () => lastPrefs, onChange: () => { const id = menuItems[menuIndex] && menuItems[menuIndex].id; buildMenu(); const i = menuItems.findIndex((m) => m.id === id); if (i >= 0) menuIndex = i; drawMenu(); } });
     Player.init({
       S, api, put: (p, q) => desktop.tvApiPut(p, q), prefs: () => lastPrefs,
