@@ -765,7 +765,7 @@ async function tracksDialog(it, after) {
     const aNow = st.audio ? clean(Tracks.audioLabel(st.audio)) : tr("No change");
     const sNow = st.sub === "off" ? tr("Off (no subtitles)") : st.sub ? clean(Tracks.subLabel(st.sub)) : tr("No change");
     Dialog.open({ layout: "side", cls: "tracks", icon: "subs", name, title: tr("Audio & subtitles"), focus, items: [
-      { label: `${tr("Apply to")}: ${st.scope.label}`, desc: name, action: pickScope },
+      { label: `${tr("Apply to")}: ${st.scope.label}`, desc: tr("Pick the exact audio and subtitle track once and set it on a whole season, show or movie, like PASTA. Plex then uses those tracks every time you play."), action: pickScope },
       { label: `${tr("Audio track")}: ${aNow}`, desc: `${tr("Audio")}\n${list("audio")}`, action: () => pick("audio") },
       { label: `${tr("Subtitles")}: ${sNow}`, desc: `${tr("Subtitles")}\n${list("subs")}`, action: () => pick("subs") },
       { label: tr("Apply"), desc: `${st.scope.label}\n${tr("Audio track")}: ${aNow}\n${tr("Subtitles")}: ${sNow}`, action: apply },

@@ -728,3 +728,17 @@ body.menu-open .mi.moving { box-shadow: inset 0 0 0 3px #fff, 0 8px 24px rgba(0,
 .row.grid .card { width: var(--cw, 220px); }
 .row.grid .card .img { width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.5); }
 .row.grid .card.sq .img { height: var(--cw, 220px); }
+/* Side-by-side full-screen choices (profile, Actions, Audio & subtitles): placed by the stage's
+   width, so a bigger Text Size (a narrower stage) doesn't push the list off the right edge.
+   At 100 % the same as before (208 / 672 / 1006 / 740 px of 1920). */
+#dlgSide { left: 10.83%; width: 35%; }
+#dlgRule { width: 100%; }
+#dlg.side #dlgList { left: 52.4%; width: 38.54%; }
+#dlg.side .dl { width: 90.8%; }
+#dlg.side .dl.focus { width: 100%; }
+/* bigger Text Size (a shorter stage): the title higher and the picture smaller, so they keep apart */
+body.short #dlgTitle { top: 64px; }
+body.short #dlgIcon, body.short #dlgIcon img, body.short #dlgIcon .face { width: 150px; height: 150px; }
+body.short #dlgIcon svg { width: 140px; height: 140px; }
+body.short #dlgName { margin-top: 26px; }
+body.short #dlg.list #dlgList { top: 170px; }
