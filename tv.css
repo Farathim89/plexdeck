@@ -422,6 +422,9 @@ body.mini #stage { display: none; }
 #dlgList { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 32px; }
 #dlg.side #dlgList { left: 1006px; width: 740px; top: 0; bottom: 0; justify-content: center; padding-top: 110px; }
 #dlg.list #dlgSide { display: none; }
+/* Audio & subtitles: the focused row's track list on the left, one track a line */
+#dlg.tracks #dlgDesc { white-space: pre-line; text-align: left; align-self: stretch; font-size: 23px; line-height: 1.45; color: #cfcfcf; }
+#dlg.tracks #dlgName { font-size: 30px; }
 #dlg.list #dlgList { left: 0; right: 0; top: 235px; }
 #dlg.list #dlgTitle { top: 128px; font-size: 46px; font-weight: 400; }
 .dl { width: 672px; height: 80px; border-radius: 6px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.82);

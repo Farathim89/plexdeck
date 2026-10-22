@@ -702,7 +702,7 @@ const Dialog = (() => {
   function close() { cur = null; $("dlg").hidden = true; }
   function draw() {
     const o = cur;
-    $("dlg").className = o.layout === "list" ? "list" : "side";
+    $("dlg").className = (o.layout === "list" ? "list" : "side") + (o.cls ? ` ${o.cls}` : "");
     $("dlgTitle").textContent = o.title || "";
     const icon = $("dlgIcon");
     if (o.face) icon.innerHTML = `<img src="${esc(o.face)}" alt="">`;
@@ -723,6 +723,80 @@ const Dialog = (() => {
   }
   return { open, close, act, isOpen: () => !!cur };
 })();
+
+// ---- Audio & subtitles, the TV way (like PASTA; the logic is tracks-core.js, shared with the PC
+// window): pick the exact audio / subtitle track from one episode and set it on that episode, its
+// season or the whole show (or the movie). Full-screen lists for the controller, like the ⋯ menu;
+// the focused row shows the tracks it's about.
+async function tracksDialog(it, after) {
+  const raw = it.raw || {};
+  const scopes = [];
+  const season = (key, title, n) => ({ type: "season", key, label: title || tr("Season {n}", { n }) });
+  if (it.type === "movie") scopes.push({ type: "movie", key: it.key, label: tr("This movie") });
+  else if (it.type === "episode") {
+    scopes.push({ type: "episode", key: it.key, label: tr("This episode only ({episode})", { episode: `S${raw.parentIndex}·E${raw.index}` }) });
+    if (raw.parentRatingKey) scopes.push(season(raw.parentRatingKey, raw.parentTitle, raw.parentIndex));
+    if (raw.grandparentRatingKey) scopes.push({ type: "show", key: raw.grandparentRatingKey, label: tr("The whole show (all seasons)") });
+  } else if (it.type === "season") {
+    scopes.push(season(it.key, raw.title, raw.index));
+    if (raw.parentRatingKey) scopes.push({ type: "show", key: raw.parentRatingKey, label: tr("The whole show (all seasons)") });
+  } else if (it.type === "show") {
+    scopes.push({ type: "show", key: it.key, label: tr("The whole show (all seasons)") });
+    try { for (const s of (mc(await api(`/library/metadata/${it.key}/children`)).Metadata || []).filter((x) => x.type === "season")) scopes.push(season(s.ratingKey, s.title, s.index)); } catch {}
+  }
+  if (!scopes.length) return;
+  const name = it.type === "episode" ? raw.grandparentTitle || it.title : it.title;
+  // an episode: its season by default (like the PC window)
+  const st = { scope: scopes.find((s) => s.type === "season") || scopes[0], audio: null, sub: null, tracks: null };
+  const clean = (s) => s.replace(/\s+✓$/, "");
+  async function read() {
+    toast(tr("Reading the tracks…"));
+    try { const k = await Tracks.sample(st.scope); st.tracks = k ? await Tracks.streams(k) : { audio: [], subtitle: [] }; }
+    catch { st.tracks = null; toast(tr("Something went wrong talking to your Plex server.")); }
+  }
+  const list = (kind) => {
+    const t = st.tracks || { audio: [], subtitle: [] };
+    const rows = kind === "audio"
+      ? t.audio.map((a, i) => `${i + 1}. ${Tracks.audioLabel(a)}${a.default ? `  · ${tr("default")}` : ""}`)
+      : t.subtitle.map((x, i) => `${i + 1}. ${Tracks.subLabel(x)}${x.forced ? `  · ${tr("FORCED")}` : ""}`);
+    return rows.length ? rows.join("\n") : tr("None");
+  };
+  function main(focus = 0) {
+    const aNow = st.audio ? clean(Tracks.audioLabel(st.audio)) : tr("No change");
+    const sNow = st.sub === "off" ? tr("Off (no subtitles)") : st.sub ? clean(Tracks.subLabel(st.sub)) : tr("No change");
+    Dialog.open({ layout: "side", cls: "tracks", icon: "subs", name, title: tr("Audio & subtitles"), focus, items: [
+      { label: `${tr("Apply to")}: ${st.scope.label}`, desc: name, action: pickScope },
+      { label: `${tr("Audio track")}: ${aNow}`, desc: `${tr("Audio")}\n${list("audio")}`, action: () => pick("audio") },
+      { label: `${tr("Subtitles")}: ${sNow}`, desc: `${tr("Subtitles")}\n${list("subs")}`, action: () => pick("subs") },
+      { label: tr("Apply"), desc: `${st.scope.label}\n${tr("Audio track")}: ${aNow}\n${tr("Subtitles")}: ${sNow}`, action: apply },
+    ] });
+  }
+  function pickScope() {
+    Dialog.open({ layout: "list", title: tr("Apply to"), focus: Math.max(0, scopes.indexOf(st.scope)), onBack: () => main(0),
+      items: scopes.map((s) => ({ label: s.label, action: async () => { if (s !== st.scope) { st.scope = s; await read(); } main(0); } })) });
+  }
+  function pick(kind) {
+    const t = st.tracks || { audio: [], subtitle: [] };
+    const tracks = kind === "audio" ? t.audio : t.subtitle;
+    const items = [{ label: tr("No change"), value: null }];
+    if (kind === "subs") items.push({ label: tr("Off (no subtitles)"), value: "off" });
+    items.push(...tracks.map((x) => ({ label: kind === "audio" ? Tracks.audioLabel(x) : Tracks.subLabel(x), value: x })));
+    const now = kind === "audio" ? st.audio : st.sub;
+    const row = kind === "audio" ? 1 : 2;
+    Dialog.open({ layout: "list", title: kind === "audio" ? tr("Audio track") : tr("Subtitles"), focus: Math.max(0, items.findIndex((x) => x.value === now)), onBack: () => main(row),
+      items: items.map((x) => ({ label: x.label, action: () => { if (kind === "audio") st.audio = x.value; else st.sub = x.value; main(row); } })) });
+  }
+  async function apply() {
+    if (!st.audio && !st.sub) { toast(tr("Choose an audio and/or subtitle track first.")); main(1); return; }
+    try {
+      const r = await Tracks.apply(st.scope, st.audio, st.sub, (d, total) => toast(`${tr("Applying…")} ${d} / ${total}`));
+      toast(tr("Done — updated {n} of {total}. Plex now plays these with your chosen tracks.", { n: r.changed, total: r.total }));
+      if (after) after();
+    } catch { toast(tr("Something went wrong talking to your Plex server.")); }
+  }
+  await read();
+  if (st.tracks) main(0);
+}
 
 // Pages opened from the menu are kept: going back to one shows it at once, where you left it,
 // and it refreshes quietly behind the scenes.
@@ -1365,7 +1439,7 @@ function detailButtons(it, after) {
     layout: "list", title: it.type === "episode" ? `${it.title} · ${it.epTitle}` : it.title,
     items: [
       ...(it.offset ? [{ label: tr("Play from start"), action: () => playItem(it, false) }] : []),
-      { label: tr("Audio & subtitles"), action: () => desktop.openTracks(it.key) },
+      { label: tr("Audio & subtitles"), action: () => tracksDialog(it, after) },
       { label: tr("Add to Playlist"), action: () => showPage(addToPlaylistPage(it), { push: true }) },
       ...(it.type === "episode" && it.showKey ? [{ label: tr("Go to show"), action: () => showPage(showPage_(it.showKey), { push: true }) }] : []),
     ],
@@ -1997,6 +2071,9 @@ function act(name) {
   }
   document.body.classList.remove("mouse");
   if (Dialog.isOpen()) return Dialog.act(name);
+  // Start / Options: TV mode's own Settings (profile → Settings), again to close — it opened the
+  // PC settings window (that one is still there: Settings → All PlexDeck Settings)
+  if (name === "Start") { if (menuOpen && profPanel) closeMenu(); else openTvSettings(); return; }
   if (menuOpen && profPanel) return profPanelAct(name);
   if (menuOpen && menuKey(name)) return;
   if (!menuOpen && page && page.onAct && page.onAct(name)) return;   // pages with their own layout (the PIN pad)
@@ -2004,7 +2081,13 @@ function act(name) {
   else if (name === "OK") ok();
   else if (name === "Y" && page && page.onY && !menuOpen) { const r = page.allRows()[page.row]; if (r && r.items[r.col]) page.onY(r.items[r.col]); }
   else if (name === "Back") back();
-  else if (name === "Start") desktop.tvSettings();
+}
+function openTvSettings() {
+  if (page && page.noMenu) return;   // who's watching / the PIN pad: no menu there
+  if (!menuOpen) openMenu();
+  if (!menuOpen) return;
+  openProfile();
+  pushPanel(SETTINGS_PANEL());
 }
 const KEYS = { Delete: "Y", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "OK", " ": "OK", Escape: "Back", Backspace: "Back", BrowserBack: "Back",
   MediaPlayPause: "OK", MediaTrackNext: "R1", MediaTrackPrevious: "L1", MediaFastForward: "R2", MediaRewind: "L2" };
