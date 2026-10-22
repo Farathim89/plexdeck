@@ -56,6 +56,10 @@ function padButtons(pad) {
   if (ry < -0.6) out.add("VolUp"); else if (ry > 0.6) out.add("VolDown");
   return out;
 }
+// PlexDeck in front (one of its windows focused, see main.js): only then does the controller count.
+let appFocused = true;
+ipcRenderer.on("app:focus", (_e, f) => { appFocused = !!f; });
+ipcRenderer.invoke("app:focused").then((f) => { appFocused = !!f; }).catch(() => {});
 // What the settings tester shows.
 function padState() {
   const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
@@ -87,7 +91,7 @@ if (location.protocol === "file:") {
     openPlexSettings: () => ipcRenderer.send("settings:plex"),
     exportSettings: () => ipcRenderer.invoke("settings:export"),
     importSettings: () => ipcRenderer.invoke("settings:import"),
-    padState,
+    padState, appFocused: () => appFocused,
     // PC / TV switch in the title bar
     setMode: (m) => ipcRenderer.send("titlebar:set-mode", m),
     onMode: (cb) => ipcRenderer.on("titlebar:mode", (_e, m) => cb(m)),

@@ -2022,6 +2022,14 @@ function padLoop() {
   // the player's controls with A still held, which paused it at 0:00): they only count once
   // they're let go and pressed again. The pad can show up a moment after the page opens.
   if (!padPrimed && pads.length) { padPrimed = true; if (now < 1500) for (const n of down) held.set(n, Infinity); }
+  // Another app in front (MediaDeck, a game): the pad isn't ours. What's held when PlexDeck comes
+  // back only counts once it's let go and pressed again.
+  if (!desktop.appFocused()) {
+    for (const n of down) held.set(n, Infinity);
+    for (const n of [...held.keys()]) if (!down.has(n)) held.delete(n);
+    requestAnimationFrame(padLoop);
+    return;
+  }
   for (const n of down) {
     const name = n === "A" ? "OK" : n === "B" || n === "Back" ? "Back" : n;
     const vol = n === "VolUp" || n === "VolDown";   // the right stick: held, the volume keeps moving

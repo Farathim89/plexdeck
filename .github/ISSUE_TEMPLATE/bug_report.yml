@@ -41,7 +41,7 @@ body:
     attributes:
       label: PlexDeck version
       description: Help → About PlexDeck
-      placeholder: "5.3.16"
+      placeholder: "5.3.17"
   - type: dropdown
     id: build
     attributes:

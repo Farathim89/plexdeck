@@ -1205,6 +1205,20 @@ app.on("second-instance", (_ev, argv) => {
   applyStartFlags(argv || []);
 });
 
+// PlexDeck in front = one of its windows has the focus (the main window, or the player's controls).
+// The controller only counts then: pages ask once and hear each change — else TV mode and the
+// player reacted to the pad while you used another app (MediaDeck, a game).
+function updateAppFocus() {
+  setImmediate(() => {   // blur of one of our windows, focus of the next: only the end result
+    const f = !!BrowserWindow.getFocusedWindow();
+    // told every time (not only on a change): a page that opened meanwhile (the player) hears it too
+    for (const wc of webContents.getAllWebContents()) if (!wc.isDestroyed()) wc.send("app:focus", f);
+  });
+}
+app.on("browser-window-focus", updateAppFocus);
+app.on("browser-window-blur", updateAppFocus);
+ipcMain.handle("app:focused", () => !!BrowserWindow.getFocusedWindow());
+
 app.whenReady().then(() => {
   if (!gotLock || quitOnly) return;
   config = loadConfig();
