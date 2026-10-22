@@ -725,8 +725,8 @@ body.menu-open .mi.moving { box-shadow: inset 0 0 0 3px #fff, 0 8px 24px rgba(0,
    bar): a grey pill — the white ring means focus now */
 .tab.selected:not(.focus), #azBar div.cur:not(.focus) { background: rgba(255,255,255,.18); box-shadow: none; color: #fff; }
 /* Poster grids size their cards (gridFit in tv.js: at least 5 a row; 220px at 100 %) */
-.row.grid .card { width: var(--cw, 220px); }
-.row.grid .card .img { width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.5); }
+.row.grid .card:not(.tile) { width: var(--cw, 220px); }
+.row.grid .card:not(.tile) .img { width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.5); }
 .row.grid .card.sq .img { height: var(--cw, 220px); }
 /* Side-by-side full-screen choices (profile, Actions, Audio & subtitles): placed by the stage's
    width, so a bigger Text Size (a narrower stage) doesn't push the list off the right edge.
@@ -742,3 +742,33 @@ body.short #dlgIcon, body.short #dlgIcon img, body.short #dlgIcon .face { width:
 body.short #dlgIcon svg { width: 140px; height: 140px; }
 body.short #dlgName { margin-top: 26px; }
 body.short #dlg.list #dlgList { top: 170px; }
+body.short #dlg.list #dlgTitle { top: 64px; }   /* (the list itself starts at 170px there) */
+/* Who's watching at a bigger Text Size: faces, PIN field and keypad smaller and higher, so the
+   keypad stays on screen (130 %: ends ~780 of 831 px; 150 %: ~660 of 720) */
+body.short #whoTitle { top: 28px; font-size: 60px; }
+body.short #whoRow { top: 150px; }
+body.short #whoPad { top: 452px; width: 254px; }
+body.short #whoPad .pfield { height: 60px; margin-bottom: 10px; font-size: 26px; }
+body.short #whoPad .pkeys { grid-template-columns: repeat(4, 56px); grid-template-rows: repeat(4, 56px); gap: 10px; }
+body.short #whoPad .pk { font-size: 26px; }
+body.short #whoPad .pk.zero, body.short #whoPad .pk.bk { border-radius: 28px; }
+body.shortest #whoTitle { top: 22px; font-size: 54px; }
+body.shortest #whoRow { top: 112px; gap: 52px; }
+body.shortest .wc, body.shortest .wc.focus, body.shortest .wc .wt, body.shortest .wc.focus .wt { width: 184px; }
+body.shortest .wc .wt, body.shortest .wc.focus .wt,
+body.shortest .wc .wface, body.shortest .wc.focus .wface { width: 184px; height: 184px; }
+body.shortest .wc .wname, body.shortest .wc.focus .wname { margin-top: 10px; font-size: 26px; }
+body.shortest #whoPad { top: 362px; width: 227px; }
+body.shortest #whoPad .pfield { height: 56px; margin-bottom: 8px; }
+body.shortest #whoPad .pkeys { grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(4, 50px); gap: 9px; }
+body.shortest #whoPad .pk.zero, body.shortest #whoPad .pk.bk { border-radius: 25px; }
+/* the ⋮ beside the focused menu entry: inside the menu's left margin (it was outside the menu's
+   edge, so all but a sliver was cut off) */
+#menuDots { left: 3px; width: 26px; border-radius: 13px; }
+#menuDots svg { width: 22px; height: 22px; }
+/* the shortest stage (about 150 %): rows start a little higher, so a focused poster's frame
+   fits above the bottom edge, also on a window shorter than 16:9 */
+body.shortest:not(.no-hero):not(.details) #rowsWindow { top: calc(474px - var(--short, 0px) * .56); }
+/* Now Playing at a bigger Text Size: a lower visualiser, and the controls readable over it */
+body.short #mViz { height: calc(260px - var(--short, 0px) * .4); }
+#music .mControls, #music .mHelp, #mQueue { text-shadow: 0 1px 4px rgba(0,0,0,.9); }

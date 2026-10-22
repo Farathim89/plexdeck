@@ -1728,7 +1728,7 @@ function userPickerPage(atStart, focusUser = null) {
     pad.hidden = !(u && u.protected);
     if (!pad.hidden && el) {
       const centre = x + el.offsetLeft + el.offsetWidth / 2;
-      pad.style.left = `${centre - 145}px`;
+      pad.style.left = `${centre - pad.offsetWidth / 2}px`;   // (narrower at a bigger Text Size)
       const keys = [];
       for (let ri = 0; ri < 3; ri++) for (let ci = 0; ci < 3; ci++) keys.push(`<div class="pk ${zone === "pad" && ri === r && ci === c ? "focus" : ""}">${PIN_PAD[ri][ci]}</div>`);
       keys.push(`<div class="pk zero ${zone === "pad" && r === 3 && c < 3 ? "focus" : ""}">0</div>`);
