@@ -556,6 +556,7 @@ function createWindow() {
     e.preventDefault();
     if (win.isFullScreen()) win.setFullScreen(false);
     win.hide();
+    mpv.closePlayer();   // (after hiding: stopping a video brings the focus back to a visible window)
     if (!config.trayHintShown) {
       tray.displayBalloon({
         iconType: "info",
@@ -912,9 +913,13 @@ function folderUpdateScript({ zip, tmp, dest, exe, restart, args = [] }) {
 }
 function runFolderUpdate(restart) {
   if (!folderUpdate) return;
+  // Started again the way it is now: hidden stays hidden, and full screen / TV mode come back
+  // (a TV front end like MediaDeck starts PlexDeck with --fullscreen --tv)
+  const args = process.argv.includes("--hidden") ? ["--hidden"] : [];
+  if (restart && win && !win.isDestroyed() && win.isFullScreen()) args.push("--fullscreen");
+  if (restart && tv.mode() === "tv") args.push("--tv");
   const script = folderUpdateScript({
-    zip: folderUpdate.zip, tmp: path.join(updateDir(), "unpacked"), dest: exeDir, exe: process.execPath, restart,
-    args: process.argv.includes("--hidden") ? ["--hidden"] : [],
+    zip: folderUpdate.zip, tmp: path.join(updateDir(), "unpacked"), dest: exeDir, exe: process.execPath, restart, args,
   });
   folderUpdate = null;
   require("child_process").spawn("powershell.exe",

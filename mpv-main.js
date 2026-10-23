@@ -72,10 +72,10 @@ function miniBounds() {
   };
 }
 function place() {
-  if (!host) return;
+  if (!alive(host)) return;
   const b = mini ? miniBounds() : d.contentBounds();
   host.setBounds(b);
-  if (osd) osd.setBounds(b);
+  if (alive(osd)) osd.setBounds(b);
 }
 function setMini(on) {
   if (!host || origin !== "pc" || mini === !!on) return;
@@ -114,17 +114,32 @@ function createLayers() {
   for (const ev of ["move", "resize", "maximize", "unmaximize", "enter-full-screen", "leave-full-screen", "restore"]) win.on(ev, place);
   win.on("minimize", onMin);
   win.on("restore", onRestore);
+  // Closed from outside (Alt+F4 on the controls, another app closing PlexDeck's windows): the video
+  // stops as if you'd pressed Back. It played on without its controls, and the next move of the
+  // main window hit the closed layer ("Object has been destroyed", Electron's error box).
+  for (const w of [host, osd]) w.on("closed", () => { if (!tearingDown) closedOutside(); });
 }
-function onMin() { if (host) host.hide(); }
-function onRestore() { if (host) { host.showInactive(); if (osd) osd.show(); } }
+const alive = (w) => !!w && !w.isDestroyed();
+function onMin() { if (alive(host)) host.hide(); }
+function onRestore() { if (alive(host)) { host.showInactive(); if (alive(osd)) osd.show(); } }
+let tearingDown = false;   // our own destroyLayers (not someone closing a layer)
 function destroyLayers() {
   const win = d.win();
   for (const ev of ["move", "resize", "maximize", "unmaximize", "enter-full-screen", "leave-full-screen", "restore"]) win.removeListener(ev, place);
   win.removeListener("minimize", onMin);
   win.removeListener("restore", onRestore);
-  if (osd && !osd.isDestroyed()) osd.destroy();
-  if (host && !host.isDestroyed()) host.destroy();
+  tearingDown = true;
+  try {
+    if (alive(osd)) osd.destroy();
+    if (alive(host)) host.destroy();
+  } finally { tearingDown = false; }
   osd = null; host = null;
+}
+function closedOutside(why = "a player window was closed from outside") {
+  plog(`close: ${why}`);
+  stop();
+  if (origin === "pc") d.plexContents().send("plex:native-closed");
+  else d.onClosed(true);   // (where it got to: the page reloads)
 }
 
 // ---- mpv and its control pipe -------------------------------------------------------
@@ -536,4 +551,6 @@ function command(cmd) {
 
 // The player's controls, when they should have the keyboard / controller (not in the mini player).
 const controls = () => (osd && !osd.isDestroyed() && !mini ? osd : null);
-module.exports = { init, available, stop, isOpen: () => !!host, state, command, controls };
+// PlexDeck's window went to the tray (✕): a video doesn't play on without it (music does)
+const closePlayer = () => { if (host) closedOutside("PlexDeck's window was closed (to the tray)"); };
+module.exports = { init, available, stop, closePlayer, isOpen: () => !!host, state, command, controls };
