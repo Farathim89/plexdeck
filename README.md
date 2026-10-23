@@ -70,7 +70,8 @@ A built-in player (your server converts the video) is there as a fallback.
 - Controller support (PS4 / PS5 / Xbox), arrow-key navigation, mouse back/forward buttons
 - Tray with play/pause controls (music and video), start with Windows, custom title bar, remembered window
 - **Updates** — one click: PlexDeck downloads the new version, checks it, and installs it
-  when you restart (installed and portable alike; it asks first)
+  when you restart (installed and portable alike; it asks first). In TV mode the update is
+  in the sidebar, and you answer with the controller
 - **Languages** — PlexDeck's own menus in English, Svenska, Deutsch, Español and Français
   (follows Windows, or pick one in Settings → Appearance); Plex's pages follow your Plex language
 - **Settings backup** — export / import your PlexDeck settings (Settings → About);
