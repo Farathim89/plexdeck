@@ -671,7 +671,7 @@
   "Downloading the update…": "Téléchargement de la mise à jour…",
   "Later: it installs when you quit PlexDeck": "Plus tard : elle s'installe quand vous quittez PlexDeck",
   "PlexDeck {version}": "PlexDeck {version}",
-  "PlexDeck {version} is available. Update it in Settings → About.": "PlexDeck {version} est disponible. Mettez à jour dans Paramètres → À propos.",
+  "PlexDeck {version} is available. Update it from the menu.": "PlexDeck {version} est disponible. Mettez à jour depuis le menu.",
   "PlexDeck {version} is out": "PlexDeck {version} est sorti",
   "Update to {version}": "Mettre à jour vers {version}",
   "You have {current}": "Vous avez la {current}"

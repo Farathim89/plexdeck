@@ -242,6 +242,7 @@ const ICON = {
   list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.5M3.5 12h.5M3.5 18h.5"/></svg>',
   more: '<svg class="solid" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  update: '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg>',
   plexmark: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.6 6.5h2.8l3.6 5.5-3.6 5.5H9.6l3.6-5.5z"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
   lists: '<svg class="solid" viewBox="0 0 24 24"><path d="M8 3h11a1 1 0 011 1v17l-6.5-4L7 21V4a1 1 0 011-1z" opacity=".55"/><path d="M5 6h10a1 1 0 011 1v15l-5.5-3.5L5 22V7a1 1 0 011-1z" transform="translate(-1 -1)"/></svg>',
@@ -276,12 +277,13 @@ let moreMode = false;     // the menu shows More's list
 const userKey = (k) => `${k}:${(S && S.user && S.user.name) || ""}`;
 const readList = (k) => { try { const v = JSON.parse(localStorage.getItem(userKey(k)) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const writeList = (k, v) => { try { localStorage.setItem(userKey(k), JSON.stringify(v)); } catch {} };
-const FIXED = new Set(["profile", "mylists", "search", "home", "more", "back"]);   // can't be moved or unpinned
+const FIXED = new Set(["profile", "update", "mylists", "search", "home", "more", "back"]);   // can't be moved or unpinned
 const LIB_ORDER = { movie: 0, show: 1, artist: 2, photo: 3 };
 function allEntries() {
   return [
     { id: "profile", label: S && S.user ? S.user.name : tr("Switch user"), icon: "user", me: true, pin: true, open: () => openProfile() },
     ...(Music.isActive() ? [{ id: "nowplaying", label: tr("Now playing"), icon: "music", open: () => { closeMenu(); Music.showScreen(); } }] : []),
+    ...[AppUpdate.entry()].filter(Boolean),
     { id: "mylists", label: tr("My Lists"), icon: "lists", live: true, open: () => menuPage("mylists", myListsPage) },
     { id: "search", label: tr("Search"), icon: "search", pin: true, open: () => { currentMenuId = "search"; stack.length = 0; showPage(searchPage()); } },
     { id: "home", label: tr("Home"), icon: "home", pin: true, live: true, open: () => menuPage("home", homePage) },
@@ -319,6 +321,15 @@ function buildMenu() {
   menuItems = items;
   renderMenu();
 }
+// An entry came or went (Now playing, an update): build the menu again, the focus staying where it was.
+function rebuildMenu() {
+  if (reorder) return;
+  const id = menuItems[menuIndex] && menuItems[menuIndex].id;
+  buildMenu();
+  const i = menuItems.findIndex((m) => m.id === id);
+  menuIndex = i >= 0 ? i : Math.max(0, Math.min(menuIndex, menuItems.length - 1));
+  drawMenu();
+}
 // More: everything you can put in the sidebar (pinned or not); its Actions pin / unpin.
 function openMore() {
   moreMode = true; menuHandle = false;
@@ -345,7 +356,7 @@ function closeMore() {
 function renderMenu() {
   const face = () => (S && S.user && S.user.thumb ? `<img class="mi-face" src="${esc(S.user.thumb)}" alt="">`
     : `<div class="mi-face">${esc(((S && S.user && S.user.name) || "?").slice(0, 1).toUpperCase())}</div>`);
-  $("menuItems").innerHTML = menuItems.map((m, i) => `<div class="mi ${m.me ? "me" : ""} ${m.pin ? "pin" : ""} ${m.sec ? "sec" : ""}" data-i="${i}" data-sec="${esc(m.sec || "")}">${m.me ? face() : ICON[m.icon] || ""}`
+  $("menuItems").innerHTML = menuItems.map((m, i) => `<div class="mi ${m.me ? "me" : ""} ${m.pin ? "pin" : ""} ${m.sec ? "sec" : ""} ${m.upd ? "upd" : ""}" data-i="${i}" data-sec="${esc(m.sec || "")}">${m.me ? face() : ICON[m.icon] || ""}`
     + `<span>${esc(m.label)}${m.sub ? `<small>${esc(m.sub)}</small>` : ""}</span>${m.me ? `<i class="chev">${ICON.chev}</i>` : ""}</div>`).join("");
   drawMenu();
 }
@@ -632,10 +643,33 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
 
 // ---- PlexDeck's own updates, in TV mode -------------------------------------------------
 // The title bar's Update button is hidden in full screen and Windows' questions can't be answered
-// with the controller: here it's a line in Settings → About, a note when one is out, and TV dialogs.
+// with the controller: here it's an entry in the sidebar (while there's one), a line in Settings → About,
+// a note when one is out, and TV dialogs.
 const AppUpdate = (() => {
-  let u = null, told = null, fromHere = false;
+  let u = null, told = null, fromHere = false, shown = "";
   const info = () => u || {};
+  // the sidebar entry, under your name; its icon also shows in the closed sidebar
+  function entry() {
+    const x = info();
+    if (!x.version) return null;
+    const e = { id: "update", icon: "update", pin: true, upd: true, sub: tr("PlexDeck {version}", { version: x.version }) };
+    if (x.state === "downloading") return { ...e, label: tr("Downloading {percent}%", { percent: x.percent || 0 }), open: () => toast(tr("Downloading the update…")) };
+    if (x.state === "ready") return { ...e, icon: "restart", label: tr("Restart to update"), open: askRestart };
+    return { ...e, label: tr("Update {version}", { version: x.version }), sub: tr("You have {current}", { current: x.current || "" }),
+      open: x.canInstall ? askDownload : () => toast(tr("Download it from GitHub in PC mode.")) };
+  }
+  // the entry came, went or changed state: a new menu; while it downloads only its percent changes
+  function syncMenu() {
+    if (!S) return;
+    const x = info();
+    const now = x.version ? `${x.version}|${x.state}|${x.canInstall}` : "";
+    if (now !== shown) { shown = now; rebuildMenu(); return; }
+    const i = menuItems.findIndex((m) => m.id === "update");
+    const el = i >= 0 && $("menuItems").children[i];
+    if (!el) return;
+    menuItems[i] = { ...menuItems[i], ...entry() };
+    el.querySelector("span").firstChild.textContent = menuItems[i].label;
+  }
   function row() {
     const x = info();
     if (x.state === "downloading") return { label: tr("Downloading {percent}%", { percent: x.percent || 0 }), sub: tr("PlexDeck {version}", { version: x.version || "" }) };
@@ -675,12 +709,13 @@ const AppUpdate = (() => {
     else if (x.state === "ready" && was !== "ready" && fromHere) { fromHere = false; if (!Player.isActive() && !nativePlaying) askRestart(); }
     else if (!quiet && x.version && x.state === "idle" && told !== x.version && S) {   // once a version, in this run
       told = x.version;
-      toast(tr("PlexDeck {version} is available. Update it in Settings → About.", { version: x.version }));
+      toast(tr("PlexDeck {version} is available. Update it from the menu.", { version: x.version }));
     }
+    syncMenu();
     if (menuOpen && profPanel) drawProfPanel();
   }
   desktop.onTv("tv:update", (x) => set(x));
-  return { row, set, refresh: () => desktop.tvUpdate("state").then((x) => set(x)).catch(() => {}) };
+  return { row, entry, set, refresh: () => desktop.tvUpdate("state").then((x) => set(x)).catch(() => {}) };
 })();
 function openProfile() { clearTimeout(liveTimer); panels = [{ ...PROFILE_PANEL(), i: 0 }]; profPanel = true; drawMenu(); }
 function pushPanel(pn) {
@@ -2422,7 +2457,7 @@ async function start(force = false, { picked = false } = {}) {
     S = s;
     Link.close();
     AppUpdate.refresh();
-    Music.init({ S, api, img, prefs: () => lastPrefs, onChange: () => { const id = menuItems[menuIndex] && menuItems[menuIndex].id; buildMenu(); const i = menuItems.findIndex((m) => m.id === id); if (i >= 0) menuIndex = i; drawMenu(); } });
+    Music.init({ S, api, img, prefs: () => lastPrefs, onChange: rebuildMenu });
     Player.init({
       S, api, put: (p, q) => desktop.tvApiPut(p, q), prefs: () => lastPrefs,
       // Back from the player: progress changed, so reload the page you're on.

@@ -671,7 +671,7 @@
   "Downloading the update…": "Laddar ner uppdateringen…",
   "Later: it installs when you quit PlexDeck": "Senare: den installeras när du avslutar PlexDeck",
   "PlexDeck {version}": "PlexDeck {version}",
-  "PlexDeck {version} is available. Update it in Settings → About.": "PlexDeck {version} finns tillgänglig. Uppdatera i Inställningar → Om.",
+  "PlexDeck {version} is available. Update it from the menu.": "PlexDeck {version} finns tillgänglig. Uppdatera från menyn.",
   "PlexDeck {version} is out": "PlexDeck {version} har kommit",
   "Update to {version}": "Uppdatera till {version}",
   "You have {current}": "Du har {current}"
