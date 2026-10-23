@@ -801,12 +801,13 @@ function getUpdater() {
   });
   return updater;
 }
-async function downloadUpdate() {
+// fromTv: TV mode asks its own questions (with the controller), so no Windows dialogs here
+async function downloadUpdate({ fromTv = false } = {}) {
   if (updateState !== "idle") return;
   updateState = "downloading"; updatePercent = 0;
   sendUpdateToTitleBar();
   try {
-    if (folderMode) { await downloadFolderUpdate(); updateState = "ready"; sendUpdateToTitleBar(); askToRestart(); return; }
+    if (folderMode) { await downloadFolderUpdate(); updateState = "ready"; sendUpdateToTitleBar(); if (!fromTv) askToRestart(); return; }
     const u = getUpdater();
     const found = await u.checkForUpdates();
     if (!found || !found.updateInfo || !isNewer(found.updateInfo.version, app.getVersion())) throw new Error("no update");
@@ -815,10 +816,11 @@ async function downloadUpdate() {
     await u.downloadUpdate();
     updateState = "ready";
     sendUpdateToTitleBar();
-    askToRestart();
+    if (!fromTv) askToRestart();
   } catch {
     updateState = "idle";
-    sendUpdateToTitleBar();
+    sendUpdateToTitleBar({ failed: true });
+    if (fromTv) return;
     const { response } = await dialog.showMessageBox(win, {
       type: "warning", title: tr("Update"), message: tr("Couldn't download the update"),
       detail: tr("You can download it from GitHub instead."), buttons: [tr("Open download page"), tr("Close")], defaultId: 0, cancelId: 1,
@@ -964,9 +966,18 @@ function updatePill() {
       : tr("PlexDeck {version} is out (you have {current}). Click to download it.", { version: v, current: app.getVersion() }),
   };
 }
-function sendUpdateToTitleBar() {
+function sendUpdateToTitleBar(extra = {}) {
   if (!win || win.isDestroyed()) return;
   win.webContents.send("titlebar:update", updatePill());
+  if (tv.view()) tv.view().webContents.send("tv:update", { ...updateInfo(), ...extra });   // TV mode has no title bar in full screen
+}
+// The update as TV mode shows it (Settings → About, its own questions)
+function updateInfo() {
+  return {
+    state: updateState, percent: updatePercent, current: app.getVersion(),
+    version: latestRelease ? latestRelease.version : null,
+    canInstall: canSelfUpdate && !(folderMode && !(latestRelease && latestRelease.zip)),
+  };
 }
 // The portable zip of a release (with GitHub's SHA-256 for it, when it gives one).
 function pickZip(assets) {
@@ -1007,8 +1018,10 @@ async function checkForUpdates(manual) {
       sendUpdateToTitleBar();
       if (manual) dialog.showMessageBox(win, { type: "info", title: tr("Up to date"), message: tr("PlexDeck is up to date"), detail: tr("You have the newest version, {current}.", { current: app.getVersion() }), buttons: [tr("OK")] });
     }
+    return true;
   } catch {
     if (manual) dialog.showMessageBox(win, { type: "warning", title: tr("Couldn't check"), message: tr("Couldn't check for updates"), detail: tr("GitHub couldn't be reached. Check your internet connection and try again."), buttons: [tr("OK")] });
+    return false;
   }
 }
 function startUpdateChecks() {
@@ -1024,6 +1037,14 @@ function startUpdateChecks() {
   setInterval(() => { if (autoUpdateCheck()) checkForUpdates(false); }, 12 * 60 * 60 * 1000);
 }
 ipcMain.on("titlebar:open-update", (e) => { if (fromLocalPage(e)) onUpdateClick(); });
+// TV mode: the same update, with its own questions (the controller can't press Windows' dialogs)
+ipcMain.handle("tv:update", async (e, action) => {
+  if (!tv.view() || e.sender !== tv.view().webContents) return null;
+  if (action === "check") { const ok = await checkForUpdates(false); return { ...updateInfo(), failed: !ok }; }
+  if (action === "download" && updateInfo().canInstall) downloadUpdate({ fromTv: true });
+  if (action === "restart") restartToUpdate();
+  return updateInfo();
+});
 async function showAbout() {
   const { response } = await dialog.showMessageBox(win, {
     type: "info",

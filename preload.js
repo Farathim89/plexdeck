@@ -99,6 +99,7 @@ if (location.protocol === "file:") {
     openUpdate: () => ipcRenderer.send("titlebar:open-update"),
     // TV mode (tv.html)
     tvSession: (force) => ipcRenderer.invoke("tv:session", { force: !!force }),
+    tvUpdate: (action) => ipcRenderer.invoke("tv:update", String(action || "state")),
     tvLinkCode: () => ipcRenderer.invoke("tv:link-code"),
     tvLinkCheck: (id) => ipcRenderer.invoke("tv:link-check", String(id)),
     tvApi: (path, params) => ipcRenderer.invoke("tv:api", { path, params }),
@@ -135,7 +136,7 @@ if (location.protocol === "file:") {
     openTracks: (key) => ipcRenderer.send("tracks:open", key || ""),
     tvMouseUsed: () => ipcRenderer.send("tv:mouse-used"),
     onTv: (name, cb) => {
-      if (["tv:shown", "tv:refresh", "tv:overlay", "tv:prefs"].includes(name)) ipcRenderer.on(name, (_e, v) => cb(v));
+      if (["tv:shown", "tv:refresh", "tv:overlay", "tv:prefs", "tv:update"].includes(name)) ipcRenderer.on(name, (_e, v) => cb(v));
     },
   });
 } else if (/^https?:$/.test(location.protocol) && window.top === window) {

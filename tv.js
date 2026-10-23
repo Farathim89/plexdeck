@@ -625,9 +625,63 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     { header: tr("Device") },
     { label: tr("App Name"), sub: "PlexDeck (TV mode)" },
     { label: tr("Version"), sub: lastPrefs.version || "" },
+    AppUpdate.row(),
     { label: tr("Server"), sub: (S && S.serverName) || "" },
   ] }) },
 ] });
+
+// ---- PlexDeck's own updates, in TV mode -------------------------------------------------
+// The title bar's Update button is hidden in full screen and Windows' questions can't be answered
+// with the controller: here it's a line in Settings → About, a note when one is out, and TV dialogs.
+const AppUpdate = (() => {
+  let u = null, told = null, fromHere = false;
+  const info = () => u || {};
+  function row() {
+    const x = info();
+    if (x.state === "downloading") return { label: tr("Downloading {percent}%", { percent: x.percent || 0 }), sub: tr("PlexDeck {version}", { version: x.version || "" }) };
+    if (x.state === "ready") return { label: tr("Restart to update"), sub: tr("PlexDeck {version} is ready to install", { version: x.version || "" }), action: askRestart };
+    if (x.version && x.canInstall) return { label: tr("Update to {version}", { version: x.version }), sub: tr("You have {current}", { current: x.current || "" }), action: askDownload };
+    if (x.version) return { label: tr("PlexDeck {version} is out", { version: x.version }), sub: tr("Download it from GitHub in PC mode.") };
+    return { label: tr("Check for updates"), action: check };
+  }
+  async function check() {
+    toast(tr("Checking for updates…"));
+    const r = await desktop.tvUpdate("check").catch(() => null);
+    if (!r || r.failed) return toast(tr("Couldn't check for updates"));
+    set(r, true);
+    if (!r.version) toast(tr("PlexDeck is up to date"));
+    else if (r.canInstall && r.state === "idle") askDownload();
+  }
+  function askDownload() {
+    const x = info();
+    Dialog.open({ layout: "list", title: tr("PlexDeck {version} is available", { version: x.version || "" }), items: [
+      { label: tr("Download & install"), action: () => { fromHere = true; desktop.tvUpdate("download"); toast(tr("Downloading the update…")); } },
+      { label: tr("Later"), action: () => {} },
+    ] });
+  }
+  function askRestart() {
+    const x = info();
+    Dialog.open({ layout: "list", title: tr("PlexDeck {version} is ready to install", { version: x.version || "" }), items: [
+      { label: tr("Restart now"), action: () => desktop.tvUpdate("restart") },
+      { label: tr("Later: it installs when you quit PlexDeck"), action: () => {} },
+    ] });
+  }
+  // a new state from the app (found, downloading…, ready, failed)
+  function set(next, quiet = false) {
+    const was = info().state;
+    u = next || null;
+    const x = info();
+    if (next && next.failed && fromHere) { fromHere = false; toast(tr("Couldn't download the update")); }
+    else if (x.state === "ready" && was !== "ready" && fromHere) { fromHere = false; if (!Player.isActive() && !nativePlaying) askRestart(); }
+    else if (!quiet && x.version && x.state === "idle" && told !== x.version && S) {   // once a version, in this run
+      told = x.version;
+      toast(tr("PlexDeck {version} is available. Update it in Settings → About.", { version: x.version }));
+    }
+    if (menuOpen && profPanel) drawProfPanel();
+  }
+  desktop.onTv("tv:update", (x) => set(x));
+  return { row, set, refresh: () => desktop.tvUpdate("state").then((x) => set(x)).catch(() => {}) };
+})();
 function openProfile() { clearTimeout(liveTimer); panels = [{ ...PROFILE_PANEL(), i: 0 }]; profPanel = true; drawMenu(); }
 function pushPanel(pn) {
   const p2 = { ...pn, i: pn.focus || 0 };
@@ -2353,6 +2407,7 @@ async function start(force = false, { picked = false } = {}) {
     }
     S = s;
     Link.close();
+    AppUpdate.refresh();
     Music.init({ S, api, img, prefs: () => lastPrefs, onChange: () => { const id = menuItems[menuIndex] && menuItems[menuIndex].id; buildMenu(); const i = menuItems.findIndex((m) => m.id === id); if (i >= 0) menuIndex = i; drawMenu(); } });
     Player.init({
       S, api, put: (p, q) => desktop.tvApiPut(p, q), prefs: () => lastPrefs,

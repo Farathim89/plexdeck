@@ -664,5 +664,15 @@
   "Watch free": "Se gratis",
   "Watch it in the {service} app.": "Se den i {service}-appen.",
   "Where to watch": "Var du kan se den",
-  "Where to watch {title}": "Var du kan se {title}"
+  "Where to watch {title}": "Var du kan se {title}",
+  "Check for updates": "Sök efter uppdateringar",
+  "Checking for updates…": "Söker efter uppdateringar…",
+  "Download it from GitHub in PC mode.": "Ladda ner den från GitHub i PC-läge.",
+  "Downloading the update…": "Laddar ner uppdateringen…",
+  "Later: it installs when you quit PlexDeck": "Senare: den installeras när du avslutar PlexDeck",
+  "PlexDeck {version}": "PlexDeck {version}",
+  "PlexDeck {version} is available. Update it in Settings → About.": "PlexDeck {version} finns tillgänglig. Uppdatera i Inställningar → Om.",
+  "PlexDeck {version} is out": "PlexDeck {version} har kommit",
+  "Update to {version}": "Uppdatera till {version}",
+  "You have {current}": "Du har {current}"
 }

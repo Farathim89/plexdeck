@@ -664,5 +664,15 @@
   "Watch free": "Regarder gratuitement",
   "Watch it in the {service} app.": "Regardez-le dans l'app {service}.",
   "Where to watch": "Où regarder",
-  "Where to watch {title}": "Où regarder {title}"
+  "Where to watch {title}": "Où regarder {title}",
+  "Check for updates": "Rechercher des mises à jour",
+  "Checking for updates…": "Recherche de mises à jour…",
+  "Download it from GitHub in PC mode.": "Téléchargez-la depuis GitHub en mode PC.",
+  "Downloading the update…": "Téléchargement de la mise à jour…",
+  "Later: it installs when you quit PlexDeck": "Plus tard : elle s'installe quand vous quittez PlexDeck",
+  "PlexDeck {version}": "PlexDeck {version}",
+  "PlexDeck {version} is available. Update it in Settings → About.": "PlexDeck {version} est disponible. Mettez à jour dans Paramètres → À propos.",
+  "PlexDeck {version} is out": "PlexDeck {version} est sorti",
+  "Update to {version}": "Mettre à jour vers {version}",
+  "You have {current}": "Vous avez la {current}"
 }
