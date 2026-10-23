@@ -929,18 +929,31 @@ function cardHtml(it, kind, grid = false) {
 function buttonHtml(b) {
   return `<div class="btn ${b.on ? "on" : ""} ${b.named ? "named" : ""}">${ICON[b.icon] || ""}<span>${esc(b.label)}</span></div>`;
 }
+function rowHtml(r, i) {
+  if (r.kind === "buttons") return `<div class="row brow" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div>`
+    + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "") + `</div>`;
+  if (r.kind === "options" && r.fixed) return `<div class="row fixedph" data-r="${i}"></div>`;
+  if (r.kind === "options") return `<div class="row" data-r="${i}"><div class="buttons opts">${r.items.map((b) => `<div class="btn opt"><span>${esc(b.label)}</span></div>`).join("")}</div></div>`;
+  if (r.kind === "track") { const t = r.items[0]; return `<div class="row trkrow" data-r="${i}"><div class="trk"><span class="n">${esc(t.n)}</span><span class="t">${esc(t.title)}</span><span class="d">${esc(t.len)}</span></div></div>`; }
+  if (r.kind === "keys") return `<div class="row" data-r="${i}"><div class="strip keys">${r.items.map((k) => `<div class="key ${k.wide ? "wide" : ""}">${esc(k.label)}</div>`).join("")}</div></div>`;
+  const title = r.title ? `<h3>${esc(r.title)}</h3>` : "";
+  return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
+}
+// One row again (a show's buttons follow the focused episode: Watch / Resume…). Redrawing all of
+// them put every row back at its start, and they slid to where they were: it looked like scrolling.
+function redrawRow(p, r) {
+  const i = p.rows.indexOf(r), el = $("rows").children[i];
+  if (i < 0 || !el) { p.rendered = false; return; }
+  el.outerHTML = rowHtml(r, i);
+  const now = $("rows").children[i];
+  now.classList.add("dim");   // (drawPage marks the focused row right after)
+  now.querySelectorAll(".progress i").forEach((b) => { b.style.width = `${b.dataset.w}%`; });
+}
 function renderRows(p) {
   const box = $("rows");
-  box.innerHTML = p.rows.map((r, i) => {
-    if (r.kind === "buttons") return `<div class="row brow" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div>`
-      + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "") + `</div>`;
-    if (r.kind === "options" && r.fixed) return `<div class="row fixedph" data-r="${i}"></div>`;
-    if (r.kind === "options") return `<div class="row" data-r="${i}"><div class="buttons opts">${r.items.map((b) => `<div class="btn opt"><span>${esc(b.label)}</span></div>`).join("")}</div></div>`;
-    if (r.kind === "track") { const t = r.items[0]; return `<div class="row trkrow" data-r="${i}"><div class="trk"><span class="n">${esc(t.n)}</span><span class="t">${esc(t.title)}</span><span class="d">${esc(t.len)}</span></div></div>`; }
-    if (r.kind === "keys") return `<div class="row" data-r="${i}"><div class="strip keys">${r.items.map((k) => `<div class="key ${k.wide ? "wide" : ""}">${esc(k.label)}</div>`).join("")}</div></div>`;
-    const title = r.title ? `<h3>${esc(r.title)}</h3>` : "";
-    return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
-  }).join("");
+  box.innerHTML = p.rows.map(rowHtml).join("");
+  // new rows go straight to where they belong (no slide from their start)
+  box.classList.add("fresh");
   box.querySelectorAll(".progress i").forEach((i) => { i.style.width = `${i.dataset.w}%`; });
   // poster grids: their card width (gridFit) — set here, the page's CSP drops inline style="…"
   p.rows.forEach((r, i) => { if (r.cw) { const el = box.querySelector(`.row[data-r="${i}"]`); if (el) el.style.setProperty("--cw", `${r.cw}px`); } });
@@ -1022,6 +1035,7 @@ function drawPage(p) {
   if (p.loadMore && contentRow >= p.rows.length - 3) p.loadMore();
   if (p.after) p.after(); else $("azBar").hidden = true;
   fitLayout(p);
+  if ($("rows").classList.contains("fresh")) requestAnimationFrame(() => requestAnimationFrame(() => $("rows").classList.remove("fresh")));
 }
 function showPage(p, { push = false } = {}) {
   if (push && page) stack.push(page);
@@ -1582,7 +1596,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   };
   const baseDraw = p.draw;
   p.draw = function () {
-    if (this.allRows()[this.row] === epRow) { const before = btnRow.items.map((b) => b.label).join(); makeButtons(); if (btnRow.items.map((b) => b.label).join() !== before) this.rendered = false; }
+    if (this.allRows()[this.row] === epRow) { const before = btnRow.items.map((b) => b.label).join(); makeButtons(); if (btnRow.items.map((b) => b.label).join() !== before && this.rendered) redrawRow(this, btnRow); }
     baseDraw.call(this);
   };
   busy(true);

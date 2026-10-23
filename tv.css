@@ -796,3 +796,5 @@ body.short #linkPc { margin-top: 12px; }
    (More like this…) keeps its frame on screen */
 body.shortest.details #rowsWindow { top: calc(554px - var(--short, 0px) * .7); }
 body.shortest.details .row h3 { margin-bottom: 12px; font-size: 28px; }   /* (a show's season tabs push its top area down) */
+/* rows just drawn go straight to their place (tv.js renderRows): no slide from the start */
+#rows.fresh, #rows.fresh .strip { transition: none; }
