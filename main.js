@@ -897,9 +897,12 @@ async function downloadFolderUpdate() {
 // PowerShell that waits for PlexDeck to close, puts the new files over the folder
 // (only the app's own files — plexdeck-data and anything else you keep there stay)
 // and, if asked, starts PlexDeck again the way it was started (hidden stays hidden).
-function folderUpdateScript({ zip, tmp, dest, exe, restart, args = [] }) {
+// While it works, plexdeck-data/update/updating holds its process id: a TV front end (MediaDeck)
+// waits for that file to go before it starts PlexDeck again (a stale one: that process is gone).
+function folderUpdateScript({ zip, tmp, dest, exe, restart, args = [], marker }) {
   const q = (str) => "'" + String(str).replace(/'/g, "''") + "'";
-  return `$ProgressPreference = 'SilentlyContinue'; $zip = ${q(zip)}; $tmp = ${q(tmp)}; $dest = ${q(dest)}; $exe = ${q(exe)};` +
+  return `$ProgressPreference = 'SilentlyContinue'; $zip = ${q(zip)}; $tmp = ${q(tmp)}; $dest = ${q(dest)}; $exe = ${q(exe)}; $marker = ${q(marker)};` +
+    "Set-Content -LiteralPath $marker -Value $PID -ErrorAction SilentlyContinue; try {" +
     "for ($i = 0; $i -lt 240; $i++) { if (-not (Get-Process | Where-Object { $_.Path -eq $exe })) { break }; Start-Sleep -Milliseconds 500 };" +
     "Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue;" +
     "Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force;" +
@@ -909,7 +912,8 @@ function folderUpdateScript({ zip, tmp, dest, exe, restart, args = [] }) {
     "if (Test-Path -LiteralPath (Join-Path $src 'PlexDeck.exe')) { robocopy $src $dest /E /R:30 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null };" +
     (restart ? `Start-Process -FilePath $exe${args.length ? ` -ArgumentList ${args.map(q).join(",")}` : ""};` : "") +
     "Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue;" +
-    "Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue";
+    "Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue" +
+    "} finally { Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue }";
 }
 function runFolderUpdate(restart) {
   if (!folderUpdate) return;
@@ -920,6 +924,7 @@ function runFolderUpdate(restart) {
   if (restart && tv.mode() === "tv") args.push("--tv");
   const script = folderUpdateScript({
     zip: folderUpdate.zip, tmp: path.join(updateDir(), "unpacked"), dest: exeDir, exe: process.execPath, restart, args,
+    marker: path.join(updateDir(), "updating"),
   });
   folderUpdate = null;
   require("child_process").spawn("powershell.exe",
