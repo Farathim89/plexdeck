@@ -270,13 +270,28 @@ const ICON = {
 // You at the top (picture + name: Switch user / Theme / Settings), Search, Home, Watchlist, your
 // libraries, Playlists, Live TV, Movies & Shows on Plex, More, Settings. Left on an entry selects
 // its ⋮, which opens its Actions (Unpin from sidebar, Reorder, Scan Library Files). Unpinned
-// entries live under More. Order and pins are kept per Plex user on this PC.
+// entries live under More. The order is the same for every Plex user on this PC; pins are kept per user.
 let menuHandle = false;   // the ⋮ beside the focused entry has focus
 let reorder = null;       // { before: [ids] } while moving an entry
 let moreMode = false;     // the menu shows More's list
 const userKey = (k) => `${k}:${(S && S.user && S.user.name) || ""}`;
 const readList = (k) => { try { const v = JSON.parse(localStorage.getItem(userKey(k)) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const writeList = (k, v) => { try { localStorage.setItem(userKey(k), JSON.stringify(v)); } catch {} };
+// Until 5.3.26 the order was per user too: until one is saved for everyone, yours (or another user's) counts.
+function readOrder() {
+  try {
+    const v = JSON.parse(localStorage.getItem("tvMenuOrder"));
+    if (Array.isArray(v)) return v;
+    const mine = readList("tvMenuOrder");
+    if (mine.length) return mine;
+    for (const k of Object.keys(localStorage).filter((x) => x.startsWith("tvMenuOrder:"))) {
+      const o = JSON.parse(localStorage.getItem(k));
+      if (Array.isArray(o) && o.length) return o;
+    }
+  } catch {}
+  return [];
+}
+const writeOrder = (v) => { try { localStorage.setItem("tvMenuOrder", JSON.stringify(v)); } catch {} };
 const FIXED = new Set(["profile", "update", "mylists", "search", "home", "more", "back"]);   // can't be moved or unpinned
 const LIB_ORDER = { movie: 0, show: 1, artist: 2, photo: 3 };
 function allEntries() {
@@ -301,7 +316,7 @@ function buildMenu() {
   const hidden = readList("tvMenuHidden");
   let items = allEntries().filter((m) => !hidden.includes(m.id));
   // your order (Reorder): saved ids first in that order, new entries where they'd normally be
-  const saved = readList("tvMenuOrder");
+  const saved = readOrder();
   if (saved.length) {
     const movable = items.filter((m) => !FIXED.has(m.id));
     const out = saved.map((id) => movable.find((m) => m.id === id)).filter(Boolean);
@@ -312,14 +327,19 @@ function buildMenu() {
   const onPlex = items.findIndex((m) => m.id === "livetv" || m.id === "discover");
   const more = { id: "more", label: tr("More"), icon: "more", open: () => openMore() };
   if (onPlex >= 0) items.splice(onPlex, 0, more); else items.push(more);
-  // the first of "On Plex" carries the section title (Live TV may be unpinned)
-  items.forEach((m) => { if (m.lib) m.sec = ""; });
-  const firstLib = items.find((m) => m.lib);
-  if (firstLib) firstLib.sec = tr("Libraries");
-  const firstPlex = items.find((m) => m.id === "livetv" || m.id === "discover");
-  if (firstPlex) firstPlex.sec = tr("On Plex");
+  markSections(items);
   menuItems = items;
   renderMenu();
+}
+// The section titles go on the first library and the first of "On Plex", whichever that is now
+// (an entry may be unpinned, or moved with Reorder).
+function markSections(items) {
+  const plex = (m) => m.id === "livetv" || m.id === "discover";
+  items.forEach((m) => { if (m.lib || plex(m)) m.sec = ""; });
+  const firstLib = items.find((m) => m.lib);
+  if (firstLib) firstLib.sec = tr("Libraries");
+  const firstPlex = items.find(plex);
+  if (firstPlex) firstPlex.sec = tr("On Plex");
 }
 // An entry came or went (Now playing, an update): build the menu again, the focus staying where it was.
 function rebuildMenu() {
@@ -447,8 +467,8 @@ function menuKey(name) {
     if (name === "Up" || name === "Down") {
       const to = menuIndex + (name === "Up" ? -1 : 1);
       const ok = (i) => i >= 0 && i < menuItems.length && !FIXED.has(menuItems[i].id) && menuItems[i].id !== "nowplaying";
-      if (ok(to)) { [menuItems[menuIndex], menuItems[to]] = [menuItems[to], menuItems[menuIndex]]; menuIndex = to; renderMenu(); }
-    } else if (name === "OK") { writeList("tvMenuOrder", menuItems.filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying").map((m) => m.id)); reorder = null; drawMenu(); }
+      if (ok(to)) { [menuItems[menuIndex], menuItems[to]] = [menuItems[to], menuItems[menuIndex]]; menuIndex = to; markSections(menuItems); renderMenu(); }
+    } else if (name === "OK") { writeOrder(menuItems.filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying").map((m) => m.id)); reorder = null; drawMenu(); }
     else if (name === "Back") cancelReorder();
     return true;
   }
@@ -1220,7 +1240,7 @@ function manageHome() {
   Dialog.open({
     layout: "side", title: tr("Manage Home Screen"), icon: "plexmark",
     items: [{ label: tr("Reset All Customizations"), desc: tr("Restore the default sidebar: its order and the entries you unpinned."),
-      action: () => { writeList("tvMenuOrder", []); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } }],
+      action: () => { writeOrder([]); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } }],
   });
 }
 // Rows of 7 posters (a grid you move through like rows).
