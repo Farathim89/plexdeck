@@ -166,11 +166,14 @@ function loadConfig() {
     const old = fromOldConfig();
     const added = Object.fromEntries(Object.entries(old).filter(([k]) => !(k in saved) && k in DEFAULTS));
     const cfg = { ...DEFAULTS, ...added, ...saved };
-    if (Object.keys(added).length) writeJson(dataFile("config.json"), cfg);
+    // TV mode's screensaver, for a profile that never chose its libraries: installs from before
+    // 5.3.23 keep showing the libraries pinned in the sidebar; new ones show none (just the clock).
+    if (!("saverPinned" in saved)) cfg.saverPinned = true;
+    if (Object.keys(added).length || !("saverPinned" in saved)) writeJson(dataFile("config.json"), cfg);
     return cfg;
   }
   const imported = fromOldConfig();
-  const cfg = { ...DEFAULTS, ...imported, importedOldSettings: Object.keys(imported).length > 0 };
+  const cfg = { ...DEFAULTS, ...imported, importedOldSettings: Object.keys(imported).length > 0, saverPinned: false };
   writeJson(dataFile("config.json"), cfg);
   return cfg;
 }
@@ -658,6 +661,7 @@ function publicSettings() {
   return {
     ...Object.fromEntries(Object.keys(DEFAULTS).map((k) => [k, config[k]])),
     importedOldSettings: !!config.importedOldSettings,
+    saverPinned: !!config.saverPinned,
     // For the theme swatches: title bar, page and accent colour of each.
     themes: Object.entries(THEMES).map(([id, t]) => ({
       id, label: tr(t.label), title: t.title, accent: t.accent, page: t.solid || t.modal || PLEX_BG,

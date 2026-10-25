@@ -2114,14 +2114,16 @@ function toast(text) {
 }
 
 // ---- screensaver: your artwork, slowly, with the time --------------------------------
-// Which libraries: your choice (Settings → Experience), per profile. Until you choose:
-// the movie / TV libraries pinned in the side menu, so unpinned ones never show up.
+// Which libraries: your choice (Settings → Experience), per profile. Until you choose: none on a
+// new install (just the clock); installs from before 5.3.23 keep the movie / TV libraries pinned
+// in the side menu (main.js saverPinned).
 const saverChoices = () => sections.filter((s) => s.type === "movie" || s.type === "show");
 function saverLibs() {
   let chosen = null;
   try { const v = localStorage.getItem(userKey("tvSaverLibs")); if (v !== null) chosen = JSON.parse(v); } catch {}
   const keys = saverChoices().map((s) => s.key);
   if (Array.isArray(chosen)) return chosen.filter((k) => keys.includes(k));
+  if (!lastPrefs.saverPinned) return [];
   const hidden = readList("tvMenuHidden");
   return keys.filter((k) => !hidden.includes(`lib-${k}`));
 }
@@ -2144,7 +2146,8 @@ async function startSaver() {
     saverItems = picks.flatMap((r) => mc(r).Metadata || []).filter((m) => m.art);
   }
   const step = () => {
-    if (!saverItems.length) return;
+    $("saverClock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (!saverItems.length) { $("saverTitle").textContent = ""; return; }   // no libraries chosen: just the clock
     const m = saverItems[saverI++ % saverItems.length];
     const show = saverFlip ? $("saverA") : $("saverB"), hide = saverFlip ? $("saverB") : $("saverA");
     saverFlip = !saverFlip;
@@ -2152,7 +2155,6 @@ async function startSaver() {
     show.classList.remove("on");
     show.src = img(m.art, 1920, 1080);
     $("saverTitle").textContent = m.title + (m.year ? ` (${m.year})` : "");
-    $("saverClock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   };
   step();
   saverTimer = setInterval(step, 12000);
