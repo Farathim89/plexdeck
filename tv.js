@@ -52,6 +52,18 @@ let layoutGen = 0;
 function fitLayout(p) {
   const hero = $("hero"), win = $("rowsWindow"), tabs = $("tabs");
   hero.style.top = ""; win.style.top = "";
+  // a show's page (tv.css body.series): the buttons right under its details, beside the poster,
+  // and the seasons below the poster (the buttons' row grows to reach past it)
+  const first = $("rows").firstElementChild;
+  if (first) first.style.minHeight = "";
+  if (document.body.classList.contains("series") && !document.body.classList.contains("series-down") && hero.offsetHeight) {
+    const top = hero.offsetTop + hero.offsetHeight + 12;
+    win.style.top = `${top}px`;
+    const poster = $("heroPoster");
+    // (+12: #rows inside the window; 60: the row's margin below; 24: air above the seasons' title)
+    if (first) first.style.minHeight = `${Math.max(0, hero.offsetTop + poster.offsetHeight + 24 - 60 - 12 - top)}px`;
+    return;
+  }
   if (!document.body.classList.contains("short") || document.body.classList.contains("no-hero") || !hero.offsetHeight) return;
   if (tabs.children.length && tabs.offsetHeight) {
     const min = tabs.offsetTop + tabs.offsetHeight + 18;
@@ -973,24 +985,26 @@ function cardHtml(it, kind, grid = false) {
   if (grid && kind === "posters") {
     const n = it.childCount, of = it.raw && it.raw.subtype;   // a collection: "2 movies" / "3 shows", like Plex
     const count = n == null ? "" : of === "movie" ? (n === 1 ? tr("1 movie") : tr("{n} movies", { n })) : of === "show" ? (n === 1 ? tr("1 show") : tr("{n} shows", { n })) : tr("{n} items", { n });
-    const second = it.type === "collection" ? count : (it.year || "");
-    return `<div class="card g ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(it.title)}</div><div class="label small">${esc(second)}</div></div>`;
+    const second = it.labelSmall != null ? it.labelSmall : it.type === "collection" ? count : (it.year || "");
+    return `<div class="card g ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(it.labelBelow || it.title)}</div><div class="label small">${esc(second)}</div></div>`;
   }
   const label = it.labelBelow || (it.square ? it.title : "");
-  return `<div class="card ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(label)}</div></div>`;
+  const small = it.labelSmall ? `<div class="label small">${esc(it.labelSmall)}</div>` : "";
+  return `<div class="card ${it.square ? "sq" : ""}"><div class="img">${art}${badge}${prog}</div><div class="label">${esc(label)}</div>${small}</div>`;
 }
 function buttonHtml(b) {
   return `<div class="btn ${b.on ? "on" : ""} ${b.named ? "named" : ""}">${ICON[b.icon] || ""}<span>${esc(b.label)}</span></div>`;
 }
 function rowHtml(r, i) {
   if (r.kind === "buttons") return `<div class="row brow" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div>`
-    + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "") + `</div>`;
+    + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "")
+    + (r.note ? `<p class="bnote">${esc(r.note)}</p>` : "") + `</div>`;
   if (r.kind === "options" && r.fixed) return `<div class="row fixedph" data-r="${i}"></div>`;
   if (r.kind === "options") return `<div class="row" data-r="${i}"><div class="buttons opts">${r.items.map((b) => `<div class="btn opt"><span>${esc(b.label)}</span></div>`).join("")}</div></div>`;
   if (r.kind === "track") { const t = r.items[0]; return `<div class="row trkrow" data-r="${i}"><div class="trk"><span class="n">${esc(t.n)}</span><span class="t">${esc(t.title)}</span><span class="d">${esc(t.len)}</span></div></div>`; }
   if (r.kind === "keys") return `<div class="row" data-r="${i}"><div class="strip keys">${r.items.map((k) => `<div class="key ${k.wide ? "wide" : ""}">${esc(k.label)}</div>`).join("")}</div></div>`;
   const title = r.title ? `<h3>${esc(r.title)}</h3>` : "";
-  return `<div class="row ${r.grid ? "grid" : ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
+  return `<div class="row ${r.grid ? "grid" : ""} ${r.cls || ""}" data-r="${i}">${title}<div class="strip">${r.items.map((it) => cardHtml(it, r.kind, r.grid)).join("")}</div></div>`;
 }
 // One row again (a show's buttons follow the focused episode: Watch / Resume…). Redrawing all of
 // them put every row back at its start, and they slid to where they were: it looked like scrolling.
@@ -1039,6 +1053,9 @@ function drawPage(p) {
   const blank = !p.heroItem && !p.drawHero && !p.rows.some((r) => r.items.length);
   document.body.classList.toggle("no-hero", !!((p.noHero && p.noHero()) || blank));
   $("ovMenu").hidden = !p.overflow;
+  document.body.classList.toggle("series", !!p.poster);
+  document.body.classList.toggle("series-down", !!p.poster && p.row > 0);
+  if (p.poster && $("heroPoster").getAttribute("src") !== p.poster) $("heroPoster").src = p.poster;
   $("ovMenu").classList.toggle("focus", !!p.ovFocus && !menuOpen);
   if (!p.rendered) renderRows(p);
   const all = p.allRows();
@@ -1066,7 +1083,7 @@ function drawPage(p) {
     el.classList.toggle("dim", !isFocusRow);
     // keep the focused card in view: the row slides left once you pass the middle
     if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track" && !r.grid) {   // (grids are sized to fit)
-      const step = r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248;
+      const step = r.step || (r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248);
       const contentX = 128;
       const visible = Math.floor((STAGE_W - contentX - 120) / step);
       const shift = Math.max(0, Math.min(r.col - (visible - 2), r.items.length - visible)) * step;
@@ -1174,7 +1191,7 @@ function openItem(it) {
   // Watchlist items carry Plex's online id: find the copy on your server first.
   if (it.cloud) return openWatchlistItem(it);
   if (it.type === "movie" || it.type === "video" || it.type === "clip") return showPage(moviePage(it), { push: true });
-  if (it.type === "show") return showPage(showPage_(it.key), { push: true });
+  if (it.type === "show") return showPage(seriesPage(it.key), { push: true });
   if (it.type === "season") return showPage(showPage_(it.showKey, { seasonKey: it.key }), { push: true });
   if (it.type === "episode") return showPage(showPage_(it.showKey, { seasonKey: it.seasonKey, episodeKey: it.key }), { push: true });
   if (it.type === "collection") return showPage(listPage(it.title, `/library/collections/${it.key}/children`, it), { push: true });
@@ -1547,20 +1564,31 @@ function peopleRow(m) {
     })),
   };
 }
-async function extraRows(m) {
+async function extraRows(m, { related = false } = {}) {
   const rows = [];
   const pr = peopleRow(m);
   if (pr) rows.push(pr);
   const [similar, extras] = await Promise.all([
-    api(`/library/metadata/${m.ratingKey}/similar`, { count: 20 }).catch(() => null),
+    related ? api(`/hubs/metadata/${m.ratingKey}/related`, { count: 12 }).catch(() => null)
+      : api(`/library/metadata/${m.ratingKey}/similar`, { count: 20 }).catch(() => null),
     api(`/library/metadata/${m.ratingKey}/extras`).catch(() => null),
   ]);
-  const sim = (mc(similar).Metadata || []).map(norm);
-  if (sim.length) rows.push({ kind: "posters", title: tr("More like this"), col: 0, items: sim });
+  if (related) {
+    for (const h of mc(similar).Hub || []) {
+      if (h.Metadata && h.Metadata.length) rows.push({ kind: "posters", cls: "small", step: 218, title: h.title, col: 0, items: h.Metadata.map(norm).map(smallCard) });
+    }
+  } else {
+    const sim = (mc(similar).Metadata || []).map(norm);
+    if (sim.length) rows.push({ kind: "posters", title: tr("More like this"), col: 0, items: sim });
+  }
   const ex = (mc(extras).Metadata || []).map(norm);
   if (ex.length) rows.push({ kind: "landscape", title: tr("Extras & trailers"), col: 0, items: ex });
   return rows;
 }
+
+// A small card like Plex's on a show's page: the name, then its seasons (a show) or its year
+const smallCard = (it) => ({ ...it, labelBelow: it.title,
+  labelSmall: it.type === "show" ? (it.childCount === 1 ? tr("1 season") : it.childCount ? tr("{n} seasons", { n: it.childCount }) : "") : String(it.year || "") });
 
 // The buttons on a details page, like Plex's: Play (or Resume) with its name, then round ones —
 // play from the start, watched, and ⋯ for the rest (audio & subtitles, add to playlist).
@@ -1591,7 +1619,7 @@ function detailButtons(it, after) {
       ...(it.offset ? [{ label: tr("Play from start"), action: () => playItem(it, false) }] : []),
       { label: tr("Audio & subtitles"), action: () => tracksDialog(it, after) },
       { label: tr("Add to Playlist"), action: () => showPage(addToPlaylistPage(it), { push: true }) },
-      ...(it.type === "episode" && it.showKey ? [{ label: tr("Go to show"), action: () => showPage(showPage_(it.showKey), { push: true }) }] : []),
+      ...(it.type === "episode" && it.showKey ? [{ label: tr("Go to show"), action: () => showPage(seriesPage(it.showKey), { push: true }) }] : []),
     ],
   }) });
   return b;
@@ -1637,7 +1665,65 @@ function moviePage(item) {
   return p;
 }
 
-// ---- a show: season tabs, episode strip, buttons ------------------------------------
+// ---- a show, like Plex: its poster and details, its buttons with the summary under them, then
+// its seasons as a grid ("Season 1 · 13 episodes"; OK opens its episodes), the cast, and the
+// server's related rows (Related Shows, More from <network>, More with <actor>), extras. Down
+// from the buttons the details scroll away, like Plex's page does; the show's background stays.
+function seriesPage(showKey) {
+  const p = makePage({ pinned: false, pinFrom: 1 });
+  let more = null, deck = null;
+  p.focused = () => null;   // the hero (and its artwork) stay the show's
+  // Watch / Resume: the episode you're on (Plex's On Deck), else the first one not watched yet
+  async function playNext() {
+    let ep = deck;
+    if (!ep) {
+      const eps = (mc(await api(`/library/metadata/${showKey}/allLeaves`)).Metadata || []).map(norm);
+      ep = eps.find((e) => !watched(e)) || eps[0];
+    }
+    if (ep) playItem(ep, !!ep.offset);
+  }
+  const refresh = async () => {
+    const [meta, kids] = await Promise.all([
+      api(`/library/metadata/${showKey}`, { includeOnDeck: 1 }),
+      api(`/library/metadata/${showKey}/children`),
+    ]);
+    const m = (mc(meta).Metadata || [])[0];
+    if (!m) throw new Error("no show");
+    const show = norm(m);
+    p.heroItem = { ...show, details: true };
+    p.poster = show.poster ? img(show.poster, 390, 585) : "";
+    if (!more) more = await extraRows(m, { related: true }).catch(() => []);
+    if (m.theme && page === p) playTheme(showKey, m.theme);
+    p.themeFor = showKey;
+    const d = m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
+    deck = d ? norm(d) : null;
+    const seasons = (mc(kids).Metadata || []).filter((x) => x.type === "season").map(norm).map((x) => ({
+      ...x, labelBelow: x.sub || tr("Season {n}", { n: x.raw.index }),
+      labelSmall: x.leafCount === 1 ? tr("1 episode") : x.leafCount ? tr("{n} episodes", { n: x.leafCount }) : "",
+    }));
+    // the grid: 8 across at 100 % (the cards 190px, 218px apart); Up / Down keep the column
+    const per = perRow(218), old = p.rows.filter((r) => r.seasons);
+    const grid = [];
+    for (let i = 0; i < seasons.length; i += per) {
+      grid.push({ kind: "posters", grid: true, seasons: true, cls: "small", cw: 190, title: i ? "" : tr("Seasons"),
+        col: old[grid.length] ? Math.min(old[grid.length].col, Math.min(per, seasons.length - i) - 1) : 0, items: seasons.slice(i, i + per) });
+    }
+    // at first the first real season (not Specials), as Plex starts from it
+    if (!old.length && grid[0] && !(grid[0].items[0].raw.index > 0) && grid[0].items.length > 1) grid[0].col = 1;
+    const b = detailButtons(show, refresh);
+    b[0] = { icon: "play", label: deck && deck.offset ? tr("Resume") : tr("Watch"), named: true, action: () => playNext().catch(() => toast(tr("Couldn't play this"))) };
+    const keepRow = p.rows.length ? p.row : 0;
+    p.rows = [{ kind: "buttons", col: 0, items: b, note: show.summary }, ...grid, ...more];
+    p.row = Math.min(keepRow, p.rows.length - 1);
+    if (page === p) { p.rendered = false; drawPage(p); }
+  };
+  busy(true);
+  refresh().catch(() => showError(tr("Couldn't load this show."))).finally(() => busy(false));
+  p.refresh = refresh;
+  return p;
+}
+
+// ---- a season: season tabs, episode strip, buttons ------------------------------------
 function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   const tabs = { kind: "tabs", items: [], col: 0, selected: 0 };
   const p = makePage({ tabs, pinned: false, pinFrom: 2 });
