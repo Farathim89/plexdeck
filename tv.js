@@ -1016,8 +1016,10 @@ function drawPage(p) {
   if (!p.isPicker) { document.body.classList.remove("who-mode"); $("who").hidden = true; }
   document.body.classList.toggle("no-menu", !!p.noMenu);
   document.body.classList.toggle("details", !!(p.heroItem && p.heroItem.details));
-  // library grids (Library / Collections / Categories tabs) have no hero, like Plex
-  document.body.classList.toggle("no-hero", !!(p.noHero && p.noHero()));
+  // library grids (Library / Collections / Categories tabs) have no hero, like Plex; nor has a page
+  // with nothing on it (it showed the last page's)
+  const blank = !p.heroItem && !p.drawHero && !p.rows.some((r) => r.items.length);
+  document.body.classList.toggle("no-hero", !!((p.noHero && p.noHero()) || blank));
   $("ovMenu").hidden = !p.overflow;
   $("ovMenu").classList.toggle("focus", !!p.ovFocus && !menuOpen);
   if (!p.rendered) renderRows(p);
@@ -1094,7 +1096,7 @@ function move(dir) {
   const all = page.allRows();
   if (!all[page.row] || !all[page.row].items.length) settleRow(page);
   const r = all[page.row];
-  if (!r) return;
+  if (!r) { if (dir === "Left") openMenu(); return; }   // a page with nothing on it
   if (dir === "Left") {
     if (r.col > 0) r.col--;   // tabs open with OK, like Plex
     else if (r.kind !== "buttons" || r.col === 0) openMenu();
@@ -1209,7 +1211,7 @@ function homePage() {
     const cw = mc(cont).Hub || [];
     rows.push(...hubRows(cw));
     rows.push(...hubRows((mc(hubs).Hub || []).filter((h) => !/continue|on deck/i.test(h.title) || !cw.length)));
-    return rows;
+    return rows.length ? rows : [{ kind: "posters", title: tr("Nothing to show here right now"), col: 0, items: [] }];
   });
   return p;
 }
@@ -1262,7 +1264,7 @@ function libraryPage(sec) {
   const kept = libChoices(sec);
   const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Browse") }, { label: tr("Collections") }, { label: tr("Categories") }], col: kept.tab, selected: kept.tab };
   const p = makePage({ tabs });
-  p.noHero = () => tabs.selected > 0 || !p.rows.some((r) => r.items.length);   // (an empty Recommended too)
+  p.noHero = () => tabs.selected > 0;
   let sort = kept.sort, show = kept.show;
   const remember = () => kept.save({ tab: tabs.selected, sort: SORTS[sort].v, show });
   // What each tab showed last time: switching back shows it at once (then refreshes quietly).
@@ -1426,7 +1428,7 @@ function libraryPage(sec) {
     const rows = [];
     const n = perRow(368);   // 4 at 100 % text size
     for (let i = 0; i < tiles.length; i += n) rows.push({ kind: "tiles", grid: true, title: i === 0 ? tr("Genres") : "", col: 0, items: tiles.slice(i, i + n) });
-    return rows;
+    return rows.length ? rows : [{ kind: "posters", title: tr("Nothing to show here right now"), col: 0, items: [] }];
   }, { ...o, done: keep(3) });
   const loaders = [loadRecommended, loadLibrary, loadCollections, loadCategories];
   p.onTab = (i) => {
@@ -1921,7 +1923,7 @@ function providerPage(kind) {
       if (!h.key) return h;
       try { const r = mc(await desktop.tvProvider(`${P.base}${h.key}${h.key.includes("?") ? "&" : "?"}count=20`)); return { ...h, Metadata: r.Metadata || [] }; } catch { return h; }
     }));
-    return filled.filter((h) => h.Metadata && h.Metadata.length).map((h) => ({
+    const rows = filled.filter((h) => h.Metadata && h.Metadata.length).map((h) => ({
       kind: kind === "epg" ? "landscape" : "posters", title: h.title, col: 0,
       items: h.Metadata.map((m) => {
         const it = norm(m);
@@ -1941,6 +1943,7 @@ function providerPage(kind) {
         return it;
       }),
     }));
+    return rows.length ? rows : [{ kind: "posters", title: tr("Nothing to show here right now"), col: 0, items: [] }];
   });
   return p;
 }
