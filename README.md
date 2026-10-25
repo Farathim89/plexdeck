@@ -38,7 +38,8 @@ Plex app on a Shield / Fire TV / Google TV:
 - Live TV (Plex's free channels) and Discover: a title's own page with *Watch free*,
   its trailer, your Watchlist and where to watch it
 - Plex Home profiles with PIN
-- theme music on show pages and an artwork screensaver
+- theme music on show pages and an artwork screensaver (pick its libraries in Settings →
+  Experience; until you do, it shows just the clock)
 
 Switch with the **PC | TV** buttons in the title bar or **F10** — or let PlexDeck switch
 by itself when you pick up a controller or move the mouse.
