@@ -1269,7 +1269,13 @@ function libraryPage(sec) {
   const tabRows = [];
   const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
   const loadRecommended = (o = {}) => loadInto(p, async () => {
-    const rows = hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []);
+    const hubs = mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || [];
+    // A TV library hidden from Home (Plex: "Exclude from home screen"): the server fills its
+    // Recently Added from Home's list, which leaves the library out, so it comes back empty. Fill it
+    // with the shows by their newest episode (the same order, one card a show).
+    const added = hubs.find((h) => /^tv\.recentlyadded/.test(h.hubIdentifier || "") && !(h.Metadata && h.Metadata.length));
+    if (added) added.Metadata = mc(await api(`/library/sections/${sec.key}/all`, { type: 2, sort: "episode.addedAt:desc", "X-Plex-Container-Start": 0, "X-Plex-Container-Size": 20 }).catch(() => null)).Metadata;
+    const rows = hubRows(hubs);
     return rows.length ? rows : [{ kind: "posters", title: tr("Nothing recommended in this library yet"), col: 0, items: [] }];
   }, { ...o, done: keep(0) });
   // The Library tab pages in 84 titles at a time; the old grid stays up until the first batch is in.
