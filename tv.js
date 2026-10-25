@@ -1092,6 +1092,7 @@ function move(dir) {
   }
   if (!page) return;
   const all = page.allRows();
+  if (!all[page.row] || !all[page.row].items.length) settleRow(page);
   const r = all[page.row];
   if (!r) return;
   if (dir === "Left") {
@@ -1261,13 +1262,16 @@ function libraryPage(sec) {
   const kept = libChoices(sec);
   const tabs = { kind: "tabs", items: [{ label: tr("Recommended") }, { label: tr("Browse") }, { label: tr("Collections") }, { label: tr("Categories") }], col: kept.tab, selected: kept.tab };
   const p = makePage({ tabs });
-  p.noHero = () => tabs.selected > 0;
+  p.noHero = () => tabs.selected > 0 || !p.rows.some((r) => r.items.length);   // (an empty Recommended too)
   let sort = kept.sort, show = kept.show;
   const remember = () => kept.save({ tab: tabs.selected, sort: SORTS[sort].v, show });
   // What each tab showed last time: switching back shows it at once (then refreshes quietly).
   const tabRows = [];
   const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
-  const loadRecommended = (o = {}) => loadInto(p, async () => hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []), { ...o, done: keep(0) });
+  const loadRecommended = (o = {}) => loadInto(p, async () => {
+    const rows = hubRows(mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || []);
+    return rows.length ? rows : [{ kind: "posters", title: tr("Nothing recommended in this library yet"), col: 0, items: [] }];
+  }, { ...o, done: keep(0) });
   // The Library tab pages in 84 titles at a time; the old grid stays up until the first batch is in.
   let libLoad = null;
   // posters across the Browse grid (6 at 100 % text size; the A–Z bar keeps the right edge)
@@ -1425,6 +1429,7 @@ function libraryPage(sec) {
     if (saved) {
       p.rows = saved.rows; p.loadMore = saved.loadMore;
       p.row = saved.rows.length ? 1 : 0;
+      settleRow(p);
       if (page === p) { p.rendered = false; drawPage(p); }
       // the Library grid only refreshes from the top, so leave it be once you've paged down it
       if (i !== 1) loaders[i]({ quiet: true });
@@ -1468,12 +1473,21 @@ async function loadInto(p, fetchRows, { quiet = false, done = null } = {}) {
     p.rows = rows;
     if (p.row >= p.allRows().length) p.row = p.tabs ? 1 : 0;
     if (!quiet && p.tabs && p.row === 0) p.row = rows.length ? 1 : 0;
+    settleRow(p);
     if (page === p) { p.rendered = false; drawPage(p); }
   } catch (err) {
     if (seq !== p.loadSeq) return;
     p.pending = false;
     if (!quiet) showError(tr("Couldn't load this from your Plex server."), tr("Try again"), () => loadInto(p, fetchRows, { done }));
   } finally { if (!quiet) busy(false); }
+}
+// The focus on a row that's there and has something to pick: the first such row below the tabs,
+// else the tabs (an empty tab left it on a row that wasn't there, and no key moved it).
+function settleRow(p) {
+  const all = p.allRows();
+  if (all[p.row] && all[p.row].items.length) return;
+  const i = all.findIndex((r, k) => k >= (p.tabs ? 1 : 0) && r.items.length);
+  p.row = i >= 0 ? i : 0;
 }
 function sameRows(a, b) {
   try {
