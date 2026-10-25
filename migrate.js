@@ -36,6 +36,7 @@ const DEFAULTS = {
   startWithWindows: false,   // starts hidden in the tray when you sign in to Windows
   startMode: "last",         // "last" | "pc" | "tv"
   autoMode: true,            // a controller → TV mode by itself
+  tvKeys: {},                // TV mode's key bindings you changed: { action: [keys] } (tv.js KEY_ACTIONS)
   heroTitle: "logo",        // TV mode titles: "logo" (Plex's logo artwork) or "text"
   askUserAtStart: true,      // TV mode starts on "Who's watching?" when you have Plex Home users (like Plex)
   pcPlayerEngine: "mpv",     // PC mode: "mpv" hands your server's videos to the native player, "plex" keeps Plex's player

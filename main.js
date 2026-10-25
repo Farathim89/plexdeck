@@ -729,9 +729,10 @@ const SETTING_NAMES = {
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
   preferredAudioLang: N_("Audio language"), autoSubtitles: N_("Subtitles on by themselves"), preferredSubtitleLang: N_("Subtitle language"),
   preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), themeVolume: N_("Theme music volume"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), language: N_("Language"),
-  musicVisualiser: N_("Music visualiser"),
+  musicVisualiser: N_("Music visualiser"), tvKeys: N_("Key bindings"),
 };
-const showValue = (k, v) => (k === "theme" && THEMES[v] ? tr(THEMES[v].label) : typeof v === "boolean" ? (v ? tr("on") : tr("off")) : v === "" ? tr("(default)") : String(v));
+const showValue = (k, v) => (k === "theme" && THEMES[v] ? tr(THEMES[v].label) : typeof v === "boolean" ? (v ? tr("on") : tr("off")) : v === "" ? tr("(default)")
+  : k === "tvKeys" ? (Object.keys(v || {}).length ? tr("{n} changed", { n: Object.keys(v).length }) : tr("(default)")) : String(v));
 async function exportSettings() {
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     title: tr("Export PlexDeck settings"), defaultPath: path.join(app.getPath("documents"), "PlexDeck settings.json"),
@@ -756,7 +757,7 @@ async function importSettings() {
   if (!data || data.app !== "PlexDeck" || !data.settings || typeof data.settings !== "object") return tr("That file isn't a PlexDeck settings file.");
   // Only known settings of the right kind, and only the ones that change something.
   const changes = Object.entries(data.settings).filter(([k, v]) =>
-    k in DEFAULTS && !NOT_EXPORTED.has(k) && typeof v === typeof DEFAULTS[k] && v !== config[k] && (k !== "theme" || THEMES[v]));
+    k in DEFAULTS && !NOT_EXPORTED.has(k) && typeof v === typeof DEFAULTS[k] && v !== null && JSON.stringify(v) !== JSON.stringify(config[k]) && (k !== "theme" || THEMES[v]));
   if (!changes.length) return tr("Nothing to change: these are the settings you already have.");
   const lines = changes.map(([k, v]) => `${SETTING_NAMES[k] ? tr(SETTING_NAMES[k]) : k}: ${showValue(k, config[k])} → ${showValue(k, v)}`);
   const { response } = await dialog.showMessageBox(win, {
