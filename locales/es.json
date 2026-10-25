@@ -467,6 +467,7 @@
   "Reorder": "Reordenar",
   "Request an update for the content of {name}.": "Solicita una actualización del contenido de {name}.",
   "Reset All Customizations": "Restablecer todas las personalizaciones",
+  "Reset your sidebar order and the entries you unpinned?": "¿Restablecer el orden de la barra lateral y las entradas que quitaste?",
   "Restore the default sidebar: its order and the entries you unpinned.": "Restaura la barra lateral: su orden y las entradas que quitaste.",
   "Scan Library Files": "Escanear archivos de la biblioteca",
   "Scanning {name}…": "Escaneando {name}…",

@@ -270,28 +270,26 @@ const ICON = {
 // You at the top (picture + name: Switch user / Theme / Settings), Search, Home, Watchlist, your
 // libraries, Playlists, Live TV, Movies & Shows on Plex, More, Settings. Left on an entry selects
 // its ⋮, which opens its Actions (Unpin from sidebar, Reorder, Scan Library Files). Unpinned
-// entries live under More. The order is the same for every Plex user on this PC; pins are kept per user.
+// entries live under More. Order and pins are kept per Plex user on this PC.
 let menuHandle = false;   // the ⋮ beside the focused entry has focus
 let reorder = null;       // { before: [ids] } while moving an entry
 let moreMode = false;     // the menu shows More's list
 const userKey = (k) => `${k}:${(S && S.user && S.user.name) || ""}`;
 const readList = (k) => { try { const v = JSON.parse(localStorage.getItem(userKey(k)) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const writeList = (k, v) => { try { localStorage.setItem(userKey(k), JSON.stringify(v)); } catch {} };
-// Until 5.3.26 the order was per user too: until one is saved for everyone, yours (or another user's) counts.
+// 5.3.26 kept one order for everyone ("tvMenuOrder"): it goes to the user who comes first, as their own.
 function readOrder() {
   try {
-    const v = JSON.parse(localStorage.getItem("tvMenuOrder"));
-    if (Array.isArray(v)) return v;
-    const mine = readList("tvMenuOrder");
-    if (mine.length) return mine;
-    for (const k of Object.keys(localStorage).filter((x) => x.startsWith("tvMenuOrder:"))) {
-      const o = JSON.parse(localStorage.getItem(k));
-      if (Array.isArray(o) && o.length) return o;
+    const shared = localStorage.getItem("tvMenuOrder");
+    if (shared !== null && S && S.user && S.user.name) {
+      const v = JSON.parse(shared);
+      if (Array.isArray(v)) writeList("tvMenuOrder", v);
+      localStorage.removeItem("tvMenuOrder");
     }
   } catch {}
-  return [];
+  return readList("tvMenuOrder");
 }
-const writeOrder = (v) => { try { localStorage.setItem("tvMenuOrder", JSON.stringify(v)); } catch {} };
+const writeOrder = (v) => writeList("tvMenuOrder", v);
 const FIXED = new Set(["profile", "update", "mylists", "search", "home", "more", "back"]);   // can't be moved or unpinned
 const LIB_ORDER = { movie: 0, show: 1, artist: 2, photo: 3 };
 function allEntries() {
@@ -1239,9 +1237,15 @@ function homePage() {
 function manageHome() {
   Dialog.open({
     layout: "side", title: tr("Manage Home Screen"), icon: "plexmark",
-    items: [{ label: tr("Reset All Customizations"), desc: tr("Restore the default sidebar: its order and the entries you unpinned."),
-      action: () => { writeOrder([]); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } }],
+    items: [{ label: tr("Reset All Customizations"), desc: tr("Restore the default sidebar: its order and the entries you unpinned."), action: confirmReset }],
   });
+}
+// It's only Up, OK, OK from Home's top row: ask first, with Cancel selected.
+function confirmReset() {
+  Dialog.open({ layout: "list", title: tr("Reset your sidebar order and the entries you unpinned?"), items: [
+    { label: tr("Cancel"), action: () => {} },
+    { label: tr("Reset All Customizations"), action: () => { writeOrder([]); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } },
+  ] });
 }
 // Rows of 7 posters (a grid you move through like rows).
 function gridRows(items, title) {
@@ -1837,14 +1841,15 @@ function userPickerPage(atStart, focusUser = null) {
     if (!u) return name !== "Back";
     if (zone === "cards") {
       if (name === "Left" || name === "Right") { const n = at + (name === "Left" ? -1 : 1); if (n >= 0 && n < users.length) { at = n; pin = ""; wrong = false; } }
-      else if (name === "Down" && u.protected) { zone = "pad"; r = 0; c = 0; }
+      // the PIN pad opens when you pick a user with a PIN (OK), and closes again when you leave it
       else if (name === "OK") { if (u.protected) { zone = "pad"; r = 0; c = 0; } else choose(u); }
       else if (name === "Back") { if (atStart || stack.length) { leave(); return true; } return false; }
       else return true;
     } else {
-      if (name === "Back") { zone = "cards"; }
+      const toCards = () => { zone = "cards"; pin = ""; wrong = false; };
+      if (name === "Back") toCards();
       else if (name === "OK") { press(c === 3 ? "⌫" : PIN_PAD[r][c]); return true; }
-      else if (name === "Up") { if (c === 3) zone = "cards"; else if (r === 0) zone = "cards"; else r--; }
+      else if (name === "Up") { if (c === 3 || r === 0) toCards(); else r--; }
       else if (name === "Down") { if (c < 3 && r < 3 && PIN_PAD[r + 1][c]) r++; else if (c < 3 && r === 2) { r = 3; c = 1; } }
       else if (name === "Left") { if (c === 3) { c = 2; if (!PIN_PAD[r][c]) c = 1; } else if (c > 0 && PIN_PAD[r][c - 1]) c--; }
       else if (name === "Right") { if (c < 2 && PIN_PAD[r][c + 1]) c++; else c = 3; }
@@ -1872,7 +1877,7 @@ function userPickerPage(atStart, focusUser = null) {
     if (w > STAGE_W - 160 && el) x = STAGE_W / 2 - (el.offsetLeft + el.offsetWidth / 2);   // the chosen one in the middle
     row.style.transform = `translateX(${x}px)`;
     const pad = $("whoPad"), u = cur();
-    pad.hidden = !(u && u.protected);
+    pad.hidden = !(u && u.protected && zone === "pad");
     if (!pad.hidden && el) {
       const centre = x + el.offsetLeft + el.offsetWidth / 2;
       pad.style.left = `${centre - pad.offsetWidth / 2}px`;   // (narrower at a bigger Text Size)
