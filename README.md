@@ -42,7 +42,9 @@ Plex app on a Shield / Fire TV / Google TV:
   Experience; until you do, it shows just the clock)
 
 Switch with the **PC | TV** buttons in the title bar or **F10** — or let PlexDeck switch
-by itself when you pick up a controller or move the mouse.
+to TV mode by itself when you pick up a controller. TV mode works with the keyboard and the
+mouse too: click to pick, right-click (or **C**) for a title's menu, **Esc** for the quit menu
+(Settings → Advanced → Keyboard & Mouse lists every key).
 
 ## Native player (mpv)
 

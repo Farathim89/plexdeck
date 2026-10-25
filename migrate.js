@@ -35,7 +35,7 @@ const DEFAULTS = {
   closeToTray: true,         // ✕ hides to the tray, so music keeps playing
   startWithWindows: false,   // starts hidden in the tray when you sign in to Windows
   startMode: "last",         // "last" | "pc" | "tv"
-  autoMode: true,            // controller → TV mode, mouse → PC mode by itself
+  autoMode: true,            // a controller → TV mode by itself
   heroTitle: "logo",        // TV mode titles: "logo" (Plex's logo artwork) or "text"
   askUserAtStart: true,      // TV mode starts on "Who's watching?" when you have Plex Home users (like Plex)
   pcPlayerEngine: "mpv",     // PC mode: "mpv" hands your server's videos to the native player, "plex" keeps Plex's player

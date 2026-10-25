@@ -458,7 +458,8 @@ function menuOk() {
   if (menuHandle) return menuActions(m);
   if (moreMode && m.id !== "back") { moreMode = false; buildMenu(); }
   if (!m.live) { m.open(); if (m.id === "search") closeMenu(); return; }
-  if (m.id !== currentMenuId) { currentMenuId = m.id; stack.length = 0; m.open(); }
+  // (the one you're in, but further in, a show say: back to its own page, like Plex)
+  if (m.id !== currentMenuId || stack.length) { currentMenuId = m.id; stack.length = 0; m.open(); }
   closeMenu();
 }
 function menuBack() {
@@ -467,9 +468,17 @@ function menuBack() {
   // Back in the sidebar: the focus jumps to Home (nothing opens until OK); Back on Home opens the Home page.
   const home = menuItems.findIndex((m) => m.id === "home");
   if (menuIndex !== home) { menuIndex = home; drawMenu(); return; }
-  // on Home: Back again opens the Home page
-  if (currentMenuId !== "home") { currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); }
-  closeMenu();
+  // on Home: Back again opens the Home page; with Home open already, it asks whether to leave (like Plex)
+  if (currentMenuId !== "home") { currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); closeMenu(); return; }
+  askQuit();
+}
+// The quit menu (Esc, or Back on Home in the sidebar): PC mode or quit PlexDeck, Cancel selected
+function askQuit() {
+  Dialog.open({ layout: "list", kind: "quit", title: tr("Leave PlexDeck?"), items: [
+    { label: tr("Cancel"), action: () => {} },
+    { label: tr("Switch to PC mode"), action: () => { closeMenu(); desktop.tvOpenPc(""); } },
+    { label: tr("Quit PlexDeck"), action: () => desktop.tvQuit() },
+  ] });
 }
 // Keys while the menu is open that aren't plain up / down: the ⋮ handle and Reorder.
 function menuKey(name) {
@@ -604,7 +613,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
       action: () => pushPanel({ title: tr("Screensaver Libraries"), intro: tr("The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock."),
         rows: () => saverChoices().map((sec) => ({ label: sec.title, toggle: () => saverLibs().includes(sec.key), action: () => toggleSaverLib(sec.key) })) }) },
     prefRow(tr("Start In"), "startMode", [{ v: "last", l: tr("The mode I used last") }, { v: "pc", l: tr("PC mode") }, { v: "tv", l: tr("TV mode") }]),
-    prefRow(tr("Switch Mode by Itself"), "autoMode", "toggle", tr("Controller → TV mode, mouse → PC mode")),
+    prefRow(tr("Switch Mode by Itself"), "autoMode", "toggle", tr("A controller switches to TV mode")),
   ] }) },
   { label: tr("Player Experience"), action: () => pushPanel({ title: tr("Player Experience"), rows: () => [
     prefRow(tr("Auto Play"), "autoPlay", "toggle", tr('Play "Up Next" videos automatically')),
@@ -657,6 +666,18 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
   { label: tr("Advanced"), action: () => pushPanel({ title: tr("Advanced"), rows: () => [
     prefRow(tr("What PlexDeck Shows"), "source", [{ v: "app", l: tr("Everything Plex has") }, { v: "server", l: tr("Just my server") }]),
     prefRow(tr("Game Controller"), "controller", "toggle"),
+    { label: tr("Keyboard & Mouse"), action: () => pushPanel({ title: tr("Keyboard & Mouse"), rows: () => [
+      { label: "Enter · Space", sub: tr("Select") },
+      { label: "Backspace", sub: tr("Back") },
+      { label: "Esc", sub: tr("The quit menu: PC mode or quit PlexDeck") },
+      { label: "C · Delete · ≣", sub: tr("A title's menu, like Triangle / Y") },
+      { label: "M", sub: tr("Settings, like Options / Start") },
+      { label: "Page Up · Page Down", sub: tr("Player: previous / next episode") },
+      { label: ", · .", sub: tr("Player: skip back / forward") },
+      { label: "+ · −", sub: tr("Player: volume") },
+      { label: "F10", sub: tr("PC mode") },
+      { label: tr("Mouse"), sub: tr("Click to pick, right-click for a title's menu, the wheel moves") },
+    ] }) },
     prefRow(tr("Start Maximised"), "startMaximized", "toggle"),
     prefRow(tr("Keep Running in the Tray"), "closeToTray", "toggle"),
     { label: tr("All PlexDeck Settings"), sub: tr("Backup, fonts and more (PC view)"), action: () => { closeMenu(); desktop.tvSettings(); } },
@@ -780,11 +801,11 @@ function drawProfPanel() {
   box.innerHTML = (pn.title ? `<h2>${esc(pn.title)}</h2>` : "") + (pn.intro ? `<p class="intro">${esc(pn.intro)}</p>` : "")
     + `<div class="pplist">` + rows.map((r, i) => {
       if (r.header) return `<h3>${esc(r.header)}</h3>`;
-      const focus = profPanel && i === pn.i ? "focus" : "";
+      const focus = profPanel && i === pn.i && (selectable(r) || r.box) ? "focus" : "";   // (a list of facts has none)
       const lead = r.face ? `<img class="pface" src="${esc(/^https?:/.test(r.face) ? r.face : img(r.face, 96, 96))}" alt="">` : r.icon ? ICON[r.icon] || "" : "";
-      if (r.box) return `<div class="pp stepbox ${focus}"><span class="t">${esc(r.label)}</span><span class="box">‹  ${esc(val(r.box))}  ›</span></div>`;
+      if (r.box) return `<div class="pp stepbox ${focus}" data-i="${i}"><span class="t">${esc(r.label)}</span><span class="box">‹  ${esc(val(r.box))}  ›</span></div>`;
       const right = r.toggle ? `<i class="sw ${val(r.toggle) ? "on" : ""}"></i>` : r.radio ? `<i class="rd ${val(r.radio) ? "on" : ""}"></i>` : r.value ? `<span class="v">${esc(val(r.value))}</span>` : "";
-      return `<div class="pp ${focus} ${selectable(r) ? "" : "info"}">${lead}<span class="t">${esc(r.label)}${r.sub ? `<small>${esc(val(r.sub))}</small>` : ""}</span>${right}</div>`;
+      return `<div class="pp ${focus} ${selectable(r) ? "" : "info"}" data-i="${i}">${lead}<span class="t">${esc(r.label)}${r.sub ? `<small>${esc(val(r.sub))}</small>` : ""}</span>${right}</div>`;
     }).join("") + `</div>`;
   // keep the focused row in view
   const list = box.querySelector(".pplist"), el = list && list.querySelector(".pp.focus");
@@ -841,7 +862,8 @@ const Dialog = (() => {
     else return;
     draw();
   }
-  return { open, close, act, isOpen: () => !!cur };
+  function pick(i) { if (cur && cur.items[i]) { cur.i = i; act("OK"); } }
+  return { open, close, act, pick, isOpen: () => !!cur, kind: () => cur && cur.kind };
 })();
 
 // ---- Audio & subtitles, the TV way (like PASTA; the logic is tracks-core.js, shared with the PC
@@ -1077,7 +1099,7 @@ function drawPage(p) {
   p.rows.forEach((r, ri) => {
     const el = r.fixed ? $("libBar") : rowEls[ri];
     if (!el) return;
-    const items = r.kind === "track" ? el.querySelectorAll(".trk") : r.kind === "buttons" || r.kind === "options" ? el.querySelectorAll(".btn") : r.kind === "keys" ? el.querySelectorAll(".key") : el.querySelectorAll(".card");
+    const items = el.querySelectorAll(rowItemSel(r));
     const isFocusRow = !menuOpen && !p.ovFocus && !p.azFocus && all[p.row] === r;
     items.forEach((c, ci) => c.classList.toggle("focus", isFocusRow && ci === r.col));
     el.classList.toggle("dim", !isFocusRow);
@@ -1214,6 +1236,42 @@ desktop.onNativeFailed((it) => { nativePlaying = false; if (it && it.key) Player
 async function setWatched(it, on) {
   await api(on ? "/:/scrobble" : "/:/unscrobble", { key: it.key, identifier: "com.plexapp.plugins.library" }).catch(() => {});
   dataVer++;   // the page you're on refreshes itself; the others when you go back to them
+}
+// Mark as watched / unwatched. A whole show or season (all its episodes) asks first, Cancel selected.
+function markWatched(it, on, after) {
+  const go = async () => { await setWatched(it, on); if (after) after(); };
+  if (it.type !== "show" && it.type !== "season") return go();
+  const name = it.type === "season" ? `${it.title} · ${it.labelBelow || it.sub || ""}` : it.title;
+  Dialog.open({ layout: "list", title: on ? tr("Mark all of {name} as watched?", { name }) : tr("Mark all of {name} as unwatched?", { name }), items: [
+    { label: tr("Cancel"), action: () => {} },
+    { label: on ? tr("Mark as watched") : tr("Mark as unwatched"), action: go },
+  ] });
+}
+// A show or season: the episode to watch (the first one not watched yet, else the first)
+async function nextEpisodeOf(it) {
+  const eps = (mc(await api(`/library/metadata/${it.key}/${it.type === "show" ? "allLeaves" : "children"}`)).Metadata || []).map(norm);
+  return eps.find((e) => !watched(e)) || eps[0] || null;
+}
+// Y (Triangle), C / Delete / the menu key, or a right-click on a title: what you can do with it, like
+// Plex's ⋯ menu (a season: watch it, mark it watched…). `extra`: the page's own (a playlist: remove).
+function itemMenu(it, extra = []) {
+  const known = it && it.key && !it.cloud && ["movie", "episode", "show", "season"].includes(it.type);
+  if (!known && !extra.length) return;
+  const many = known && (it.type === "show" || it.type === "season");
+  const after = () => { if (page) freshen(page); };
+  const items = !known ? [] : [
+    { label: !many && it.offset ? tr("Resume") : tr("Watch"), action: async () => {
+      const ep = many ? await nextEpisodeOf(it).catch(() => null) : it;
+      if (ep) playItem(ep, !!ep.offset); else toast(tr("Couldn't play this"));
+    } },
+    ...(!many && it.offset ? [{ label: tr("Play from start"), action: () => playItem(it, false) }] : []),
+    { label: watched(it) ? tr("Mark as unwatched") : tr("Mark as watched"), action: () => markWatched(it, !watched(it), after) },
+    { label: tr("Audio & subtitles"), action: () => tracksDialog(it, after) },
+    { label: tr("Add to Playlist"), action: () => showPage(addToPlaylistPage(it), { push: true }) },
+    ...((it.type === "episode" || it.type === "season") && it.showKey && !(page && page.showKey === it.showKey) ? [{ label: tr("Go to show"), action: () => showPage(seriesPage(it.showKey), { push: true }) }] : []),
+  ];
+  const name = !it ? "" : it.type === "episode" ? `${it.title} · ${it.epTitle}` : it.type === "season" ? `${it.title} · ${it.labelBelow || it.sub || ""}` : it.title;
+  Dialog.open({ layout: "list", title: name, items: [...items, ...extra] });
 }
 
 // ---- Home ------------------------------------------------------------------------------
@@ -1612,7 +1670,7 @@ function detailButtons(it, after) {
   }) });
   const isW = watched(it);
   b.push({ icon: isW ? "checked" : "check", label: isW ? tr("Mark as unwatched") : tr("Mark as watched"),
-    action: async () => { await setWatched(it, !isW); after(); } });
+    action: () => markWatched(it, !isW, after) });
   b.push({ icon: "dots", label: tr("More"), action: () => Dialog.open({
     layout: "list", title: it.type === "episode" ? `${it.title} · ${it.epTitle}` : it.title,
     items: [
@@ -1671,15 +1729,12 @@ function moviePage(item) {
 // from the buttons the details scroll away, like Plex's page does; the show's background stays.
 function seriesPage(showKey) {
   const p = makePage({ pinned: false, pinFrom: 1 });
+  p.showKey = showKey;   // (a season's menu here has no "Go to show")
   let more = null, deck = null;
   p.focused = () => null;   // the hero (and its artwork) stay the show's
   // Watch / Resume: the episode you're on (Plex's On Deck), else the first one not watched yet
   async function playNext() {
-    let ep = deck;
-    if (!ep) {
-      const eps = (mc(await api(`/library/metadata/${showKey}/allLeaves`)).Metadata || []).map(norm);
-      ep = eps.find((e) => !watched(e)) || eps[0];
-    }
+    const ep = deck || await nextEpisodeOf({ key: showKey, type: "show" });
     if (ep) playItem(ep, !!ep.offset);
   }
   const refresh = async () => {
@@ -1918,6 +1973,7 @@ function userPickerPage(atStart, focusUser = null) {
     if (pin.length === 4) choose(u, pin);
   };
   p.type = (k) => { if (cur() && cur().protected) { zone = "pad"; press(k); } };
+  p.hasPin = () => pin.length > 0;
   p.wrong = () => {
     pin = ""; wrong = true; p.drawHero();
     const n = document.querySelector(".wc.focus .wname"); if (n) { n.classList.remove("shake"); void n.offsetWidth; n.classList.add("shake"); }
@@ -1941,6 +1997,12 @@ function userPickerPage(atStart, focusUser = null) {
       else if (name === "Right") { if (c < 2 && PIN_PAD[r][c + 1]) c++; else c = 3; }
     }
     p.drawHero();
+    return true;
+  };
+  p.onClick = (el) => {
+    const card = el.closest("#whoRow .wc"), key = el.closest("#whoPad .pk");
+    if (card) { at = [...card.parentNode.children].indexOf(card); pin = ""; wrong = false; zone = "cards"; p.onAct("OK"); }
+    else if (key) { zone = "pad"; press(key.classList.contains("bk") ? "⌫" : key.textContent.trim()); }
     return true;
   };
   p.drawHero = () => {
@@ -2225,16 +2287,14 @@ function newPlaylistPage(item) {
   }
   return p;
 }
-// A playlist's page: Y / Delete removes the focused item.
+// A playlist's page: Y (the title's menu) has Remove from Playlist too.
 function playlistPage(pl) {
   const p = listPage(pl.title, `/playlists/${pl.key}/items`, pl);
-  p.onY = async (it) => {
-    const id = it.raw && it.raw.playlistItemID;
-    if (!id) return;
-    await desktop.tvApiSend("DELETE", `/playlists/${pl.key}/items/${id}`).catch(() => null);
+  p.onY = (it) => itemMenu(it, it.raw && it.raw.playlistItemID ? [{ label: tr("Remove from Playlist"), action: async () => {
+    await desktop.tvApiSend("DELETE", `/playlists/${pl.key}/items/${it.raw.playlistItemID}`).catch(() => null);
     toast(tr("Removed \"{name}\"", { name: it.title }));
     const fresh = playlistPage(pl); fresh.row = p.row; page = fresh; fresh.rendered = false; drawPage(fresh);
-  };
+  } }] : []);
   return p;
 }
 let toastTimer = null;
@@ -2400,7 +2460,7 @@ function act(name) {
   if (!menuOpen && page && page.onAct && page.onAct(name)) return;   // pages with their own layout (the PIN pad)
   if (name === "Up" || name === "Down" || name === "Left" || name === "Right") move(name);
   else if (name === "OK") ok();
-  else if (name === "Y" && page && page.onY && !menuOpen) { const r = page.allRows()[page.row]; if (r && r.items[r.col]) page.onY(r.items[r.col]); }
+  else if (name === "Y" && page && !menuOpen) { const r = page.allRows()[page.row]; const it = r && r.items[r.col]; if (it) (page.onY || itemMenu)(it); }
   else if (name === "Back") back();
 }
 function openTvSettings() {
@@ -2410,13 +2470,25 @@ function openTvSettings() {
   openProfile();
   pushPanel(SETTINGS_PANEL());
 }
-const KEYS = { Delete: "Y", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "OK", " ": "OK", Escape: "Back", Backspace: "Back", BrowserBack: "Back",
+// The keyboard has a key for every controller button (Settings → Advanced → Keyboard & Mouse lists them)
+const KEYS = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "OK", " ": "OK", Escape: "Back", Backspace: "Back", BrowserBack: "Back",
+  Delete: "Y", ContextMenu: "Y", c: "Y", C: "Y",   // the title's menu (Triangle / Y)
+  m: "Start", M: "Start",                           // TV mode's settings (Options / Start)
+  PageUp: "L1", PageDown: "R1", ",": "L2", ".": "R2", "+": "VolUp", "=": "VolUp", "-": "VolDown",
   MediaPlayPause: "OK", MediaTrackNext: "R1", MediaTrackPrevious: "L1", MediaFastForward: "R2", MediaRewind: "L2" };
 addEventListener("keydown", (e) => {
   lastInput = Date.now();
+  // Esc: the quit menu, from anywhere (Backspace goes back); again: it closes. In the player Esc
+  // still stops the video (below: Back).
+  if (e.key === "Escape" && !e.ctrlKey && !e.altKey && !e.metaKey && !OSD && !Player.isActive() && !nativePlaying && !overlayOpen) {
+    e.preventDefault();
+    if (stopSaver()) return;
+    if (Dialog.kind() === "quit") Dialog.close(); else askQuit();
+    return;
+  }
   if (page && page.isPicker && !menuOpen && !overlayOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
     if (/^[0-9]$/.test(e.key)) { e.preventDefault(); page.type(e.key); return; }
-    if (e.key === "Backspace") { e.preventDefault(); page.type("⌫"); return; }
+    if (e.key === "Backspace" && page.hasPin()) { e.preventDefault(); page.type("⌫"); return; }   // (none typed: Back)
   }
   if (page && page.isSearch && !menuOpen && !overlayOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
     if (e.key.length === 1 && /[\p{L}\p{N} '&:.-]/u.test(e.key)) { e.preventDefault(); page.type(e.key.toLowerCase()); return; }
@@ -2458,16 +2530,75 @@ function padLoop() {
 }
 requestAnimationFrame(padLoop);
 
-// Using the mouse here switches back to PC mode (the app decides, see settings).
+// The mouse works here too: a click picks (and opens) what's under it, a right-click opens a title's
+// menu (like Y), the wheel moves up and down, the mouse's back button goes back. Its pointer shows
+// once it really moves (a nudge doesn't count) and hides again at the next key or button.
 let mouseStart = null;
+const mouseOn = () => { document.body.classList.add("mouse"); lastInput = Date.now(); };
 addEventListener("mousemove", (e) => {
-  if (!mouseStart) { mouseStart = [e.screenX, e.screenY, Date.now()]; return; }
-  if (Date.now() - mouseStart[2] > 600) { mouseStart = [e.screenX, e.screenY, Date.now()]; return; }
-  if (Math.abs(e.screenX - mouseStart[0]) + Math.abs(e.screenY - mouseStart[1]) > 80) {
-    mouseStart = null; document.body.classList.add("mouse"); desktop.tvMouseUsed();
-  }
+  if (document.body.classList.contains("mouse")) { lastInput = Date.now(); return; }
+  if (!mouseStart || Date.now() - mouseStart[2] > 600) { mouseStart = [e.screenX, e.screenY, Date.now()]; return; }
+  if (Math.abs(e.screenX - mouseStart[0]) + Math.abs(e.screenY - mouseStart[1]) > 80) { mouseStart = null; mouseOn(); stopSaver(); }
 });
-addEventListener("mousedown", () => { document.body.classList.add("mouse"); desktop.tvMouseUsed(); });
+addEventListener("click", (e) => { if (e.button === 0) clickAt(e.target, false); });
+addEventListener("contextmenu", (e) => { e.preventDefault(); clickAt(e.target, true); });
+addEventListener("mouseup", (e) => { if (e.button === 3) { e.preventDefault(); act("Back"); mouseOn(); } });
+let wheelAt = 0;
+addEventListener("wheel", (e) => {
+  const across = Math.abs(e.deltaX) > Math.abs(e.deltaY), d = across ? e.deltaX : e.deltaY;
+  if (Math.abs(d) < 4 || Date.now() - wheelAt < 140) return;
+  wheelAt = Date.now();
+  act(across ? (d > 0 ? "Right" : "Left") : (d > 0 ? "Down" : "Up"));
+  mouseOn();
+}, { passive: true });
+// Which of a row's elements are its items (cards, buttons, keys, tracks)
+const rowItemSel = (r) => (r.kind === "track" ? ".trk" : r.kind === "buttons" || r.kind === "options" ? ".btn" : r.kind === "keys" ? ".key" : ".card");
+function clickAt(el, right) {
+  mouseOn();
+  if (stopSaver()) return;
+  if (overlayOpen || nativePlaying || Player.isActive() || Link.isOpen()) return;   // (the player has its own controls)
+  const idx = (x) => [...x.parentNode.children].indexOf(x);
+  const done = () => document.body.classList.add("mouse");   // (keys hide the pointer; a click keeps it)
+  if ($("message").classList.contains("error")) { if (el.closest("#messageButton")) act("OK"); return done(); }
+  if (Dialog.isOpen()) { const d = el.closest("#dlgList .dl"); if (d) Dialog.pick(idx(d)); else Dialog.act("Back"); return done(); }
+  if (page && page.onClick && page.onClick(el)) return done();   // pages of their own (who's watching)
+  // the sidebar: an entry (right-click: its Actions), its ⋮, the profile's panels
+  const mi = el.closest("#menuItems .mi");
+  if (mi) {
+    const i = Number(mi.dataset.i);
+    if (!menuOpen) openMenu();
+    profPanel = null; panels = []; menuHandle = false; menuIndex = i; drawMenu();
+    if (right) { if (hasActions(menuItems[i])) menuActions(menuItems[i]); } else menuOk();
+    return done();
+  }
+  if (el.closest("#menuDots")) { menuActions(menuItems[menuIndex]); return done(); }
+  const pp = el.closest("#profPanel .pp[data-i]");
+  if (pp && panels.length) { panels[panels.length - 1].i = Number(pp.dataset.i); profPanel = true; drawProfPanel(); profPanelAct("OK"); return done(); }
+  if (el.closest("#menu, #profPanel")) return done();
+  if (menuOpen) closeMenu();
+  if (!page) return done();
+  // the page: ⋮ by the clock (Home), the A–Z bar, the tabs, a library's filter bar, the rows
+  if (el.closest("#ovMenu") && page.overflow) { page.ovFocus = false; manageHome(); return done(); }
+  const az = el.closest("#azBar > div");
+  if (az && page.onAct) { page.azFocus = true; page.azIndex = idx(az); page.onAct("OK"); return done(); }
+  const tab = el.closest("#tabs .tab");
+  if (tab && page.tabs) { page.row = 0; page.tabs.col = idx(tab); page.draw(); ok(); return done(); }
+  const fixed = page.rows.find((r) => r.fixed), lb = el.closest("#libBar .btn");
+  if (lb && fixed) {
+    page.row = page.rows.indexOf(fixed) + (page.tabs ? 1 : 0);
+    fixed.col = [...$("libBar").querySelectorAll(".btn")].indexOf(lb);
+    page.draw(); ok(); return done();
+  }
+  const rowEl = el.closest("#rows > .row[data-r]");
+  const r = rowEl && page.rows[Number(rowEl.dataset.r)];
+  if (!r) return done();
+  const hit = [...rowEl.querySelectorAll(rowItemSel(r))].findIndex((x) => x.contains(el));
+  if (hit < 0) return done();
+  page.row = page.rows.indexOf(r) + (page.tabs ? 1 : 0); r.col = hit; page.ovFocus = false; page.azFocus = false;
+  page.draw();
+  if (right) act("Y"); else ok();
+  done();
+}
 
 desktop.onTv("tv:overlay", (open) => { overlayOpen = !!open; held.clear(); });
 desktop.onTv("tv:prefs", (s) => applyPrefs(s));

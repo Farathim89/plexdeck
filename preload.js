@@ -134,7 +134,7 @@ if (location.protocol === "file:") {
     tvOpenPc: (hash) => ipcRenderer.send("tv:open-pc", hash || ""),
     tvSettings: () => ipcRenderer.send("tv:settings"),
     openTracks: (key) => ipcRenderer.send("tracks:open", key || ""),
-    tvMouseUsed: () => ipcRenderer.send("tv:mouse-used"),
+    tvQuit: () => ipcRenderer.send("tv:quit"),
     onTv: (name, cb) => {
       if (["tv:shown", "tv:refresh", "tv:overlay", "tv:prefs", "tv:update"].includes(name)) ipcRenderer.on(name, (_e, v) => cb(v));
     },

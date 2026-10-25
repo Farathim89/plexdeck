@@ -386,8 +386,8 @@ function init(deps) {
   ipcMain.on("tv:play", (e, item) => { if (fromTv(e)) play(item || {}); });
   ipcMain.on("tv:open-pc", (e, hash) => { if (fromTv(e)) openInPc(typeof hash === "string" ? hash : ""); });
   ipcMain.on("tv:settings", (e) => { if (fromTv(e)) d.openSettings(); });
-  // The mouse was used in TV mode: back to PC mode (if switching by itself is on).
-  ipcMain.on("tv:mouse-used", (e) => { if (fromTv(e) && d.config().autoMode !== false) setMode("pc"); });
+  // TV mode's quit menu (Esc): quit for real, like the tray's Quit.
+  ipcMain.on("tv:quit", (e) => { if (fromTv(e)) app.quit(); });
   // Plex asks which mode we're in when it (re)loads.
   ipcMain.handle("plex:app-mode", (e) => (e.sender === d.plexContents() ? mode : null));
   // A controller button in PC mode: over to TV mode (if switching by itself is on).
