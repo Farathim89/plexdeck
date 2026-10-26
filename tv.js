@@ -1627,9 +1627,29 @@ function peopleRow(m) {
     kind: "people", title: tr("Cast & Crew"), col: 0,
     items: people.map((r) => ({
       title: r.tag, role: r.role || "", thumb: r.thumb,
-      open: () => showPage(listPage(r.tag, `/library/sections/${m.librarySectionID}/all`, null, { [r.kind]: r.id, sort: "year:desc" }), { push: true }),
+      open: () => showPage(personPage({ name: r.tag, kind: r.kind, id: r.id }), { push: true }),
     })),
   };
+}
+// An actor's (or director's) movies, then shows, newest first, from all your movie and TV
+// libraries (Plex lists only the library you came from).
+function personPage({ name, kind, id }) {
+  const p = makePage({});
+  loadInto(p, async () => {
+    const libs = sections.filter((s) => s.type === "movie" || s.type === "show");
+    const found = await Promise.all(libs.map((s) => api(`/library/sections/${s.key}/all`, { [kind]: id }).then((r) => mc(r).Metadata || []).catch(() => null)));
+    if (libs.length && found.every((x) => x === null)) throw new Error("no libraries");
+    const seen = new Set();   // (the same title in two libraries: once)
+    const all = found.flat().filter((m) => m && !seen.has(m.guid || m.ratingKey) && seen.add(m.guid || m.ratingKey)).map(norm)
+      .sort((a, b) => (b.year || 0) - (a.year || 0) || String(a.title).localeCompare(String(b.title)));
+    const by = kind === "director";
+    const rows = [
+      ...gridRows(all.filter((it) => it.type === "movie"), by ? tr("Movies directed by {name}", { name }) : tr("Movies with {name}", { name })),
+      ...gridRows(all.filter((it) => it.type === "show"), by ? tr("TV shows directed by {name}", { name }) : tr("TV shows with {name}", { name })),
+    ];
+    return rows.length ? rows : [{ kind: "posters", title: tr("{title} — nothing here", { title: name }), col: 0, items: [] }];
+  });
+  return p;
 }
 async function extraRows(m, { related = false } = {}) {
   const rows = [];
