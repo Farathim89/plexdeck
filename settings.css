@@ -77,3 +77,11 @@ select:focus, input[type="text"]:focus, button:focus-visible, input:focus-visibl
 .keys td { padding: 6px 0; border-bottom: 1px solid #2c2c2c; color: var(--dim); }
 .keys td:first-child { color: var(--fg); width: 40%; }
 .backup { display: flex; gap: 10px; }
+/* Key bindings (TV mode): a key as a chip (× takes it away), + adds one, ↺ puts back the defaults */
+.keys.bind td { vertical-align: middle; }
+.keys.bind td small { display: block; color: var(--dim); font-size: 12px; }
+.kchip { display: inline-flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 2px 2px 2px 8px; margin: 2px 6px 2px 0; color: var(--fg); }
+.kchip button, .kbtn { background: none; border: 0; color: var(--dim); cursor: pointer; font: inherit; padding: 0 6px; border-radius: 4px; }
+.kchip button:hover, .kbtn:hover { color: var(--fg); background: #ffffff14; }
+.kbtn { border: 1px solid var(--line); padding: 2px 9px; margin: 2px 4px 2px 0; }
+.kbtn.wait { border-color: var(--plex); color: var(--plex); }

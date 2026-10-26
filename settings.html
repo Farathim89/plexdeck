@@ -147,6 +147,11 @@
               <tr><td>Options / Start</td><td>These settings</td></tr>
             </table>
             <p class="note">Media keys and most remotes (Play/Pause, Next, Previous, Volume) work out of the box.</p>
+            <h2>Key bindings (TV mode)</h2>
+            <p class="note" data-i18n>What each key does in TV mode: <b>+</b> adds a key (press it next), <b>×</b> takes one away, <b>↺</b> puts back the default keys. TV mode has the same list: Settings → Key Bindings.</p>
+            <table class="keys bind" id="tvKeys"></table>
+            <button type="button" class="secondary" id="keysReset">Reset all key bindings</button>
+            <p class="note" id="keysStatus" hidden></p>
             <h2>Controller test</h2>
             <div class="padtest" id="padtest">Press any button on your controller…</div>
             <p class="note">Shows what PlexDeck reads from your controller. If a button shows the wrong name here, tell me what this box says.</p>
@@ -178,6 +183,7 @@
       </div>
     </section>
     <script src="i18n-dom.js"></script>
+    <script src="keys-core.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

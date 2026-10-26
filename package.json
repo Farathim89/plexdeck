@@ -26,6 +26,7 @@
       "build/icon.ico",
       "i18n-dom.js",
       "i18n.js",
+      "keys-core.js",
       "loading.html",
       "locales/*.json",
       "main.js",

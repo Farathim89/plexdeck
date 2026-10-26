@@ -12,7 +12,7 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const LOCALES = path.join(ROOT, "locales");
 const HTML = ["settings.html", "tv.html", "tracks.html", "titlebar.html", "loading.html"];
-const JS = ["main.js", "preload.js", "settings.js", "titlebar.js", "tracks.js", "tracks-core.js", "tv.js", "tv-player.js", "tv-music.js", "tv-main.js", "mpv-main.js"];
+const JS = ["main.js", "preload.js", "settings.js", "titlebar.js", "tracks.js", "tracks-core.js", "keys-core.js", "tv.js", "tv-player.js", "tv-music.js", "tv-main.js", "mpv-main.js"];
 
 const keys = new Map();   // key → first place it was seen
 const add = (k, where) => { if (k && /[A-Za-z]/.test(k) && !keys.has(k)) keys.set(k, where); };

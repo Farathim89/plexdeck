@@ -2459,53 +2459,9 @@ function openTvSettings() {
   openProfile();
   pushPanel(SETTINGS_PANEL());
 }
-// ---- key bindings (Settings → Key Bindings) -----------------------------------------------
-// What each key does in TV mode: a key for every controller button, plus the quit menu. These are
-// the defaults; the ones you set (config tvKeys: { action: [keys] }) replace an action's keys.
-// Letters are kept in lower case (Shift / Caps Lock don't matter).
-const N_ = (s) => s;   // marks a text that is translated where it's shown (tr)
-const KEY_ACTIONS = [
-  { id: "Up", label: N_("Up"), pad: N_("D-pad up"), keys: ["ArrowUp"] },
-  { id: "Down", label: N_("Down"), pad: N_("D-pad down"), keys: ["ArrowDown"] },
-  { id: "Left", label: N_("Left"), pad: N_("D-pad left"), keys: ["ArrowLeft"] },
-  { id: "Right", label: N_("Right"), pad: N_("D-pad right"), keys: ["ArrowRight"] },
-  { id: "OK", label: N_("Select"), pad: "Cross / A", keys: ["Enter", " ", "MediaPlayPause"] },
-  { id: "Back", label: N_("Back"), pad: "Circle / B", keys: ["Backspace", "BrowserBack"] },
-  { id: "Quit", label: N_("The quit menu"), pad: N_("Back on Home in the sidebar"), keys: ["Escape"] },
-  { id: "Y", label: N_("A title's menu"), pad: "Triangle / Y", keys: ["c", "Delete", "ContextMenu"] },
-  { id: "Start", label: N_("Settings"), pad: "Options / Start", keys: ["m"] },
-  { id: "L1", label: N_("Player: previous episode"), pad: "L1 / LB", keys: ["PageUp", "MediaTrackPrevious"] },
-  { id: "R1", label: N_("Player: next episode"), pad: "R1 / RB", keys: ["PageDown", "MediaTrackNext"] },
-  { id: "L2", label: N_("Player: skip back"), pad: "L2 / LT", keys: [",", "MediaRewind"] },
-  { id: "R2", label: N_("Player: skip forward"), pad: "R2 / RT", keys: [".", "MediaFastForward"] },
-  { id: "VolUp", label: N_("Player: volume up"), pad: N_("Right stick up"), keys: ["+", "="] },
-  { id: "VolDown", label: N_("Player: volume down"), pad: N_("Right stick down"), keys: ["-"] },
-];
-// PlexDeck's own keys (reload, PC | TV, full screen): they can't do anything else
-const KEYS_RESERVED = ["F5", "F10", "F11"];
-const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
-function keysFor(id) {
-  const mine = lastPrefs.tvKeys && lastPrefs.tvKeys[id];
-  return Array.isArray(mine) ? mine.filter((k) => typeof k === "string" && k) : KEY_ACTIONS.find((a) => a.id === id).keys;
-}
-// key → action, the first action that has the key wins
-function keyMap() {
-  const map = new Map();
-  for (const a of KEY_ACTIONS) for (const k of keysFor(a.id)) if (!map.has(k)) map.set(k, a.id);
-  return map;
-}
-// A key as it's written on the keyboard (a few in words, in your language)
-const KEY_WORDS = { " ": N_("Space"), ContextMenu: N_("Menu key"), BrowserBack: N_("Browser Back") };
-const KEY_SIGNS = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Escape: "Esc", PageUp: "Page Up", PageDown: "Page Down",
-  MediaPlayPause: "⏯", MediaTrackNext: "⏭", MediaTrackPrevious: "⏮", MediaFastForward: "⏩", MediaRewind: "⏪" };
-const keyLabel = (k) => (KEY_WORDS[k] ? tr(KEY_WORDS[k]) : KEY_SIGNS[k] || (k.length === 1 ? k.toUpperCase() : k));
-// An action's keys: saved as yours when they differ from the defaults (back to the defaults: forgotten)
-function saveKeys(id, keys) {
-  const all = { ...(lastPrefs.tvKeys || {}) };
-  const def = KEY_ACTIONS.find((a) => a.id === id).keys;
-  if (keys.length === def.length && keys.every((k, i) => k === def[i])) delete all[id]; else all[id] = keys;
-  setPref("tvKeys", all);
-}
+// ---- key bindings (Settings → Key Bindings; the actions, their keys and the rules: keys-core.js) --
+const myKeys = () => lastPrefs.tvKeys || {};
+const keysFor = (id) => TvKeys.keysFor(myKeys(), id);
 // Waiting for the key to bind (the next key pressed, whatever it is; 10 s or Cancel: no change)
 let keyCapture = null;   // { id, timer }
 function captureKey(a) {
@@ -2514,39 +2470,32 @@ function captureKey(a) {
     items: [{ label: tr("Cancel"), action: () => { clearTimeout(keyCapture && keyCapture.timer); keyCapture = null; } }] });
 }
 function takeKey(e) {
-  if (["Shift", "Control", "Alt", "Meta", "CapsLock", "NumLock", "Dead", "Unidentified", "Process"].includes(e.key)) return;   // (wait for a real key)
+  if (TvKeys.IGNORE.includes(e.key)) return;   // (wait for a real key)
   e.preventDefault();
   if (e.ctrlKey || e.altKey || e.metaKey) { toast(tr("Keys with Ctrl, Alt or Windows can't be used")); return; }
   const { id, timer } = keyCapture;
   clearTimeout(timer); keyCapture = null; Dialog.close();
-  const k = keyName(e.key);
-  if (KEYS_RESERVED.includes(k)) { toast(tr("{key} is PlexDeck's own key", { key: keyLabel(k) })); return; }
-  // a key does one thing: taken from the action that had it
-  const was = KEY_ACTIONS.find((a) => a.id !== id && keysFor(a.id).includes(k));
-  if (was) saveKeys(was.id, keysFor(was.id).filter((x) => x !== k));
-  if (!keysFor(id).includes(k)) saveKeys(id, [...keysFor(id), k]);
-  const a = KEY_ACTIONS.find((x) => x.id === id);
-  toast(was ? tr("{key}: {action} (was {before})", { key: keyLabel(k), action: tr(a.label), before: tr(was.label) }) : tr("{key}: {action}", { key: keyLabel(k), action: tr(a.label) }));
-  drawProfPanel();
+  const k = TvKeys.name(e.key);
+  if (TvKeys.RESERVED.includes(k)) { toast(tr("{key} is PlexDeck's own key", { key: TvKeys.label(k) })); return; }
+  const { saved, was } = TvKeys.bind(myKeys(), id, k);   // (a key does one thing: it leaves the action that had it)
+  setPref("tvKeys", saved);
+  const a = TvKeys.ACTIONS.find((x) => x.id === id);
+  toast(was ? tr("{key}: {action} (was {before})", { key: TvKeys.label(k), action: tr(a.label), before: tr(was.label) }) : tr("{key}: {action}", { key: TvKeys.label(k), action: tr(a.label) }));
 }
 // Settings → Key Bindings: every action with its keys and its controller button; OK on one: add a
 // key, take one away, or its default keys back. Both resets ask first.
 const KEYS_PANEL = () => ({ title: tr("Key Bindings"), intro: tr("What each key does in TV mode. Pick one to add a key, take one away or put its default keys back."),
   rows: () => [
-    ...KEY_ACTIONS.map((a) => ({
-      label: tr(a.label), value: () => keysFor(a.id).map(keyLabel).join(" · ") || tr("None"), sub: tr("Controller: {button}", { button: tr(a.pad) }),
+    ...TvKeys.ACTIONS.map((a) => ({
+      label: tr(a.label), value: () => keysFor(a.id).map(TvKeys.label).join(" · ") || tr("None"), sub: tr("Controller: {button}", { button: tr(a.pad) }),
       action: () => {
         const keys = keysFor(a.id);
         Dialog.open({ layout: "list", title: tr(a.label), items: [
           { label: tr("Add a key"), action: () => captureKey(a) },
-          ...keys.map((k) => ({ label: tr("Take away {key}", { key: keyLabel(k) }), action: () => { saveKeys(a.id, keysFor(a.id).filter((x) => x !== k)); drawProfPanel(); } })),
+          ...keys.map((k) => ({ label: tr("Take away {key}", { key: TvKeys.label(k) }), action: () => setPref("tvKeys", TvKeys.unbind(myKeys(), a.id, k)) })),
           { label: tr("Default keys"), action: () => Dialog.open({ layout: "list", title: tr("Put back the default keys for {action}?", { action: tr(a.label) }), items: [
             { label: tr("Cancel"), action: () => {} },
-            { label: tr("Default keys"), action: () => {
-              // (a default key you gave another action comes back here: a key does one thing)
-              for (const o of KEY_ACTIONS) if (o.id !== a.id && keysFor(o.id).some((k) => a.keys.includes(k))) saveKeys(o.id, keysFor(o.id).filter((k) => !a.keys.includes(k)));
-              saveKeys(a.id, [...a.keys]); drawProfPanel();
-            } },
+            { label: tr("Default keys"), action: () => setPref("tvKeys", TvKeys.defaults(myKeys(), a.id)) },   // (also from where you'd moved them)
           ] }) },
         ] });
       },
@@ -2560,7 +2509,7 @@ const KEYS_PANEL = () => ({ title: tr("Key Bindings"), intro: tr("What each key 
 addEventListener("keydown", (e) => {
   lastInput = Date.now();
   if (keyCapture) return takeKey(e);   // Settings → Key Bindings is waiting for a key
-  const action = e.ctrlKey || e.altKey || e.metaKey ? null : keyMap().get(keyName(e.key));
+  const action = e.ctrlKey || e.altKey || e.metaKey ? null : TvKeys.map(myKeys()).get(TvKeys.name(e.key));
   // The quit menu (Esc), from anywhere; again: it closes. In the player it stops the video (Back),
   // as Esc always did there.
   if (action === "Quit") {

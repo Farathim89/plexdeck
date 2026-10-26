@@ -31,6 +31,7 @@ function render() {
     } else if (document.activeElement !== el) el.value = v == null ? "" : String(v);
   }
   renderThemes();
+  renderKeys();
   const sw = document.querySelector('[data-key="startWithWindows"]');
   sw.disabled = !settings.packaged;
   document.getElementById("swNote").textContent = settings.packaged ? tr("(in the tray, ready to play)") : tr("(installed app only)");
@@ -63,6 +64,64 @@ function renderThemes() {
   }
   for (const b of box.children) b.classList.toggle("active", b.dataset.id === settings.theme);
 }
+
+// TV mode's key bindings (keys-core.js; TV mode has the same list: Settings → Key Bindings).
+// + waits for the next key (10 s), × takes a key away, ↺ puts back an action's default keys.
+let keyWait = null;   // { id, timer }
+const keysStatus = document.getElementById("keysStatus");
+const keysSay = (t) => { keysStatus.textContent = t; keysStatus.hidden = !t; };
+const setKeys = (saved) => { settings.tvKeys = saved; desktop.setSetting("tvKeys", saved); renderKeys(); };
+function renderKeys() {
+  const box = document.getElementById("tvKeys");
+  const saved = settings.tvKeys || {};
+  box.textContent = "";
+  for (const a of TvKeys.ACTIONS) {
+    const row = box.insertRow(), name = row.insertCell(), cell = row.insertCell();
+    name.textContent = tr(a.label);
+    const pad = document.createElement("small");
+    pad.textContent = tr("Controller: {button}", { button: tr(a.pad) });
+    name.append(pad);
+    for (const k of TvKeys.keysFor(saved, a.id)) {
+      const chip = document.createElement("span"), x = document.createElement("button");
+      chip.className = "kchip";
+      chip.textContent = TvKeys.label(k);
+      x.type = "button"; x.textContent = "×"; x.title = tr("Take away {key}", { key: TvKeys.label(k) });
+      x.addEventListener("click", () => setKeys(TvKeys.unbind(settings.tvKeys || {}, a.id, k)));
+      chip.append(x);
+      cell.append(chip);
+    }
+    const add = document.createElement("button"), def = document.createElement("button");
+    add.type = def.type = "button";
+    add.className = def.className = "kbtn";
+    add.textContent = keyWait && keyWait.id === a.id ? tr("Press a key…") : "+";
+    if (keyWait && keyWait.id === a.id) add.classList.add("wait");
+    add.title = tr("Add a key");
+    add.addEventListener("click", () => {
+      clearTimeout(keyWait && keyWait.timer);
+      keyWait = { id: a.id, timer: setTimeout(() => { keyWait = null; renderKeys(); }, 10000) };
+      keysSay(""); renderKeys();
+    });
+    def.textContent = "↺"; def.title = tr("Default keys");
+    def.addEventListener("click", () => { if (confirm(tr("Put back the default keys for {action}?", { action: tr(a.label) }))) setKeys(TvKeys.defaults(settings.tvKeys || {}, a.id)); });
+    cell.append(add, def);
+  }
+}
+// The key you press for "+" (before the settings window's own keys: Esc here is a key like any other)
+document.addEventListener("keydown", (e) => {
+  if (!keyWait || TvKeys.IGNORE.includes(e.key)) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (e.ctrlKey || e.altKey || e.metaKey) { keysSay(tr("Keys with Ctrl, Alt or Windows can't be used")); return; }
+  const { id, timer } = keyWait;
+  clearTimeout(timer); keyWait = null;
+  const k = TvKeys.name(e.key), a = TvKeys.ACTIONS.find((x) => x.id === id);
+  if (TvKeys.RESERVED.includes(k)) { keysSay(tr("{key} is PlexDeck's own key", { key: TvKeys.label(k) })); renderKeys(); return; }
+  const { saved, was } = TvKeys.bind(settings.tvKeys || {}, id, k);
+  setKeys(saved);
+  keysSay(was ? tr("{key}: {action} (was {before})", { key: TvKeys.label(k), action: tr(a.label), before: tr(was.label) }) : tr("{key}: {action}", { key: TvKeys.label(k), action: tr(a.label) }));
+}, true);
+document.getElementById("keysReset").addEventListener("click", () => {
+  if (confirm(tr("Put back the default keys for everything?"))) { setKeys({}); keysSay(tr("Key bindings reset")); }
+});
 
 function save(el) {
   const key = el.dataset.key;
