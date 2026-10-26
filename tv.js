@@ -321,19 +321,32 @@ function allEntries() {
     { id: "discover", label: tr("Discover"), icon: "discover", live: true, open: () => menuPage("discover", () => providerPage("discover")) },
   ];
 }
-function buildMenu() {
-  if (moreMode) return buildMore();
+// The sidebar's entries (the unpinned ones left out) in your order.
+function pinnedEntries() {
   const hidden = readList("tvMenuHidden");
-  let items = allEntries().filter((m) => !hidden.includes(m.id));
+  const items = allEntries().filter((m) => !hidden.includes(m.id));
   // your order (Reorder): saved ids first in that order, new entries where they'd normally be
   const saved = readOrder();
-  if (saved.length) {
-    const movable = items.filter((m) => !FIXED.has(m.id));
-    const out = saved.map((id) => movable.find((m) => m.id === id)).filter(Boolean);
-    movable.forEach((m, i) => { if (!out.includes(m)) out.splice(Math.min(i, out.length), 0, m); });
-    const head = items.filter((m) => FIXED.has(m.id) || m.id === "nowplaying");
-    items = [...head, ...out.filter((m) => m.id !== "nowplaying")];
-  }
+  if (!saved.length) return items;
+  const movable = items.filter((m) => !FIXED.has(m.id));
+  const out = saved.map((id) => movable.find((m) => m.id === id)).filter(Boolean);
+  movable.forEach((m, i) => { if (!out.includes(m)) out.splice(Math.min(i, out.length), 0, m); });
+  const head = items.filter((m) => FIXED.has(m.id) || m.id === "nowplaying");
+  return [...head, ...out.filter((m) => m.id !== "nowplaying")];
+}
+// The libraries in the sidebar's order, the unpinned ones last (Home's Recently Added rows).
+function homeLibs() {
+  const keys = pinnedEntries().filter((m) => m.lib).map((m) => m.lib.key);
+  return [...keys, ...sections.map((s) => s.key).filter((k) => !keys.includes(k))];
+}
+// The sidebar's order or pins changed: Home reloads (now if it's showing, else when it's shown).
+function sidebarChanged() {
+  const h = pageCache.get("home");
+  if (h && h === page) freshen(h); else if (h) h.ver = -1;
+}
+function buildMenu() {
+  if (moreMode) return buildMore();
+  const items = pinnedEntries();
   const onPlex = items.findIndex((m) => m.id === "livetv" || m.id === "discover");
   const more = { id: "more", label: tr("More"), icon: "more", open: () => openMore() };
   if (onPlex >= 0) items.splice(onPlex, 0, more); else items.push(more);
@@ -487,7 +500,7 @@ function menuKey(name) {
       const to = menuIndex + (name === "Up" ? -1 : 1);
       const ok = (i) => i >= 0 && i < menuItems.length && !FIXED.has(menuItems[i].id) && menuItems[i].id !== "nowplaying";
       if (ok(to)) { [menuItems[menuIndex], menuItems[to]] = [menuItems[to], menuItems[menuIndex]]; menuIndex = to; markSections(menuItems); renderMenu(); }
-    } else if (name === "OK") { writeOrder(menuItems.filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying").map((m) => m.id)); reorder = null; drawMenu(); }
+    } else if (name === "OK") { writeOrder(menuItems.filter((m) => !FIXED.has(m.id) && m.id !== "nowplaying").map((m) => m.id)); reorder = null; drawMenu(); sidebarChanged(); }
     else if (name === "Back") cancelReorder();
     return true;
   }
@@ -511,13 +524,13 @@ function menuActions(m) {
   const hidden = readList("tvMenuHidden");
   if (hidden.includes(m.id)) {
     opts.push({ label: tr("Pin to sidebar"), desc: tr("Show '{name}' in the sidebar menu again.", { name: label }),
-      action: () => { writeList("tvMenuHidden", hidden.filter((x) => x !== m.id)); buildMenu(); } });
+      action: () => { writeList("tvMenuHidden", hidden.filter((x) => x !== m.id)); buildMenu(); sidebarChanged(); } });
   } else {
     opts.push({ label: tr("Unpin from sidebar"), desc: tr("Don't display '{name}' in the sidebar menu. You can still access and re-pin this item via the 'More' option in the sidebar.", { name: label }),
       action: () => {
         writeList("tvMenuHidden", [...hidden, m.id]);
         if (currentMenuId === m.id) { currentMenuId = "home"; stack.length = 0; menuPage("home", homePage); }
-        buildMenu(); menuIndex = Math.min(menuIndex, menuItems.length - 1); drawMenu();
+        buildMenu(); menuIndex = Math.min(menuIndex, menuItems.length - 1); drawMenu(); sidebarChanged();
       } });
   }
   if (m.lib) opts.push({ label: tr("Scan Library Files"), desc: tr("Request an update for the content of {name}.", { name: label }),
@@ -1285,14 +1298,21 @@ function homePage() {
     return true;
   };
   loadInto(p, async () => {
-    const [cont, hubs] = await Promise.all([
+    const [cont, perLib, hubs] = await Promise.all([
       api("/hubs/continueWatching", { count: 30 }).catch(() => null),
-      api("/hubs", { count: 20, excludeContinueWatching: 1 }),
+      // like Plex: Recently Added in each library ("Recently Added in Movies"…), in the sidebar's order
+      api("/hubs/promoted", { contentDirectoryID: homeLibs().join(","), count: 20, excludeContinueWatching: 1 }).catch(() => null),
+      api("/hubs", { count: 20, excludeContinueWatching: 1 }).catch(() => null),
     ]);
+    if (!perLib && !hubs) throw new Error("no hubs");
     const rows = [];
     const cw = mc(cont).Hub || [];
     rows.push(...hubRows(cw));
-    rows.push(...hubRows((mc(hubs).Hub || []).filter((h) => !/continue|on deck/i.test(h.title) || !cw.length)));
+    // Plex's own list has one Recently Added row per kind ("Recently Added Movies", "… TV"): with
+    // the libraries' rows, only Recent Playlists comes from it (an older server: all of it)
+    const grouped = mc(hubs).Hub || [];
+    const list = perLib ? [...(mc(perLib).Hub || []), ...grouped.filter((h) => /^home\.playlists/.test(h.hubIdentifier || ""))] : grouped;
+    rows.push(...hubRows(list.filter((h) => !/continue|on deck/i.test(h.title) || !cw.length)));
     return rows.length ? rows : [{ kind: "posters", title: tr("Nothing to show here right now"), col: 0, items: [] }];
   });
   return p;
@@ -1308,7 +1328,7 @@ function manageHome() {
 function confirmReset() {
   Dialog.open({ layout: "list", title: tr("Reset your sidebar order and the entries you unpinned?"), items: [
     { label: tr("Cancel"), action: () => {} },
-    { label: tr("Reset All Customizations"), action: () => { writeOrder([]); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); toast(tr("Sidebar restored")); } },
+    { label: tr("Reset All Customizations"), action: () => { writeOrder([]); writeList("tvMenuHidden", []); buildMenu(); drawMenu(); sidebarChanged(); toast(tr("Sidebar restored")); } },
   ] });
 }
 // Rows of 7 posters (a grid you move through like rows).
