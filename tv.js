@@ -334,11 +334,8 @@ function pinnedEntries() {
   const head = items.filter((m) => FIXED.has(m.id) || m.id === "nowplaying");
   return [...head, ...out.filter((m) => m.id !== "nowplaying")];
 }
-// The libraries in the sidebar's order, the unpinned ones last (Home's Recently Added rows).
-function homeLibs() {
-  const keys = pinnedEntries().filter((m) => m.lib).map((m) => m.lib.key);
-  return [...keys, ...sections.map((s) => s.key).filter((k) => !keys.includes(k))];
-}
+// Home's Recently Added rows: the sidebar's libraries in its order (an unpinned one isn't on Home).
+const homeLibs = () => pinnedEntries().filter((m) => m.lib).map((m) => m.lib.key);
 // The sidebar's order or pins changed: Home reloads (now if it's showing, else when it's shown).
 function sidebarChanged() {
   const h = pageCache.get("home");
@@ -1298,10 +1295,11 @@ function homePage() {
     return true;
   };
   loadInto(p, async () => {
+    const libs = homeLibs();
     const [cont, perLib, hubs] = await Promise.all([
       api("/hubs/continueWatching", { count: 30 }).catch(() => null),
       // like Plex: Recently Added in each library ("Recently Added in Movies"…), in the sidebar's order
-      api("/hubs/promoted", { contentDirectoryID: homeLibs().join(","), count: 20, excludeContinueWatching: 1 }).catch(() => null),
+      libs.length ? api("/hubs/promoted", { contentDirectoryID: libs.join(","), count: 20, excludeContinueWatching: 1 }).catch(() => null) : {},
       api("/hubs", { count: 20, excludeContinueWatching: 1 }).catch(() => null),
     ]);
     if (!perLib && !hubs) throw new Error("no hubs");

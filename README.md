@@ -30,7 +30,7 @@ Plex app on a Shield / Fire TV / Google TV:
 
 - side menu that loads libraries as you move through it, a hero that follows focus,
   rows that remember where you were, Back that works like the TV app
-- Home (Recently Added in each library, in your sidebar's order), libraries
+- Home (Recently Added in each of your sidebar's libraries, in its order), libraries
   (Recommended / Library / Collections / Categories, sort & filters),
   show pages laid out like Plex's (poster, seasons grid, related shows, *More with* an actor),
   season pages with their episodes, movie pages, cast & crew, *More like this*, extras & trailers
