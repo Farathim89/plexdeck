@@ -1019,7 +1019,8 @@ function buttonHtml(b) {
 function rowHtml(r, i) {
   if (r.kind === "buttons") return `<div class="row brow" data-r="${i}"><div class="buttons">${r.items.map(buttonHtml).join("")}</div>`
     + (r.chips && r.chips.length ? `<div class="mchips">${r.chips.map((c) => `<span class="mchip">${c.icon ? ICON[c.icon] : ""}${esc(c.text)}</span>`).join("")}</div>` : "")
-    + (r.note ? `<p class="bnote">${esc(r.note)}</p>` : "") + `</div>`;
+    + (r.note ? `<p class="bnote">${esc(r.note)}</p>` : "")
+    + (r.facts && r.facts.length ? `<div class="bfacts">${r.facts.map((f) => `<span>${esc(f.label)}</span><span>${esc(f.text)}</span>`).join("")}</div>` : "") + `</div>`;
   if (r.kind === "options" && r.fixed) return `<div class="row fixedph" data-r="${i}"></div>`;
   if (r.kind === "options") return `<div class="row" data-r="${i}"><div class="buttons opts">${r.items.map((b) => `<div class="btn opt"><span>${esc(b.label)}</span></div>`).join("")}</div></div>`;
   if (r.kind === "track") { const t = r.items[0]; return `<div class="row trkrow" data-r="${i}"><div class="trk"><span class="n">${esc(t.n)}</span><span class="t">${esc(t.title)}</span><span class="d">${esc(t.len)}</span></div></div>`; }
@@ -1377,7 +1378,8 @@ function libraryPage(sec) {
   const tabRows = [];
   const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
   const loadRecommended = (o = {}) => loadInto(p, async () => {
-    const hubs = mc(await api(`/hubs/sections/${sec.key}`, { count: 20 })).Hub || [];
+    // (with the library's Recent Playlists, like Plex; not its radio stations or TIDAL)
+    const hubs = mc(await api(`/hubs/sections/${sec.key}`, { count: 20, includeLibraryPlaylists: 1 })).Hub || [];
     // A TV library hidden from Home (Plex: "Exclude from home screen"): the server fills its
     // Recently Added from Home's list, which leaves the library out, so it comes back empty. Fill it
     // with the shows by their newest episode (the same order, one card a show).
@@ -1694,7 +1696,8 @@ async function onWatchlist(it) {
   const g = String(it.guid || (it.raw && it.raw.guid) || "");
   return (mc(r).Metadata || []).some((m) => m.guid === g);
 }
-// Quality, audio and subtitles of what will play (right of the buttons, like Plex).
+// Quality, audio and subtitles of what will play (right of the buttons; a movie: under its
+// summary, "Video  1080p (H.264)", like Plex).
 function mediaChips(m) {
   const media = m && m.Media && m.Media[0];
   if (!media) return [];
@@ -1704,23 +1707,39 @@ function mediaChips(m) {
   const audio = streams.find((s) => s.streamType === 2 && s.selected) || streams.find((s) => s.streamType === 2);
   const sub = streams.find((s) => s.streamType === 3 && s.selected);
   return [
-    video && (video.extendedDisplayTitle || video.displayTitle) ? { text: video.extendedDisplayTitle || video.displayTitle } : res ? { text: /^\d+$/.test(res) ? `${res}p` : res.toUpperCase() } : null,
-    audio ? { icon: "audio", text: audio.displayTitle || audio.language || tr("Audio") } : null,
-    { icon: "subs", text: sub ? (sub.displayTitle || sub.language) : tr("Off") },
+    video && (video.extendedDisplayTitle || video.displayTitle) ? { label: tr("Video"), text: video.extendedDisplayTitle || video.displayTitle }
+      : res ? { label: tr("Video"), text: /^\d+$/.test(res) ? `${res}p` : res.toUpperCase() } : null,
+    audio ? { icon: "audio", label: tr("Audio"), text: audio.displayTitle || audio.language || tr("Audio") } : null,
+    { icon: "subs", label: tr("Subtitles"), text: sub ? (sub.displayTitle || sub.language) : tr("Off") },
   ].filter(Boolean);
 }
 
-// ---- a movie ---------------------------------------------------------------------------
+// ---- a movie, like Plex: its poster and details ("Directed by" under the title), the buttons with
+// the summary and what will play (video, audio, subtitles) under them, then the cast and the
+// server's related rows (its collection, Related Movies, More with <actor>), extras. Down from the
+// buttons the details scroll away, like a show's page. (A home video or clip: no poster, the
+// details over its artwork.)
 function moviePage(item) {
   const p = makePage({ heroItem: item, pinned: false, pinFrom: 1 });
+  const film = item.type === "movie";
+  if (film) {
+    p.focused = () => null;   // the hero (and its artwork) stay the movie's
+    p.poster = item.poster ? img(item.poster, 390, 585) : "";
+  }
   let more = null;
   const refresh = async () => {
     const raw = (mc(await api(`/library/metadata/${item.key}`)).Metadata || [])[0] || item.raw;
     const full = norm(raw);
-    if (!more) more = await extraRows(raw).catch(() => []);
+    if (!more) more = await extraRows(raw, { related: film }).catch(() => []);
     p.heroItem = { ...full, details: true };
+    if (film) {
+      p.heroItem.sub = full.directors.length ? tr("Directed by {names}", { names: full.directors.join(", ") }) : "";
+      p.poster = full.poster ? img(full.poster, 390, 585) : "";
+    }
     const keepRow = p.rows.length ? p.row : 0;
-    p.rows = [{ kind: "buttons", col: 0, items: detailButtons(full, refresh), chips: mediaChips(raw) }, ...more];
+    const btns = { kind: "buttons", col: 0, items: detailButtons(full, refresh) };
+    if (film) Object.assign(btns, { note: full.summary, facts: mediaChips(raw) }); else btns.chips = mediaChips(raw);
+    p.rows = [btns, ...more];
     p.row = Math.min(keepRow, p.rows.length - 1);
     if (page === p) { p.rendered = false; drawPage(p); }
   };

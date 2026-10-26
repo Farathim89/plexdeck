@@ -739,6 +739,12 @@ body.series #rows > .row.brow:first-child { padding-left: calc(var(--content-x) 
 body.series #rows > .row.brow:first-child .buttons { flex: 0 0 100%; }
 .brow .bnote { margin: 22px 0 0; width: 900px; font-size: 24px; line-height: 1.33; color: rgba(255,255,255,.85);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+/* a movie's page: "Directed by" under the title, and what will play under the summary
+   (Video / Audio / Subtitles, like Plex) */
+body.series #heroSub { margin-top: 6px; font-size: 22px; font-weight: 400; color: rgba(255,255,255,.7); }
+.brow .bfacts { display: grid; grid-template-columns: max-content auto; gap: 6px 40px; margin-top: 20px; width: 900px;
+  font-size: 22px; color: rgba(255,255,255,.92); }
+.brow .bfacts span:nth-child(odd) { color: rgba(255,255,255,.55); }
 body.series-down #hero { display: none; }
 body.series-down #rowsWindow { top: 120px; }
 .row.small { margin-bottom: 40px; }
