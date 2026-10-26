@@ -39,9 +39,9 @@ const TvKeys = (() => {
     return m;
   }
   // A key as it's written on the keyboard (a few in words, in your language)
-  const WORDS = { " ": N_("Space"), ContextMenu: N_("Menu key"), BrowserBack: N_("Browser Back") };
-  const SIGNS = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Escape: "Esc", PageUp: "Page Up", PageDown: "Page Down",
-    MediaPlayPause: "⏯", MediaTrackNext: "⏭", MediaTrackPrevious: "⏮", MediaFastForward: "⏩", MediaRewind: "⏪" };
+  const WORDS = { " ": N_("Space"), ContextMenu: N_("Menu key"), BrowserBack: N_("Browser Back"), MediaPlayPause: N_("Play/Pause"),
+    MediaTrackNext: N_("Next track"), MediaTrackPrevious: N_("Previous track"), MediaFastForward: N_("Fast-forward"), MediaRewind: N_("Rewind") };
+  const SIGNS = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Escape: "Esc", PageUp: "Page Up", PageDown: "Page Down" };
   const label = (k) => (WORDS[k] ? tr(WORDS[k]) : SIGNS[k] || (k.length === 1 ? k.toUpperCase() : k));
   // The saved bindings with one action's keys set (back to its defaults: forgotten)
   function withKeys(saved, id, keys) {
