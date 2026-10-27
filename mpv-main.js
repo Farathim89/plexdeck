@@ -224,6 +224,30 @@ function armSpdifGuard(delay = 2000, tries = 0) {
   }, delay);
 }
 
+// TrueHD passthrough and seeking: FFmpeg's TrueHD packer carries its timing over a seek, so the
+// first frames after one go to the receiver malformed ("Unusual frame timing", FFmpeg ticket
+// #9569) and the sound can drop out. So with TrueHD going to the receiver, a seek runs with the
+// sound off and the sound comes back fresh, like at the start of a video. Quick presses in a row
+// become one seek (the receiver locks on once), and seeks go one at a time, the newest winning.
+let seekChain = Promise.resolve(), seekLatest = null;
+function seek(command) {
+  seekLatest = command;
+  const stale = () => seekLatest !== command && command[2] === "absolute";   // (a relative one still counts)
+  const run = async () => {
+    if (stale()) return null;
+    const [codec, spdif] = await Promise.all([getProp("current-tracks/audio/codec"), getProp("audio-spdif")]);
+    if (codec !== "truehd" || !String(spdif || "").split(",").includes("truehd")) return send(command);
+    await new Promise((r) => setTimeout(r, 300));
+    if (stale()) return null;
+    const aid = await getProp("current-tracks/audio/id");
+    await send(["set_property", "aid", "no"]);
+    const r = await send(command);
+    if (aid != null) await send(["set_property", "aid", aid]);
+    return r;
+  };
+  return (seekChain = seekChain.then(run, run));
+}
+
 // mpv options from PlexDeck's settings (picture, sound, subtitles).
 function settingsArgs(c) {
   const a = ["--vo=gpu-next"];
@@ -491,7 +515,7 @@ function init(deps) {
   ipcMain.handle("native:cmd", async (e, command) => {
     if (!fromOsd(e) || !Array.isArray(command) || !ALLOWED.has(command[0])) return null;
     if (command[0] === "set_property" && command[1] === "force-media-title") now.title = String(command[2] || "");
-    const r = await send(command);
+    const r = await (command[0] === "seek" ? seek(command) : send(command));
     return r ? r.data ?? null : null;
   });
   // Mini player (PC mode): on / off, a bigger or smaller size, and dragging it to another corner.
