@@ -734,6 +734,9 @@ body.series #heroPoster { display: block; position: absolute; left: 0; top: 0; w
   border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
 body.series #heroTitle:not(.logo) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: 50px; }
 body.series #heroSummary, body.series #heroCast { display: none; }
+/* an actor's page (tv.js personPage): the photo, their name, born, how many of their titles you
+   have and the biography beside it; their titles below */
+body.series.person #heroSummary { display: -webkit-box; -webkit-line-clamp: 6; width: 860px; }
 body.series #rowsWindow { top: 368px; }
 body.series #rows > .row.brow:first-child { padding-left: calc(var(--content-x) + 300px); flex-wrap: wrap; align-content: flex-start; }
 body.series #rows > .row.brow:first-child .buttons { flex: 0 0 100%; }

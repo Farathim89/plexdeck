@@ -33,7 +33,8 @@ Plex app on a Shield / Fire TV / Google TV:
 - Home (Recently Added in each of your sidebar's libraries, in its order), libraries
   (Recommended / Library / Collections / Categories, sort & filters),
   show and movie pages laid out like Plex's (poster, seasons grid, a movie's collection,
-  related titles, *More with* an actor), season pages with their episodes, cast & crew,
+  related titles, *More with* an actor), season pages with their episodes, cast & crew
+  (an actor's page: photo, biography and everything they're in on your server),
   extras & trailers
 - Search (your own media only), Watchlist (what's on your server), Playlists,
   Music with a Now Playing screen, Photos with a slideshow

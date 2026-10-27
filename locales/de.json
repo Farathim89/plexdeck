@@ -196,6 +196,8 @@
   "Made \"{name}\"": "„{name}“ erstellt",
   "Mark as unwatched": "Als ungesehen markieren",
   "Mark as watched": "Als gesehen markieren",
+  "Born {date} in {place}": "Geboren am {date} in {place}",
+  "Born {date}": "Geboren am {date}",
   "Movies with {name}": "Filme mit {name}",
   "Movies directed by {name}": "Filme unter der Regie von {name}",
   "TV shows with {name}": "Serien mit {name}",

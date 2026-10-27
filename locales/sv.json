@@ -196,6 +196,8 @@
   "Made \"{name}\"": "Skapade \"{name}\"",
   "Mark as unwatched": "Markera som osedd",
   "Mark as watched": "Markera som sedd",
+  "Born {date} in {place}": "Född {date} i {place}",
+  "Born {date}": "Född {date}",
   "Movies with {name}": "Filmer med {name}",
   "Movies directed by {name}": "Filmer regisserade av {name}",
   "TV shows with {name}": "TV-serier med {name}",

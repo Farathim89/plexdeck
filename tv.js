@@ -57,9 +57,11 @@ function fitLayout(p) {
   const first = $("rows").firstElementChild;
   if (first) first.style.minHeight = "";
   if (document.body.classList.contains("series") && !document.body.classList.contains("series-down") && hero.offsetHeight) {
+    const poster = $("heroPoster");
+    // (a person's page has no buttons' row: their titles go below the photo)
+    if (document.body.classList.contains("person")) { win.style.top = `${hero.offsetTop + Math.max(hero.offsetHeight, poster.offsetHeight) + 12}px`; return; }
     const top = hero.offsetTop + hero.offsetHeight + 12;
     win.style.top = `${top}px`;
-    const poster = $("heroPoster");
     // (+12: #rows inside the window; 60: the row's margin below; 24: air above the seasons' title)
     if (first) first.style.minHeight = `${Math.max(0, hero.offsetTop + poster.offsetHeight + 24 - 60 - 12 - top)}px`;
     return;
@@ -177,6 +179,7 @@ function showHero(it) {
     meta.push(`S${it.seasonNo ?? "?"} • E${it.epNo ?? "?"}`);
     if (it.date) meta.push(fmtDate(it.date));
   } else if (it.year) meta.push(it.year);
+  if (it.facts) meta.push(...it.facts);   // (a person: how many of their titles you have)
   if (it.duration) meta.push(fmtDuration(it.duration));
   if (it.details && it.genres.length) meta.push(it.genres.join(", "));
   if (it.type === "show" && it.childCount) meta.push(it.childCount > 1 ? tr("{n} seasons", { n: it.childCount }) : tr("1 season"));
@@ -1070,6 +1073,7 @@ function drawPage(p) {
   if (!p.isPicker) { document.body.classList.remove("who-mode"); $("who").hidden = true; }
   document.body.classList.toggle("no-menu", !!p.noMenu);
   document.body.classList.toggle("details", !!(p.heroItem && p.heroItem.details));
+  document.body.classList.toggle("person", !!(p.heroItem && p.heroItem.type === "person"));
   // library grids (Library / Collections / Categories tabs) have no hero, like Plex; nor has a page
   // with nothing on it (it showed the last page's)
   const blank = !p.heroItem && !p.drawHero && !p.rows.some((r) => r.items.length);
@@ -1627,25 +1631,38 @@ function peopleRow(m) {
     kind: "people", title: tr("Cast & Crew"), col: 0,
     items: people.map((r) => ({
       title: r.tag, role: r.role || "", thumb: r.thumb,
-      open: () => showPage(personPage({ name: r.tag, kind: r.kind, id: r.id }), { push: true }),
+      open: () => showPage(personPage({ name: r.tag, kind: r.kind, id: r.id, thumb: r.thumb, tagKey: r.tagKey }), { push: true }),
     })),
   };
 }
-// An actor's (or director's) movies, then shows, newest first, from all your movie and TV
-// libraries (Plex lists only the library you came from).
-function personPage({ name, kind, id }) {
-  const p = makePage({});
+// An actor's (or director's) page: their photo and name on top, when and where they were born
+// and their biography (Plex's online metadata), then their movies and shows, newest first, from
+// all your movie and TV libraries (Plex lists only the library you came from).
+function personPage({ name, kind, id, thumb, tagKey }) {
+  const p = makePage({ heroItem: { key: `person-${id}`, type: "person", title: name, sub: "", summary: "", facts: [], genres: [], cast: [], directors: [] } });
+  p.focused = () => null;   // the hero stays the person's
+  p.poster = thumb ? img(thumb, 390, 585) : "";
   loadInto(p, async () => {
     const libs = sections.filter((s) => s.type === "movie" || s.type === "show");
-    const found = await Promise.all(libs.map((s) => api(`/library/sections/${s.key}/all`, { [kind]: id }).then((r) => mc(r).Metadata || []).catch(() => null)));
+    const [found, bio] = await Promise.all([
+      Promise.all(libs.map((s) => api(`/library/sections/${s.key}/all`, { [kind]: id }).then((r) => mc(r).Metadata || []).catch(() => null))),
+      tagKey ? desktop.tvProvider(`${PROVIDER.discover.base}/library/people/${tagKey}`).then((r) => (mc(r).Metadata || [])[0] || null).catch(() => null) : null,
+    ]);
     if (libs.length && found.every((x) => x === null)) throw new Error("no libraries");
     const seen = new Set();   // (the same title in two libraries: once)
     const all = found.flat().filter((m) => m && !seen.has(m.guid || m.ratingKey) && seen.add(m.guid || m.ratingKey)).map(norm)
       .sort((a, b) => (b.year || 0) - (a.year || 0) || String(a.title).localeCompare(String(b.title)));
+    const movies = all.filter((it) => it.type === "movie"), shows = all.filter((it) => it.type === "show");
+    const born = bio && bio.bornAt ? fmtDate(`${bio.bornAt}T00:00`) : "";   // (local midnight: not the day before)
+    p.heroItem = { ...p.heroItem, summary: (bio && bio.summary) || "",
+      sub: !born ? "" : bio.birthPlace ? tr("Born {date} in {place}", { date: born, place: bio.birthPlace }) : tr("Born {date}", { date: born }),
+      facts: [movies.length && (movies.length === 1 ? tr("1 movie") : tr("{n} movies", { n: movies.length })),
+        shows.length && (shows.length === 1 ? tr("1 show") : tr("{n} shows", { n: shows.length }))].filter(Boolean) };
+    if (!p.poster && bio && bio.thumb) p.poster = img(bio.thumb, 390, 585);
     const by = kind === "director";
     const rows = [
-      ...gridRows(all.filter((it) => it.type === "movie"), by ? tr("Movies directed by {name}", { name }) : tr("Movies with {name}", { name })),
-      ...gridRows(all.filter((it) => it.type === "show"), by ? tr("TV shows directed by {name}", { name }) : tr("TV shows with {name}", { name })),
+      ...gridRows(movies, by ? tr("Movies directed by {name}", { name }) : tr("Movies with {name}", { name })),
+      ...gridRows(shows, by ? tr("TV shows directed by {name}", { name }) : tr("TV shows with {name}", { name })),
     ];
     return rows.length ? rows : [{ kind: "posters", title: tr("{title} — nothing here", { title: name }), col: 0, items: [] }];
   });
