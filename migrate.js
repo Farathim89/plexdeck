@@ -21,6 +21,7 @@ const DEFAULTS = {
   autoPlay: true,            // play the next episode by itself (Up Next)
   autoPlayCountdown: 10,     // …after this many seconds
   upNextAt: "credits",       // Up Next: at the final credits (like Plex) or "end" (scenes after the credits)
+  specialsInOrder: true,     // Up Next plays a special where it aired (by its air date), like Plex
   passoutHours: 0,           // no button for this many hours → Up Next waits for OK (0 = off)
   rewindOnResume: 0,         // resume this many seconds earlier
   jumpBack: 10,              // player: ← / L2 jumps back this many seconds

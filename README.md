@@ -56,8 +56,8 @@ DTS / TrueHD, styled subtitles — without the server converting anything. In bo
 
 - HDR to HDR screens, surround passthrough to an AV receiver (incl. TrueHD / Atmos / DTS-HD)
 - match the screen's refresh rate to the video
-- Skip Intro / Credits (optionally automatic after a delay you choose), Up Next,
-  chapters, audio & subtitle tracks, playback speed, audio / subtitle sync
+- Skip Intro / Credits (optionally automatic after a delay you choose), Up Next (with
+  specials where they aired, like Plex), chapters, audio & subtitle tracks, playback speed, audio / subtitle sync
 - subtitle size, colour, position and background; preferred audio & subtitle languages
 - **mini player** (PC mode): keep watching in a corner of the window while you browse —
   drag it to another corner, three sizes, double-click for full size

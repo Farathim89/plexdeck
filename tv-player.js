@@ -414,7 +414,11 @@ const Player = (() => {
   }
   async function findNext() {
     try {
-      const leaves = mc(await ctx.api(`/library/metadata/${meta.grandparentRatingKey}/allLeaves`)).Metadata || [];
+      // (specials where they aired, like Plex: see watchOrder in tv.js; one without a date only
+      // when it's playing now)
+      const undated = Number(meta.parentIndex) === 0 && !meta.originallyAvailableAt;
+      const leaves = watchOrder(mc(await ctx.api(`/library/metadata/${meta.grandparentRatingKey}/allLeaves`)).Metadata || [],
+        (ctx.prefs() || {}).specialsInOrder !== false, undated);
       const i = leaves.findIndex((x) => String(x.ratingKey) === String(meta.ratingKey));
       nextEp = i >= 0 ? leaves[i + 1] || null : null;
       prevEp = i > 0 ? leaves[i - 1] : null;

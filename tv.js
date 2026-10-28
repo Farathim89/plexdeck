@@ -633,6 +633,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Auto Play Countdown"), "autoPlayCountdown", [2, 5, 10, 15, 20, 30].map((n) => ({ v: n, l: secs(n) })), null, { min: 1, max: 120 }),
     prefRow(tr("Show Up Next"), "upNextAt", [{ v: "credits", l: tr("At the credits") }, { v: "end", l: tr("At the end") }],
       tr("At the end leaves time for scenes after the credits (common in anime).")),
+    prefRow(tr("Specials in Airing Order"), "specialsInOrder", "toggle", tr("Up Next plays a special where it aired, like Plex")),
     prefRow(tr("Passout Protection"), "passoutHours", [{ v: 0, l: tr("Off") }, ...[1, 2, 3, 4].map((n) => ({ v: n, l: n === 1 ? tr("After 1 hour") : tr("After {n} hours", { n }) }))]),
     prefRow(tr("Rewind Video on Resume"), "rewindOnResume", [{ v: 0, l: tr("None") }, ...[2, 5, 10, 15, 30].map((n) => ({ v: n, l: secs(n) }))], null, { min: 0, max: 300 }),
     prefRow(tr("Skip Intros"), "autoSkipIntro", [{ v: false, l: tr("Manual") }, { v: true, l: tr("Automatic") }]),
@@ -1251,9 +1252,41 @@ function markWatched(it, on, after) {
     { label: on ? tr("Mark as watched") : tr("Mark as unwatched"), action: go },
   ] });
 }
-// A show or season: the episode to watch (the first one not watched yet, else the first)
+// A show's episodes (the server's /allLeaves) in the order to watch them. Like Plex, a special
+// goes where it aired: after the last episode shown on or before its air date (Sword Art Online:
+// 1×25, then the special Extra Edition, then 2×1). Specials without a date have no place and are
+// left out (`withUndated`: kept in front, where the server has them, to play on from one of them).
+// `inOrder` false (Settings: Specials in Airing Order off): the server's order, specials first.
+function watchOrder(leaves, inOrder = true, withUndated = false) {
+  if (!inOrder) return leaves;
+  const special = (e) => Number(e.parentIndex) === 0;
+  const out = leaves.filter((e) => !special(e));
+  const dated = leaves.filter((e) => special(e) && e.originallyAvailableAt)
+    .sort((a, b) => a.originallyAvailableAt.localeCompare(b.originallyAvailableAt) || (a.index || 0) - (b.index || 0));
+  for (const s of dated) {
+    let at = 0;
+    out.forEach((e, i) => { if (e.originallyAvailableAt && e.originallyAvailableAt <= s.originallyAvailableAt) at = i + 1; });
+    out.splice(at, 0, s);
+  }
+  return withUndated ? [...leaves.filter((e) => special(e) && !e.originallyAvailableAt), ...out] : out;
+}
+// A show or season: the episode to watch. A show: Plex's On Deck (the one you're on), else the
+// first one not watched yet in watching order (else the first); a season: its first not watched.
 async function nextEpisodeOf(it) {
-  const eps = (mc(await api(`/library/metadata/${it.key}/${it.type === "show" ? "allLeaves" : "children"}`)).Metadata || []).map(norm);
+  if (it.type !== "show") {
+    const eps = (mc(await api(`/library/metadata/${it.key}/children`)).Metadata || []).map(norm);
+    return eps.find((e) => !watched(e)) || eps[0] || null;
+  }
+  const [meta, leaves] = await Promise.all([
+    api(`/library/metadata/${it.key}`, { includeOnDeck: 1 }).catch(() => null),
+    api(`/library/metadata/${it.key}/allLeaves`),
+  ]);
+  const m = (mc(meta).Metadata || [])[0];
+  const deck = m && m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
+  if (deck) return norm(deck);
+  const all = mc(leaves).Metadata || [];
+  const order = watchOrder(all, lastPrefs.specialsInOrder !== false);
+  const eps = (order.length ? order : all).map(norm);   // (only undated specials: those)
   return eps.find((e) => !watched(e)) || eps[0] || null;
 }
 // Y (Triangle), C / Delete / the menu key, or a right-click on a title: what you can do with it, like
