@@ -998,7 +998,8 @@ function cardHtml(it, kind, grid = false) {
   if (kind === "tiles") return `<div class="card tile"><div class="img"><div class="fallback">${esc(it.title)}</div></div></div>`;
   if (kind === "wide") {
     const prog = it.offset && it.duration ? `<div class="progress"><i data-w="${Math.min(100, (it.offset / it.duration) * 100)}"></i></div>` : "";
-    const badge = `<div class="badge">${watched(it) ? "✓ " : ""}E${it.epNo ?? ""}</div>`;
+    // (a special among a season's episodes, see seasonEpisodes: "Special", not its number)
+    const badge = `<div class="badge">${watched(it) ? "✓ " : ""}${it.special ? esc(tr("Special")) : `E${it.epNo ?? ""}`}</div>`;
     const still = it.still ? `<img src="${esc(img(it.still, 480, 270))}" alt="" loading="lazy">` : "";
     return `<div class="card wide"><div class="img">${still}${badge}${prog}</div></div>`;
   }
@@ -1270,11 +1271,28 @@ function watchOrder(leaves, inOrder = true, withUndated = false) {
   }
   return withUndated ? [...leaves.filter((e) => special(e) && !e.originallyAvailableAt), ...out] : out;
 }
+// A season's episodes. With Specials in Airing Order on, a special that aired in the middle of the
+// season goes between its episodes, where Up Next plays it (Sword Art Online season 3: Alicization
+// 18.5 after episode 18); one between two seasons stays with the specials. `specialsKey`: the
+// show's Specials season.
+async function seasonEpisodes(seasonKey, index, specialsKey) {
+  const [own, specials] = await Promise.all([
+    api(`/library/metadata/${seasonKey}/children`).then((r) => mc(r).Metadata || []),
+    lastPrefs.specialsInOrder !== false && index > 0 && specialsKey
+      ? api(`/library/metadata/${specialsKey}/children`).then((r) => mc(r).Metadata || []).catch(() => []) : [],
+  ]);
+  if (!specials.length || !own.length) return own;
+  const order = watchOrder([...specials, ...own]);
+  const first = order.indexOf(own[0]), last = order.indexOf(own[own.length - 1]);
+  return first < 0 || last < first ? own : order.slice(first, last + 1);
+}
 // A show or season: the episode to watch. A show: Plex's On Deck (the one you're on), else the
 // first one not watched yet in watching order (else the first); a season: its first not watched.
 async function nextEpisodeOf(it) {
   if (it.type !== "show") {
-    const eps = (mc(await api(`/library/metadata/${it.key}/children`)).Metadata || []).map(norm);
+    const kids = it.showKey && lastPrefs.specialsInOrder !== false ? mc(await api(`/library/metadata/${it.showKey}/children`).catch(() => null)).Metadata || [] : [];
+    const sp = kids.find((s) => s.type === "season" && Number(s.index) === 0);
+    const eps = (await seasonEpisodes(it.key, it.raw ? Number(it.raw.index) : 0, sp && sp.ratingKey)).map(norm);
     return eps.find((e) => !watched(e)) || eps[0] || null;
   }
   const [meta, leaves] = await Promise.all([
@@ -1893,7 +1911,9 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   async function loadSeason(i, focusKey) {
     const season = seasons[i];
     if (!season) return;
-    const eps = (mc(await api(`/library/metadata/${season.key}/children`)).Metadata || []).map(norm);
+    const specials = seasons.find((s) => Number(s.raw.index) === 0);
+    const eps = (await seasonEpisodes(season.key, Number(season.raw.index), specials && specials.key)).map(norm)
+      .map((e) => (Number(season.raw.index) > 0 && Number(e.seasonNo) === 0 ? { ...e, special: true } : e));
     epRow.items = eps;
     // Focus: the asked-for episode, else the first one not watched yet.
     let col = focusKey ? eps.findIndex((e) => e.key === focusKey) : -1;
