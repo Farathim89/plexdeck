@@ -1093,13 +1093,9 @@ function drawPage(p) {
     el.classList.toggle("selected", i === p.tabs.selected);
     el.classList.toggle("focus", !menuOpen && p.row === 0 && i === p.tabs.col);
   });
-  if (p.tabs) {   // a long tab bar (many seasons) scrolls: keep the focused / chosen tab in view
+  if (p.tabs) {   // a long tab bar (many seasons) scrolls: the focused / chosen tab as far left as it goes
     const bar = $("tabs"), el = bar.children[p.row === 0 ? p.tabs.col : p.tabs.selected];
-    if (el) {
-      const l = el.offsetLeft, r = l + el.offsetWidth;
-      if (l < bar.scrollLeft + 6) bar.scrollLeft = Math.max(0, l - 6);
-      else if (r > bar.scrollLeft + bar.clientWidth - 6) bar.scrollLeft = r - bar.clientWidth + 6;
-    }
+    if (el) bar.scrollLeft = Math.max(0, el.offsetLeft - 6);   // (6: the bar's padding; it stops at its end)
   }
   // focus marks
   p.rows.forEach((r, ri) => {
