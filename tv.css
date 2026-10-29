@@ -721,9 +721,11 @@ body.menu-open .mi.moving { box-shadow: inset 0 0 0 3px #fff, 0 8px 24px rgba(0,
 #pMenuList .pm.focus small, #pMenuList .pm.focus .r, #profPanel .pp.focus small, #profPanel .pp.focus .v,
 #profPanel .pp.stepbox.focus .t { color: rgba(255,255,255,.7); }
 #pMenuList .pm.focus .radio, #profPanel .pp.focus .rd { box-shadow: inset 0 0 0 2px rgba(255,255,255,.75); }
-/* what's chosen but not focused (a library's tab, the letter of the focused title on the A–Z
-   bar): a grey pill — the white ring means focus now */
-.tab.selected:not(.focus), #azBar div.cur:not(.focus) { background: color-mix(in srgb, var(--accent) 32%, #262626); box-shadow: none; color: #fff; }
+/* what's chosen but not focused (a show's season, a library's tab, the letter of the focused title
+   on the A–Z bar): like focus, black with the white ring (the side menu's Home); the ring dimmed
+   while another one in the same bar has the focus */
+.tab.selected:not(.focus), #azBar div.cur:not(.focus) { background: #000; color: #fff; box-shadow: inset 0 0 0 3px #fff; }
+#tabs:has(.tab.focus) .tab.selected:not(.focus), #azBar:has(div.focus) div.cur:not(.focus) { box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
 /* A show's page (tv.js seriesPage), laid out like Plex's: the poster left of the details, the
    buttons beside it with the summary under them, then the seasons (a grid) and the related rows,
    in smaller posters like Plex's (.row.small: 190px, 218px apart). Down from the buttons
