@@ -1073,20 +1073,30 @@ function renderRows(p) {
     : `${b.before ? `<span class="by">${esc(b.before)}</span>` : ""}<div class="btn opt ${b.plain ? "plain" : ""}">${b.sortIcon ? ICON.sort : ""}<span>${esc(b.label)}</span></div>`).join("")}</div>` : "";
   p.rendered = true;
 }
-// A line that doesn't fit (the focused card's title) scrolls to its end and back, like Plex: see
-// .run in tv.css. Its text goes in a <span> that can move. `speed`: px a second.
+// A line that doesn't fit (the focused card's title) scrolls: 2 s still, then to its end, 2 s there,
+// back to the start at once, and over again. Its text goes in a <span> that can move (inline-block
+// while it runs, see .run in tv.css). `speed`: px a second.
 function marquee(el, speed = 40) {
   if (!el || el.classList.contains("run") || el.scrollWidth <= el.clientWidth + 1) return;
   if (!el.firstElementChild) el.innerHTML = `<span>${el.innerHTML}</span>`;
   el.classList.add("run");
-  const d = el.firstElementChild.offsetWidth - el.clientWidth;
+  const span = el.firstElementChild, d = span.offsetWidth - el.clientWidth;
   if (d <= 1) { el.classList.remove("run"); return; }
-  el.style.setProperty("--d", `${-d}px`);
-  el.style.setProperty("--t", `${(Math.max(1.5, d / speed) / 0.7).toFixed(1)}s`);   // (+ a pause at each end)
+  const hold = 2000, travel = Math.max(1.5, d / speed) * 1000, total = hold + travel + hold;
+  span.animate([
+    { transform: "translateX(0)", offset: 0 },
+    { transform: "translateX(0)", offset: hold / total, easing: "ease-in-out" },
+    { transform: `translateX(${-d}px)`, offset: (hold + travel) / total },
+    { transform: `translateX(${-d}px)`, offset: 1 },
+  ], { duration: total, iterations: Infinity });
 }
-// the focused card's title runs; the other cards' stop
+// the focused card's title runs; the other cards' stop (and show their "…" again)
 function marqueeLabel() {
-  document.querySelectorAll("#rows .label.run").forEach((l) => { if (!l.closest(".card.focus")) l.classList.remove("run"); });
+  document.querySelectorAll("#rows .label.run").forEach((l) => {
+    if (l.closest(".card.focus")) return;
+    l.classList.remove("run");
+    if (l.firstElementChild) l.firstElementChild.getAnimations().forEach((a) => a.cancel());
+  });
   marquee(document.querySelector("#rows .card.focus .label:not(.small)"));
 }
 function drawPage(p) {

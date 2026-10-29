@@ -132,12 +132,10 @@ body.menu-open { --content-x: var(--menu-open); }
 .card .badge { position: absolute; right: 0; top: 0; background: rgba(0,0,0,.75); padding: 4px 10px; border-bottom-left-radius: 6px; font-size: 20px; font-weight: 600; display: flex; gap: 6px; align-items: center; }
 .card .label { margin-top: 12px; font-size: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .label:empty { display: none; }
-/* the focused card's title that doesn't fit scrolls to its end and back, pausing at each end
-   (tv.js marqueeLabel); a moving <span> has to be inline-block, a resting one stays inline so
-   the "…" still shows */
+/* the focused card's title that doesn't fit scrolls to its end, waits, starts over (tv.js
+   marquee); a moving <span> has to be inline-block, a resting one stays inline so the "…" shows */
 #rows .card .label.run { text-overflow: clip; text-align: left; }
-#rows .card .label.run > span { display: inline-block; animation: label-run var(--t, 5s) ease-in-out 1s infinite alternate; }
-@keyframes label-run { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--d, 0)); } }
+#rows .card .label.run > span { display: inline-block; }
 
 /* Action buttons (details pages): round, the focused one opens into a labelled pill. */
 .buttons { display: flex; gap: 24px; align-items: center; }
