@@ -1840,6 +1840,7 @@ function moviePage(item) {
 function seriesPage(showKey) {
   const p = makePage({ pinned: false, pinFrom: 1 });
   p.showKey = showKey;   // (a season's menu here has no "Go to show")
+  p.themeFor = showKey;   // (from the start: going to its seasons and back, the tune plays on)
   let more = null, deck = null;
   p.focused = () => null;   // the hero (and its artwork) stay the show's
   // Watch / Resume: the episode you're on (Plex's On Deck), else the first one not watched yet
@@ -1859,7 +1860,6 @@ function seriesPage(showKey) {
     p.poster = show.poster ? img(show.poster, 390, 585) : "";
     if (!more) more = await extraRows(m, { related: true }).catch(() => []);
     if (m.theme && page === p) playTheme(showKey, m.theme);
-    p.themeFor = showKey;
     const d = m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
     deck = d ? norm(d) : null;
     const seasons = (mc(kids).Metadata || []).filter((x) => x.type === "season").map(norm).map((x) => ({
@@ -1892,6 +1892,7 @@ function seriesPage(showKey) {
 function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   const tabs = { kind: "tabs", items: [], col: 0, selected: 0 };
   const p = makePage({ tabs, pinned: false, pinFrom: 2 });
+  p.themeFor = showKey;   // (from the start: from the show's page the tune plays on)
   let show = null, seasons = [], more = [];
   const epRow = { kind: "wide", col: 0, items: [] };
   const btnRow = { kind: "buttons", col: 0, items: [] };
@@ -1944,8 +1945,7 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     p.heroItem = show ? { ...show, details: true } : null;
     if (m) more = await extraRows(m).catch(() => []);
     if (m && m.theme && page === p) playTheme(showKey, m.theme);
-    p.themeFor = showKey;
-    seasons = (mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
+    seasons =(mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
     tabs.items = seasons.map((s) => ({ label: s.sub || s.epTitle || tr("Season {n}", { n: s.raw.index }) }));
     // Which season: the asked-for one, else the On Deck episode's, else the first.
     let si = seasonKey ? seasons.findIndex((s) => s.key === String(seasonKey)) : -1;
@@ -2324,7 +2324,10 @@ function whereToWatch(m, offers) {
 // ---- theme music on show pages ---------------------------------------------------------
 const themeAudio = new Audio();
 themeAudio.loop = false;
-let themeFor = null, themeFade = null;
+// Once per visit to a show: a tune that has played to its end doesn't start again when the page
+// reloads (every 2 minutes, see freshen) or you go to its seasons; leaving the show resets it.
+let themeFor = null, themeFade = null, themeEnded = false;
+themeAudio.addEventListener("ended", () => { themeEnded = true; });
 // Theme Music Volume: Plex's own levels (its TV apps have Quiet … Loud), as a share of PlexDeck's
 // sound in Windows. Theme tunes are often mastered loud and Plex doesn't level them out.
 const THEME_LEVELS = [{ v: 15, l: N_("Quiet") }, { v: 30, l: N_("Medium") }, { v: 50, l: N_("High") }, { v: 80, l: N_("Loud") }];
@@ -2340,13 +2343,14 @@ function fadeTo(target, then) {
 function playTheme(showKey, path) {
   // not under a video (the show can finish loading after you've pressed play) or while hidden
   if (!lastPrefs.themeMusic || !path || Music.isActive() || Player.isActive() || nativePlaying || document.hidden) return;
-  if (themeFor === showKey && !themeAudio.paused) return;
-  themeFor = showKey;
+  if (themeFor === showKey && (themeEnded || !themeAudio.paused)) return;
+  themeFor = showKey; themeEnded = false;
   themeAudio.src = `${S.uri}${path}?X-Plex-Token=${S.token}`;
   themeAudio.volume = 0;
   themeAudio.play().then(() => fadeTo(themeVol())).catch(() => {});
 }
 function stopTheme() {
+  themeEnded = false;
   if (themeAudio.paused) { themeFor = null; return; }
   themeFor = null;
   fadeTo(0, () => themeAudio.pause());
