@@ -441,6 +441,17 @@ body.mini #stage { display: none; }
 #dlg.list .dl { width: 600px; }
 .dl.focus { width: 740px; height: 88px; background: #fff; color: #1b1b1b; font-size: 30px; }
 #dlg.list .dl.focus { width: 600px; height: 80px; font-size: 28px; }
+/* a summary in full (OK on a cut-off one, tv.js showSummary): the title, the text (Up / Down
+   scroll a long one), Close */
+#dlg.list.summary #dlgSide { display: block; left: 50%; width: 1200px; margin-left: -600px; top: 230px; bottom: 210px; padding: 0 16px 0 0;
+  overflow-y: auto; scrollbar-width: thin; }
+#dlg.summary #dlgIcon, #dlg.summary #dlgName, #dlg.summary #dlgRule { display: none; }
+#dlg.summary #dlgDesc { margin: 0; min-height: 0; font-size: 28px; line-height: 1.5; text-align: left; white-space: pre-line; color: #e6e6e6; }
+#dlg.list.summary #dlgList, body.short #dlg.list.summary #dlgList { top: auto; bottom: 90px; }
+/* a details page's summary that's cut off ("…"): a stop of its own, OK (or a click) shows all of
+   it (tv.js summaryAct) — the white ring when it has the focus */
+body.mouse .sumcut { cursor: pointer; }
+.sumfocus { outline: 3px solid #fff; outline-offset: 10px; border-radius: 12px; }
 
 /* the ⋮ by the clock (Home): Manage Home Screen */
 #ovMenu { position: absolute; right: 216px; top: 24px; width: 80px; height: 80px; border-radius: 50%; display: grid; place-items: center; color: rgba(255,255,255,.8); }

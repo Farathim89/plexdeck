@@ -862,6 +862,8 @@ const Dialog = (() => {
   }
   function act(name) {
     const o = cur;
+    // (a long text — a summary in full — scrolls with Up / Down)
+    if (o.scrollText && (name === "Up" || name === "Down")) { $("dlgSide").scrollTop += name === "Up" ? -160 : 160; return; }
     if (name === "Up") o.i = Math.max(0, o.i - 1);
     else if (name === "Down") o.i = Math.min(o.items.length - 1, o.i + 1);
     else if (name === "OK") { const it = o.items[o.i]; close(); if (it) it.action(); return; }
@@ -1099,6 +1101,39 @@ function marqueeLabel() {
   });
   marquee(document.querySelector("#rows .card.focus .label:not(.small)"));
 }
+// A details page's summary, when it's cut off ("…"): a stop next to its row, like Plex's. page.sum:
+// `row`, `dir` (the way to it from that row: Down to the summary under a show's or movie's
+// buttons, Up to the hero's above an episode, a person's titles, a Discover title's buttons),
+// `target()` (its element), `title()`. OK there, or a click on it, shows all of it.
+function summaryCut(p) {
+  const el = p.sum && p.sum.target();
+  return !!el && el.offsetHeight > 0 && el.scrollHeight > el.clientHeight + parseFloat(getComputedStyle(el).lineHeight) / 2;
+}
+function summaryAct(name) {
+  const p = page, s = p.sum;
+  if (!p.sumFocus) {
+    if (name !== s.dir || p.row !== s.row || !summaryCut(p)) return false;
+    p.sumFocus = true; p.draw();
+    return true;
+  }
+  if (name === "OK") { showSummary(p); return true; }
+  if (name === "Y") return true;
+  if (name === s.dir) {   // on past it, as from its row (nothing there: it stays)
+    const all = p.allRows(), next = p.row + (s.dir === "Down" ? 1 : -1);
+    if (!(next >= 0 && next < all.length && all[next].items.length)) return true;
+    p.sumFocus = false;
+    return false;
+  }
+  p.sumFocus = false; p.draw();   // back to its row (the other way, Left, Right, Back)
+  return true;
+}
+function showSummary(p) {
+  const el = p.sum && p.sum.target();
+  if (!el) return;
+  Dialog.open({ layout: "list", cls: "summary", title: p.sum.title(), scrollText: true,
+    items: [{ label: tr("Close"), desc: el.textContent, action: () => {} }] });
+  $("dlgSide").scrollTop = 0;
+}
 function drawPage(p) {
   // Still loading and nothing to show yet: leave what's on screen until the rows arrive.
   if (p.pending && !p.rows.length) return;
@@ -1132,7 +1167,7 @@ function drawPage(p) {
     const el = r.fixed ? $("libBar") : rowEls[ri];
     if (!el) return;
     const items = el.querySelectorAll(rowItemSel(r));
-    const isFocusRow = !menuOpen && !p.ovFocus && !p.azFocus && all[p.row] === r;
+    const isFocusRow = !menuOpen && !p.ovFocus && !p.azFocus && !p.sumFocus && all[p.row] === r;
     items.forEach((c, ci) => c.classList.toggle("focus", isFocusRow && ci === r.col));
     el.classList.toggle("dim", !isFocusRow);
     // keep the focused card in view: the row slides left once you pass the middle
@@ -1162,6 +1197,11 @@ function drawPage(p) {
   if (p.loadMore && contentRow >= p.rows.length - 3) p.loadMore();
   if (p.after) p.after(); else $("azBar").hidden = true;
   fitLayout(p);
+  // a cut-off summary (see summaryAct): a pointer for the mouse, the white ring when it's focused
+  const sumEl = p.sum ? p.sum.target() : null, cut = !!sumEl && summaryCut(p);
+  if (!cut) p.sumFocus = false;
+  document.querySelectorAll(".sumcut").forEach((e) => { if (e !== sumEl) e.classList.remove("sumcut", "sumfocus"); });
+  if (sumEl) { sumEl.classList.toggle("sumcut", cut); sumEl.classList.toggle("sumfocus", cut && !!p.sumFocus && !menuOpen); }
   if ($("rows").classList.contains("fresh")) requestAnimationFrame(() => requestAnimationFrame(() => $("rows").classList.remove("fresh")));
 }
 function showPage(p, { push = false } = {}) {
@@ -1723,6 +1763,8 @@ function personPage({ name, kind, id, thumb, tagKey }) {
   const p = makePage({ heroItem: { key: `person-${id}`, type: "person", title: name, sub: "", summary: "", facts: [], genres: [], cast: [], directors: [] } });
   p.focused = () => null;   // the hero stays the person's
   p.poster = thumb ? img(thumb, 390, 585) : "";
+  // the biography, cut off: Up to it from their titles, OK for all of it (see summaryAct)
+  p.sum = { row: 0, dir: "Up", target: () => $("heroSummary"), title: () => name };
   loadInto(p, async () => {
     const libs = sections.filter((s) => s.type === "movie" || s.type === "show");
     const [found, bio] = await Promise.all([
@@ -1844,6 +1886,10 @@ function moviePage(item) {
     p.focused = () => null;   // the hero (and its artwork) stay the movie's
     p.poster = item.poster ? img(item.poster, 390, 585) : "";
   }
+  // its summary, cut off — a movie's under the buttons (Down to it), a clip's in the hero above
+  // them (Up) — OK for all of it (see summaryAct)
+  p.sum = film ? { row: 0, dir: "Down", target: () => document.querySelector('#rows > .row[data-r="0"] .bnote'), title: () => (p.heroItem && p.heroItem.title) || "" }
+    : { row: 0, dir: "Up", target: () => $("heroSummary"), title: () => (p.heroItem && p.heroItem.title) || "" };
   let more = null;
   const refresh = async () => {
     const raw = (mc(await api(`/library/metadata/${item.key}`)).Metadata || [])[0] || item.raw;
@@ -1875,6 +1921,8 @@ function seriesPage(showKey) {
   const p = makePage({ pinned: false, pinFrom: 1 });
   p.showKey = showKey;   // (a season's menu here has no "Go to show")
   p.themeFor = showKey;   // (from the start: going to its seasons and back, the tune plays on)
+  // its summary under the buttons, cut off: Down to it, OK for all of it (see summaryAct)
+  p.sum = { row: 0, dir: "Down", target: () => document.querySelector('#rows > .row[data-r="0"] .bnote'), title: () => (p.heroItem && p.heroItem.title) || "" };
   let more = null, deck = null;
   p.focused = () => null;   // the hero (and its artwork) stay the show's
   // Watch / Resume: the episode you're on (Plex's On Deck), else the first one not watched yet
@@ -1927,6 +1975,11 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   const tabs = { kind: "tabs", items: [], col: 0, selected: 0 };
   const p = makePage({ tabs, pinned: false, pinFrom: 2 });
   p.themeFor = showKey;   // (from the start: from the show's page the tune plays on)
+  // the focused episode's summary in the hero, cut off: Up to it from the episodes, OK for all of it
+  p.sum = { row: 1, dir: "Up", target: () => $("heroSummary"), title: () => {
+    const ep = epRow.items[epRow.col];
+    return ep ? `${show ? `${show.title} · ` : ""}${ep.special ? tr("Special") : `S${ep.seasonNo} · E${ep.epNo}`}  ${ep.epTitle || ""}` : "";
+  } };
   let show = null, seasons = [], more = [];
   const epRow = { kind: "wide", col: 0, items: [] };
   const btnRow = { kind: "buttons", col: 0, items: [] };
@@ -2289,6 +2342,8 @@ const discoverHash = (key) => `#!/provider/tv.plex.provider.discover/details?key
 function discoverPage(m0) {
   const p = makePage({ heroItem: { ...norm(m0), details: true }, pinned: false, pinFrom: 1 });
   p.online = true;
+  // its summary in the hero, cut off: Up to it from the buttons, OK for all of it (see summaryAct)
+  p.sum = { row: 0, dir: "Up", target: () => $("heroSummary"), title: () => (p.heroItem && p.heroItem.title) || "" };
   const base = `${PROVIDER.discover.base}/library/metadata/${m0.ratingKey}`;
   const cloudItem = (x) => ({ ...norm(x), open: () => openDiscoverItem(x) });
   const load = async () => {
@@ -2608,6 +2663,7 @@ function act(name) {
   if (menuOpen && profPanel) return profPanelAct(name);
   if (menuOpen && menuKey(name)) return;
   if (!menuOpen && page && page.onAct && page.onAct(name)) return;   // pages with their own layout (the PIN pad)
+  if (!menuOpen && page && page.sum && summaryAct(name)) return;   // a details page's cut-off summary
   if (name === "Up" || name === "Down" || name === "Left" || name === "Right") move(name);
   else if (name === "OK") ok();
   else if (name === "Y" && page && !menuOpen) { const r = page.allRows()[page.row]; const it = r && r.items[r.col]; if (it) (page.onY || itemMenu)(it); }
@@ -2770,6 +2826,9 @@ function clickAt(el, right) {
   if (el.closest("#menu, #profPanel")) return done();
   if (menuOpen) closeMenu();
   if (!page) return done();
+  // a cut-off summary: all of it
+  page.sumFocus = false;
+  if (page.sum && el.closest(".sumcut")) { showSummary(page); return done(); }
   // the page: ⋮ by the clock (Home), the A–Z bar, the tabs, a library's filter bar, the rows
   if (el.closest("#ovMenu") && page.overflow) { page.ovFocus = false; manageHome(); return done(); }
   const az = el.closest("#azBar > div");
