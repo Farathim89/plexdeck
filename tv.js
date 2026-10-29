@@ -1576,6 +1576,9 @@ function libraryPage(sec) {
     const r = p.allRows()[p.row];
     const cur = p.azFocus ? -1 : r && r.grid ? azIndexFor(letterOf(r.items[r.col])) : -1;
     bar.innerHTML = az.map((e, i) => `<div class="${i === cur ? "cur" : ""} ${p.azFocus && i === p.azIndex ? "focus" : ""}">${esc(e.ch)}</div>`).join("");
+    // (taller than the room there is, the bar scrolls: the focused / lit letter in the middle)
+    const lit = bar.querySelector(".focus") || bar.querySelector(".cur");
+    if (lit) bar.scrollTop = lit.offsetTop - (bar.clientHeight - lit.offsetHeight) / 2;
   };
   const loadCollections = (o = {}) => loadInto(p, async () => {
     const items = (mc(await api(`/library/sections/${sec.key}/collections`)).Metadata || []).map(norm);
