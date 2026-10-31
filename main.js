@@ -387,7 +387,7 @@ function refreshStartWithWindows() {
   if (config.startWithWindows !== app.getLoginItemSettings(loginItem()).openAtLogin) registerStartWithWindows(config.startWithWindows);
 }
 
-// ---- system tray: keep music playing with the window closed ---------------
+// ---- system tray: keep music playing with the window minimised to it ---------------
 function showWindow() {
   if (!win) return;
   if (win.isMinimized()) win.restore();
@@ -552,14 +552,15 @@ function createWindow() {
     applyStartFlags(process.argv, false);
     focusInUse();
   });
-  // ✕ hides to the tray (music keeps playing) unless you're quitting or turned it off.
-  win.on("close", (e) => {
+  // ✕ quits PlexDeck (it used to hide to the tray). Minimise goes to the tray instead (Settings:
+  // Minimise to the tray, on by default): no taskbar button, music keeps playing.
+  win.on("close", () => {
     saveWindowState();
-    if (isQuitting || !config.closeToTray || !tray) return;
-    e.preventDefault();
-    if (win.isFullScreen()) win.setFullScreen(false);
+    if (!isQuitting) app.quit();   // (also with another window of ours open: Settings, the track tool)
+  });
+  win.on("minimize", () => {
+    if (isQuitting || !config.minimizeToTray || !tray) return;
     win.hide();
-    mpv.closePlayer();   // (after hiding: stopping a video brings the focus back to a visible window)
     if (!config.trayHintShown) {
       tray.displayBalloon({
         iconType: "info",
@@ -723,7 +724,7 @@ const SETTING_NAMES = {
   autoSkipIntro: N_("Skip intros automatically"), skipIntroDelay: N_("Intro skip delay"), autoSkipCredits: N_("Skip credits automatically"),
   skipCreditsDelay: N_("Credits skip delay"), autoPlay: N_("Auto Play"), autoPlayCountdown: N_("Auto Play Countdown"), upNextAt: N_("Show Up Next"), specialsInOrder: N_("Specials in airing order"),passoutHours: N_("Passout Protection"), rewindOnResume: N_("Rewind Video on Resume"), jumpBack: N_("Jump back"), jumpForward: N_("Jump forward"), textSize: N_("Text size"), fontFamily: N_("Font"), plexColours: N_("Plex colours"),
   keyboardNav: N_("Arrow-key navigation"), controller: N_("Game controller"), startMaximized: N_("Start maximised"), theme: N_("Theme"),
-  closeToTray: N_("Keep running in the tray"), startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"), askUserAtStart: N_("Ask who's watching"), heroTitle: N_("Title Style"),
+  minimizeToTray: N_("Minimise to the tray"),startWithWindows: N_("Start with Windows"), startMode: N_("Start in"), autoMode: N_("Switch mode by itself"), askUserAtStart: N_("Ask who's watching"), heroTitle: N_("Title Style"),
   pcPlayerEngine: N_("PC mode player"), playerEngine: N_("TV mode player"), hdr: N_("HDR"), passthrough: N_("Surround passthrough"),
   matchRefresh: N_("Match refresh rate"), videoNativeRes: N_("Play at full resolution"), autoHdr: N_("Switch HDR on for HDR videos"), rtxUpscale: N_("RTX Super Resolution"), rtxHdr: N_("RTX Video HDR"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
@@ -1085,8 +1086,8 @@ function buildMenu() {
           click: (item) => { config = { ...config, updateCheck: item.checked }; writeJson(dataFile("config.json"), config); if (item.checked) checkForUpdates(false); },
         },
         {
-          label: tr("Keep running in the tray when closed"), type: "checkbox", checked: !!config.closeToTray,
-          click: (item) => setSetting("closeToTray", item.checked),
+          label: tr("Minimise to the tray"), type: "checkbox", checked: !!config.minimizeToTray,
+          click: (item) => setSetting("minimizeToTray", item.checked),
         },
         {
           label: app.isPackaged ? tr("Start with Windows") : tr("Start with Windows (installed app only)"),

@@ -33,7 +33,7 @@ const DEFAULTS = {
   controller: true,          // PS4/PS5/Xbox pads drive the same navigation
   startMaximized: true,
   theme: "plex",             // see THEMES in main.js
-  closeToTray: true,         // ✕ hides to the tray, so music keeps playing
+  minimizeToTray: true,      // minimise hides to the tray (no taskbar button), so music keeps playing; ✕ quits
   startWithWindows: false,   // starts hidden in the tray when you sign in to Windows
   startMode: "last",         // "last" | "pc" | "tv"
   autoMode: true,            // a controller → TV mode by itself

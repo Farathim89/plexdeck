@@ -74,7 +74,8 @@ A built-in player (your server converts the video) is there as a fallback.
 - **Audio & subtitle tool** — set the exact audio / subtitle track for a whole show,
   season or movie at once (like PASTA).
 - Controller support (PS4 / PS5 / Xbox), arrow-key navigation, mouse back/forward buttons
-- Tray with play/pause controls (music and video), start with Windows, custom title bar, remembered window
+- Tray with play/pause controls (music and video): minimise sends PlexDeck there (✕ quits),
+  start with Windows, custom title bar, remembered window
 - **Updates** — one click: PlexDeck downloads the new version, checks it, and installs it
   when you restart (installed and portable alike; it asks first). In TV mode the update is
   in the sidebar, and you answer with the controller

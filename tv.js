@@ -686,7 +686,7 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("What PlexDeck Shows"), "source", [{ v: "app", l: tr("Everything Plex has") }, { v: "server", l: tr("Just my server") }]),
     prefRow(tr("Game Controller"), "controller", "toggle"),
     prefRow(tr("Start Maximised"), "startMaximized", "toggle"),
-    prefRow(tr("Keep Running in the Tray"), "closeToTray", "toggle"),
+    prefRow(tr("Minimise to the Tray"), "minimizeToTray", "toggle"),
     { label: tr("All PlexDeck Settings"), sub: tr("Backup, fonts and more (PC view)"), action: () => { closeMenu(); desktop.tvSettings(); } },
     { label: tr("Plex Web Settings"), sub: tr("Opens in PC mode"), action: () => desktop.tvOpenPc("#!/settings/web/general") },
   ] }) },

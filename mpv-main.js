@@ -575,6 +575,4 @@ function command(cmd) {
 
 // The player's controls, when they should have the keyboard / controller (not in the mini player).
 const controls = () => (osd && !osd.isDestroyed() && !mini ? osd : null);
-// PlexDeck's window went to the tray (✕): a video doesn't play on without it (music does)
-const closePlayer = () => { if (host) closedOutside("PlexDeck's window was closed (to the tray)"); };
-module.exports = { init, available, stop, closePlayer, isOpen: () => !!host, state, command, controls };
+module.exports = { init, available, stop, isOpen: () => !!host, state, command, controls };
