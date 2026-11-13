@@ -1306,9 +1306,8 @@ function openItem(it) {
   if (it.type === "movie" || it.type === "video" || it.type === "clip") return showPage(moviePage(it), { push: true });
   if (it.type === "show") return showPage(seriesPage(it.key), { push: true });
   if (it.type === "season") return showPage(showPage_(it.showKey, { seasonKey: it.key }), { push: true });
-  // an episode (Continue Watching, Search…): its season's list with it focused, as before; OK there
-  // opens its own page (episodePage)
-  if (it.type === "episode") return showPage(showPage_(it.showKey, { seasonKey: it.seasonKey, episodeKey: it.key }), { push: true });
+  // an episode (Continue Watching, Search…): the TV-style page with its season's episodes, it focused (as before 5.5.0)
+  if (it.type === "episode") return showPage(episodeStripPage(it.showKey, { seasonKey: it.seasonKey, episodeKey: it.key }), { push: true });
   if (it.type === "collection") return showPage(listPage(it.title, `/library/collections/${it.key}/children`, it), { push: true });
   if (it.type === "playlist") return showPage(playlistPage(it), { push: true });
   if (it.type === "artist") return showPage(artistPage(it), { push: true });
@@ -2014,6 +2013,87 @@ function seriesPage(showKey) {
   busy(true);
   refresh().catch(() => showError(tr("Couldn't load this show."))).finally(() => busy(false));
   p.refresh = refresh;
+  return p;
+}
+
+// ---- an episode, the TV way (as before 5.5.0; from Continue Watching, Search…): the season tabs,
+// the hero with the focused episode, the season's episodes as a strip, the buttons for the focused
+// one, then the show's cast and extras. OK on an episode plays it. (Opening a season from a show's
+// page shows Plex's layout instead: showPage_.)
+function episodeStripPage(showKey, { seasonKey = null, episodeKey = null } = {}) {
+  const tabs = { kind: "tabs", items: [], col: 0, selected: 0 };
+  const p = makePage({ tabs, pinned: false, pinFrom: 2 });
+  p.themeFor = showKey;   // (from the start: from the show's page the tune plays on)
+  // the focused episode's summary in the hero, cut off: Up to it from the episodes, OK for all of it
+  p.sum = { row: 1, dir: "Up", target: () => $("heroSummary"), title: () => {
+    const ep = epRow.items[epRow.col];
+    return ep ? `${show ? `${show.title} · ` : ""}${ep.special ? tr("Special") : `S${ep.seasonNo} · E${ep.epNo}`}  ${ep.epTitle || ""}` : "";
+  } };
+  let show = null, seasons = [], more = [];
+  const epRow = { kind: "wide", col: 0, items: [] };
+  const btnRow = { kind: "buttons", col: 0, items: [] };
+  const focusedEpisode = () => epRow.items[epRow.col];
+  const makeButtons = () => {
+    const ep = focusedEpisode();
+    if (!ep) { btnRow.items = []; return; }
+    const b = detailButtons({ ...ep, title: show ? show.title : ep.title }, () => loadSeason(tabs.selected, ep.key));
+    btnRow.chips = mediaChips(ep.raw);
+    btnRow.items = b;
+    btnRow.col = Math.min(btnRow.col, b.length - 1);
+  };
+  async function loadSeason(i, focusKey) {
+    const season = seasons[i];
+    if (!season) return;
+    const specials = seasons.find((s) => Number(s.raw.index) === 0);
+    const eps = (await seasonEpisodes(season.key, Number(season.raw.index), specials && specials.key)).map(norm)
+      .map((e) => (Number(season.raw.index) > 0 && Number(e.seasonNo) === 0 ? { ...e, special: true } : e));
+    epRow.items = eps;
+    // Focus: the asked-for episode, else the first one not watched yet.
+    let col = focusKey ? eps.findIndex((e) => e.key === focusKey) : -1;
+    if (col < 0) col = eps.findIndex((e) => !watched(e));
+    epRow.col = Math.max(0, col);
+    makeButtons();
+    p.rows = [epRow, btnRow, ...more];
+    if (page === p) { p.rendered = false; drawPage(p); }
+  }
+  p.onTab = (i) => { p.row = 1; loadSeason(i).catch(() => {}); };
+  // Back from the player: reload the season (progress / watched marks), same episode.
+  p.refresh = () => { const ep = focusedEpisode(); return loadSeason(tabs.selected, ep && ep.key).catch(() => {}); };
+  // The hero follows the focused episode; the buttons act on it.
+  p.focused = function () {
+    const r = this.allRows()[this.row];
+    if (r === epRow || r === btnRow) { const ep = focusedEpisode(); return ep ? { ...ep, title: show ? show.title : ep.title, sub: ep.epTitle, details: true } : null; }
+    return null;
+  };
+  const baseDraw = p.draw;
+  p.draw = function () {
+    if (this.allRows()[this.row] === epRow) { const before = btnRow.items.map((b) => b.label).join(); makeButtons(); if (btnRow.items.map((b) => b.label).join() !== before && this.rendered) redrawRow(this, btnRow); }
+    baseDraw.call(this);
+  };
+  busy(true);
+  (async () => {
+    const [meta, kids] = await Promise.all([
+      api(`/library/metadata/${showKey}`, { includeOnDeck: 1 }),
+      api(`/library/metadata/${showKey}/children`),
+    ]);
+    const m = (mc(meta).Metadata || [])[0];
+    show = m ? norm(m) : null;
+    p.heroItem = show ? { ...show, details: true } : null;
+    if (m) more = await extraRows(m).catch(() => []);
+    if (m && m.theme && page === p) playTheme(showKey, m.theme);
+    seasons =(mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
+    tabs.items = seasons.map((s) => ({ label: s.sub || s.epTitle || tr("Season {n}", { n: s.raw.index }) }));
+    // Which season: the asked-for one, else the On Deck episode's, else the first.
+    let si = seasonKey ? seasons.findIndex((s) => s.key === String(seasonKey)) : -1;
+    let focusKey = episodeKey;
+    const deck = m && m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
+    if (si < 0 && deck) { si = seasons.findIndex((s) => s.key === String(deck.parentRatingKey)); focusKey = focusKey || deck.ratingKey; }
+    if (si < 0) si = seasons.findIndex((s) => s.raw.index > 0);
+    si = Math.max(0, si);
+    tabs.col = tabs.selected = si;
+    p.row = 1;
+    await loadSeason(si, focusKey ? String(focusKey) : null);
+  })().catch(() => showError(tr("Couldn't load this show."))).finally(() => busy(false));
   return p;
 }
 
