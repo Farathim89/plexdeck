@@ -729,7 +729,7 @@ const SETTING_NAMES = {
   matchRefresh: N_("Match refresh rate"), videoNativeRes: N_("Play at full resolution"), autoHdr: N_("Switch HDR on for HDR videos"), rtxUpscale: N_("RTX Super Resolution"), rtxHdr: N_("RTX Video HDR"), defaultVolume: N_("Volume"), hwDecode: N_("Hardware decoding"), subSize: N_("Subtitle size"),
   subColor: N_("Subtitle colour"), subPosition: N_("Subtitle position"), subBackground: N_("Subtitle background"),
   preferredAudioLang: N_("Audio language"), autoSubtitles: N_("Subtitles on by themselves"), preferredSubtitleLang: N_("Subtitle language"),
-  preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), themeVolume: N_("Theme music volume"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), language: N_("Language"),
+  preferNonSdh: N_("Prefer subtitles without SDH"), audioChannels: N_("Audio channels"), themeMusic: N_("Theme music"), themeVolume: N_("Theme music volume"), tvTextSize: N_("TV mode text size"), screensaver: N_("Screensaver"), saverArt: N_("Screensaver pictures"), saverDim: N_("Screensaver dimming"), saverSecs: N_("Screensaver next picture after"), language: N_("Language"),
   musicVisualiser: N_("Music visualiser"), tvKeys: N_("Key bindings"),
 };
 const showValue = (k, v) => (k === "theme" && THEMES[v] ? tr(THEMES[v].label) : typeof v === "boolean" ? (v ? tr("on") : tr("off")) : v === "" ? tr("(default)")

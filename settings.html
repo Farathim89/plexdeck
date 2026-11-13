@@ -18,6 +18,7 @@
         <nav id="nav">
           <button type="button" data-pane="playback" class="active">Playback</button>
           <button type="button" data-pane="appearance">Appearance</button>
+          <button type="button" data-pane="screensaver">Screensaver</button>
           <button type="button" data-pane="controls">Remote &amp; controller</button>
           <button type="button" data-pane="plex">Plex</button>
           <button type="button" data-pane="about">About</button>
@@ -73,8 +74,6 @@
             <label class="row"><span>Theme music volume</span>
               <select data-key="themeVolume" data-number="1"><option value="15">Quiet</option><option value="30">Medium</option><option value="50">High</option><option value="80">Loud</option></select></label>
             <label class="row"><span>Music visualiser on Now Playing (TV mode)</span><input type="checkbox" data-key="musicVisualiser" /></label>
-            <label class="row"><span>Screensaver after (TV mode)</span>
-              <select data-key="screensaver" data-number="1"><option value="0">Never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
             <label class="row"><span>Switch by itself (controller → TV)</span><input type="checkbox" data-key="autoMode" /></label>
             <label class="row"><span>Ask "Who's watching?" when TV mode starts</span><input type="checkbox" data-key="askUserAtStart" /></label>
             <p class="note" data-i18n>TV mode is a controller-first layout like Plex's TV apps. Switch any time with the <b>PC | TV</b> buttons in the title bar or <b>F10</b>.</p>
@@ -131,6 +130,17 @@
             <label class="row"><span>Start with Windows <small id="swNote">(in the tray, ready to play)</small></span><input type="checkbox" data-key="startWithWindows" /></label>
             <p class="note">With this on, minimising hides the window in the tray and music keeps playing; ✕ quits PlexDeck. Click the tray icon to come back; right-click it for Play/Pause, skip and Quit.</p>
             <p class="note" data-i18n>Shortcuts: <b>Ctrl + / − / 0</b> text size · <b>F11</b> full screen · <b>Alt ← / →</b> back / forward · <b>F5</b> reload · <b>Ctrl ,</b> these settings.</p>
+          </div>
+
+          <div class="pane" id="screensaver">
+            <h2>Screensaver (TV mode)</h2>
+            <label class="row"><span>Start after</span>
+              <select data-key="screensaver" data-number="1"><option value="0">Never</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
+            <label class="row"><span>Show</span>
+              <select data-key="saverArt"><option value="art">Backgrounds</option><option value="poster">Cover art</option></select></label>
+            <label class="row"><span>Next picture after</span><span class="slider"><input type="range" min="3" max="60" step="1" data-key="saverSecs" /><output></output></span></label>
+            <label class="row"><span>Dim</span><span class="slider"><input type="range" min="0" max="80" step="5" data-key="saverDim" /><output></output></span></label>
+            <p class="note">Its libraries are picked in TV mode, for each profile: Settings → Screensaver → Libraries. With none picked it shows just the clock.</p>
           </div>
 
           <div class="pane" id="controls">

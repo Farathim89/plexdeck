@@ -5,7 +5,7 @@ let settings = {};
 
 function suffix(key, v) {
   if (key === "textSize") return `${Math.round(v)}%`;
-  if (key === "defaultVolume") return `${Math.round(v)}%`;
+  if (key === "defaultVolume" || key === "saverDim") return `${Math.round(v)}%`;
   return v === 0 ? tr("at once") : tr("{n} s", { n: v });
 }
 

@@ -364,8 +364,14 @@ html:has(body.osd-mode) { background: rgba(0, 0, 0, .01); }
 /* Screensaver */
 #saver { position: absolute; inset: 0; z-index: 40; background: #000; }
 #saver[hidden] { display: none; }
-#saver img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2s ease, transform 14s linear; transform: scale(1.0); }
+#saver img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2s ease, transform var(--saver-pan, 14s) linear; transform: scale(1.0); }
 #saver img.on { opacity: 1; transform: scale(1.08); }
+/* Settings → Screensaver: Dim (--saver-dim, 0–.8; the clock stays bright), and Show → Cover art:
+   the poster whole in the middle, on a blurred, darker copy of itself */
+#saver img { filter: brightness(calc(1 - var(--saver-dim, .2))); }
+#saver.posters img { object-fit: contain; }
+#saver.posters::before { content: ""; position: absolute; inset: -80px; background: var(--saver-bg) center / cover no-repeat;
+  filter: blur(48px) brightness(calc(.5 - var(--saver-dim, .2) / 2)); }
 /* the clock and the title: a thick black outline round the letters (drawn outside them — paint-order
    — so the thin clock keeps its shape), readable on any artwork */
 #saverInfo { position: absolute; left: 80px; bottom: 70px; text-shadow: 0 2px 12px rgba(0,0,0,.8); paint-order: stroke fill; }

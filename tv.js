@@ -625,12 +625,22 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("Theme Music"), "themeMusic", "toggle"),
     prefRow(tr("Theme Music Volume"), "themeVolume", THEME_LEVELS.map((x) => ({ v: x.v, l: tr(x.l) })), tr("How loud a show's theme tune plays on its page.")),
     prefRow(tr("Music Visualiser"), "musicVisualiser", "toggle"),
-    prefRow(tr("Screensaver"), "screensaver", [0, 2, 5, 10, 20].map((n) => ({ v: n, l: n ? tr("{n} minutes", { n }) : tr("Never") }))),
-    { label: tr("Screensaver Libraries"), value: () => { const n = saverLibs().length; return n === 1 ? tr("1 library") : tr("{n} libraries", { n }); },
-      action: () => pushPanel({ title: tr("Screensaver Libraries"), intro: tr("The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock."),
-        rows: () => saverChoices().map((sec) => ({ label: sec.title, toggle: () => saverLibs().includes(sec.key), action: () => toggleSaverLib(sec.key) })) }) },
     prefRow(tr("Start In"), "startMode", [{ v: "last", l: tr("The mode I used last") }, { v: "pc", l: tr("PC mode") }, { v: "tv", l: tr("TV mode") }]),
     prefRow(tr("Switch Mode by Itself"), "autoMode", "toggle", tr("A controller switches to TV mode")),
+  ] }) },
+  // the screensaver, all in one place: when, which libraries (per profile), backgrounds or cover
+  // art, and how dim (← / →, like a slider)
+  { label: tr("Screensaver"), action: () => pushPanel({ title: tr("Screensaver"), rows: () => [
+    prefRow(tr("Start After"), "screensaver", [0, 2, 5, 10, 20].map((n) => ({ v: n, l: n ? tr("{n} minutes", { n }) : tr("Never") }))),
+    { label: tr("Libraries"), value: () => { const n = saverLibs().length; return n === 1 ? tr("1 library") : tr("{n} libraries", { n }); },
+      action: () => pushPanel({ title: tr("Screensaver Libraries"), intro: tr("The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock."),
+        rows: () => saverChoices().map((sec) => ({ label: sec.title, toggle: () => saverLibs().includes(sec.key), action: () => toggleSaverLib(sec.key) })) }) },
+    prefRow(tr("Show"), "saverArt", [{ v: "art", l: tr("Backgrounds") }, { v: "poster", l: tr("Cover art") }]),
+    prefRow(tr("Next Picture After"), "saverSecs", [6, 8, 12, 20, 30, 60].map((n) => ({ v: n, l: secs(n) })), null, { min: 3, max: 300 }),
+    { label: tr("Dim"), value: () => `${saverDim()} %`, action: () => pushPanel({
+      title: tr("Dim"), stepper: { key: "saverDim", min: 0, max: 80, step: 5, v: saverDim() },
+      rows: (pn) => [{ label: tr("← / →  change   ·   OK  save"), box: () => `${pn.stepper.v} %`, action: () => { setPref("saverDim", pn.stepper.v); popPanel(); } }],
+    }) },
   ] }) },
   { label: tr("Player Experience"), action: () => pushPanel({ title: tr("Player Experience"), rows: () => [
     prefRow(tr("Auto Play"), "autoPlay", "toggle", tr('Play "Up Next" videos automatically')),
@@ -825,7 +835,7 @@ function profPanelAct(name) {
   if (pn.stepper && (name === "Left" || name === "Right")) {
     const st = pn.stepper, now = Date.now();
     stepHeld = now - stepAt < 200 ? stepHeld + 1 : 0; stepAt = now;   // held: bigger steps
-    const by = stepHeld > 20 ? 10 : stepHeld > 8 ? 5 : 1;
+    const by = st.step || (stepHeld > 20 ? 10 : stepHeld > 8 ? 5 : 1);   // (a % in steps of its own)
     st.v = Math.max(st.min, Math.min(st.max, st.v + (name === "Left" ? -by : by)));
     drawProfPanel();
     return;
@@ -2534,6 +2544,8 @@ function toggleSaverLib(key) {
 }
 let nativePlaying = false;   // the native (mpv) player is open on top
 let lastInput = Date.now(), saverOn = false, saverTimer = null, saverItems = [], saverI = 0, saverFlip = false;
+const saverDim = () => Math.max(0, Math.min(80, Math.round(Number(lastPrefs.saverDim ?? 20)) || 0));   // %
+const saverSecs = () => Math.max(3, Math.min(300, Number(lastPrefs.saverSecs) || 12));   // a picture's seconds
 async function startSaver() {
   if (saverOn) return;
   saverOn = true;
@@ -2542,21 +2554,30 @@ async function startSaver() {
     const chosen = saverLibs();
     const libs = saverChoices().filter((s) => chosen.includes(s.key));
     const picks = await Promise.all(libs.map((s) => api(`/library/sections/${s.key}/all`, { sort: "random", "X-Plex-Container-Size": 12 }).catch(() => null)));
-    saverItems = picks.flatMap((r) => mc(r).Metadata || []).filter((m) => m.art);
+    saverItems = picks.flatMap((r) => mc(r).Metadata || []).filter((m) => m.art || m.thumb);
   }
   const step = () => {
     $("saverClock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    if (!saverItems.length) { $("saverTitle").textContent = ""; return; }   // no libraries chosen: just the clock
-    const m = saverItems[saverI++ % saverItems.length];
+    // Settings → Screensaver: backgrounds or cover art, and how dim (read each time: a change shows at once)
+    const posters = lastPrefs.saverArt === "poster", items = saverItems.filter((x) => (posters ? x.thumb : x.art));
+    $("saver").classList.toggle("posters", posters);
+    $("saver").style.setProperty("--saver-dim", String(saverDim() / 100));
+    if (!items.length) { $("saverTitle").textContent = ""; return; }   // no libraries chosen: just the clock
+    const m = items[saverI++ % items.length];
     const show = saverFlip ? $("saverA") : $("saverB"), hide = saverFlip ? $("saverB") : $("saverA");
     saverFlip = !saverFlip;
-    show.onload = () => { show.classList.add("on"); hide.classList.remove("on"); };
+    show.onload = () => {
+      show.classList.add("on"); hide.classList.remove("on");
+      if (posters) $("saver").style.setProperty("--saver-bg", `url("${img(m.thumb, 300, 450)}")`);   // (the blurred copy behind)
+    };
     show.classList.remove("on");
-    show.src = img(m.art, 1920, 1080);
+    show.src = posters ? img(m.thumb, 1000, 1500) : img(m.art, 1920, 1080);
     $("saverTitle").textContent = m.title + (m.year ? ` (${m.year})` : "");
   };
   step();
-  saverTimer = setInterval(step, 12000);
+  // (Settings → Screensaver → Next Picture After; the slow zoom lasts as long, see tv.css)
+  $("saver").style.setProperty("--saver-pan", `${saverSecs() + 2}s`);
+  saverTimer = setInterval(step, saverSecs() * 1000);
 }
 function stopSaver() {
   if (!saverOn) return false;
