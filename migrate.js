@@ -68,9 +68,10 @@ const DEFAULTS = {
   themeMusic: true,          // a show's theme tune plays quietly on its page
   themeVolume: 30,           // …this loud: 15 Quiet · 30 Medium · 50 High · 80 Loud (% of PlexDeck's sound)
   screensaver: 5,            // minutes idle before the artwork screensaver (0 = off)
-  saverArt: "art",           // its pictures: "art" (the backgrounds) or "poster" (cover art)
+  saverArt: "art",           // its pictures: "art" (the backgrounds), "poster" (cover art) or "mix" (in turn)
   saverDim: 20,              // how much darker its pictures are, % (the clock stays bright)
   saverSecs: 12,             // seconds each picture shows before the next
+  saverOutline: "thick",     // the black outline round its clock and title: "off" | "thin" | "medium" | "thick"
   musicVisualiser: true,     // soft bars that move with the music on Now Playing (TV mode)
   language: "",              // PlexDeck's own menus: "" = like Windows, else "en", "sv", … (locales/)
 };

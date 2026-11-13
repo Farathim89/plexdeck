@@ -635,7 +635,8 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     { label: tr("Libraries"), value: () => { const n = saverLibs().length; return n === 1 ? tr("1 library") : tr("{n} libraries", { n }); },
       action: () => pushPanel({ title: tr("Screensaver Libraries"), intro: tr("The screensaver shows artwork from the libraries switched on here. With none on, it only shows the clock."),
         rows: () => saverChoices().map((sec) => ({ label: sec.title, toggle: () => saverLibs().includes(sec.key), action: () => toggleSaverLib(sec.key) })) }) },
-    prefRow(tr("Show"), "saverArt", [{ v: "art", l: tr("Backgrounds") }, { v: "poster", l: tr("Cover art") }]),
+    prefRow(tr("Show"), "saverArt", [{ v: "art", l: tr("Backgrounds") }, { v: "poster", l: tr("Cover art") }, { v: "mix", l: tr("Both, in turn") }]),
+    prefRow(tr("Clock Outline"), "saverOutline", [{ v: "off", l: tr("Off") }, { v: "thin", l: tr("Thin") }, { v: "medium", l: tr("Medium") }, { v: "thick", l: tr("Thick") }]),
     prefRow(tr("Next Picture After"), "saverSecs", [6, 8, 12, 20, 30, 60].map((n) => ({ v: n, l: secs(n) })), null, { min: 3, max: 300 }),
     { label: tr("Dim"), value: () => `${saverDim()} %`, action: () => pushPanel({
       title: tr("Dim"), stepper: { key: "saverDim", min: 0, max: 80, step: 5, v: saverDim() },
@@ -1012,6 +1013,12 @@ function cardHtml(it, kind, grid = false) {
   }
   if (kind === "tiles" && it.swatch) return `<div class="card tile sw${it.on ? " on" : ""}"><div class="img"><i class="sw-bar"></i><b class="sw-acc"></b></div><div class="label">${esc(it.title)}${it.on ? " ✓" : ""}</div></div>`;
   if (kind === "tiles") return `<div class="card tile"><div class="img"><div class="fallback">${esc(it.title)}</div></div></div>`;
+  if (kind === "wide" && it.labelBelow != null) {   // a season's grid (like Plex's): ✓ in the corner, the title and "Episode n" under the picture
+    const prog = it.offset && it.duration ? `<div class="progress"><i data-w="${Math.min(100, (it.offset / it.duration) * 100)}"></i></div>` : "";
+    const still = it.still ? `<img src="${esc(img(it.still, 560, 315))}" alt="" loading="lazy">` : "";
+    return `<div class="card wide"><div class="img">${still}${watched(it) ? `<div class="badge">✓</div>` : ""}${prog}</div>`
+      + `<div class="label">${esc(it.labelBelow)}</div><div class="label small">${esc(it.labelSmall || "")}</div></div>`;
+  }
   if (kind === "wide") {
     const prog = it.offset && it.duration ? `<div class="progress"><i data-w="${Math.min(100, (it.offset / it.duration) * 100)}"></i></div>` : "";
     // (a special among a season's episodes, see seasonEpisodes: "Special", not its number)
@@ -1157,7 +1164,8 @@ function drawPage(p) {
   document.body.classList.toggle("no-hero", !!((p.noHero && p.noHero()) || blank));
   $("ovMenu").hidden = !p.overflow;
   document.body.classList.toggle("series", !!p.poster);
-  document.body.classList.toggle("series-down", !!p.poster && p.row > 0);
+  document.body.classList.toggle("series-down", !!p.poster && p.row > (p.tabs ? 1 : 0));   // (below the buttons; a season's tabs are above them)
+  document.body.classList.toggle("series-wide", !!p.poster && !!p.posterWide);   // (an episode's 16:9 picture)
   if (p.poster && $("heroPoster").getAttribute("src") !== p.poster) $("heroPoster").src = p.poster;
   $("ovMenu").classList.toggle("focus", !!p.ovFocus && !menuOpen);
   if (!p.rendered) renderRows(p);
@@ -1298,7 +1306,7 @@ function openItem(it) {
   if (it.type === "movie" || it.type === "video" || it.type === "clip") return showPage(moviePage(it), { push: true });
   if (it.type === "show") return showPage(seriesPage(it.key), { push: true });
   if (it.type === "season") return showPage(showPage_(it.showKey, { seasonKey: it.key }), { push: true });
-  if (it.type === "episode") return showPage(showPage_(it.showKey, { seasonKey: it.seasonKey, episodeKey: it.key }), { push: true });
+  if (it.type === "episode") return showPage(episodePage(it), { push: true });
   if (it.type === "collection") return showPage(listPage(it.title, `/library/collections/${it.key}/children`, it), { push: true });
   if (it.type === "playlist") return showPage(playlistPage(it), { push: true });
   if (it.type === "artist") return showPage(artistPage(it), { push: true });
@@ -1980,57 +1988,62 @@ function seriesPage(showKey) {
   return p;
 }
 
-// ---- a season: season tabs, episode strip, buttons ------------------------------------
+// ---- a season, like Plex's: the season tabs; its poster, the show's name, the season, the buttons
+// (Watch: its next episode) and its summary; then its episodes as a grid, the title and "Episode n"
+// under each picture. OK on an episode opens its page (episodePage), like clicking one in Plex.
 function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
   const tabs = { kind: "tabs", items: [], col: 0, selected: 0 };
-  const p = makePage({ tabs, pinned: false, pinFrom: 2 });
+  const p = makePage({ tabs, pinned: false, pinFrom: 1 });   // (in the grid its row is on top, the buttons gone up)
   p.themeFor = showKey;   // (from the start: from the show's page the tune plays on)
-  // the focused episode's summary in the hero, cut off: Up to it from the episodes, OK for all of it
-  p.sum = { row: 1, dir: "Up", target: () => $("heroSummary"), title: () => {
-    const ep = epRow.items[epRow.col];
-    return ep ? `${show ? `${show.title} · ` : ""}${ep.special ? tr("Special") : `S${ep.seasonNo} · E${ep.epNo}`}  ${ep.epTitle || ""}` : "";
-  } };
-  let show = null, seasons = [], more = [];
-  const epRow = { kind: "wide", col: 0, items: [] };
-  const btnRow = { kind: "buttons", col: 0, items: [] };
-  const focusedEpisode = () => epRow.items[epRow.col];
-  const makeButtons = () => {
-    const ep = focusedEpisode();
-    if (!ep) { btnRow.items = []; return; }
-    const b = detailButtons({ ...ep, title: show ? show.title : ep.title }, () => loadSeason(tabs.selected, ep.key));
-    btnRow.chips = mediaChips(ep.raw);
-    btnRow.items = b;
-    btnRow.col = Math.min(btnRow.col, b.length - 1);
+  p.showKey = showKey;
+  p.focused = () => null;   // the hero (and its artwork) stay the season's
+  // its summary under the buttons, cut off: Down to it, OK for all of it (see summaryAct)
+  p.sum = { row: 1, dir: "Down", target: () => document.querySelector('#rows > .row[data-r="0"] .bnote'),
+    title: () => (p.heroItem ? `${p.heroItem.title} · ${p.heroItem.sub || ""}` : "") };
+  let show = null, seasons = [];
+  // "25 episodes" (a special among them doesn't count, like Plex)
+  const count = (eps) => { const n = eps.filter((e) => !e.special).length; return n === 1 ? tr("1 episode") : tr("{n} episodes", { n }); };
+  // the grid: 4 across at 100 % (Plex's), Up / Down keep the column
+  const gridOf = (eps, old) => {
+    const per = perRow(428), rows = [];
+    for (let i = 0; i < eps.length; i += per) {
+      const n = rows.length, items = eps.slice(i, i + per);
+      rows.push({ kind: "wide", grid: true, eps: true, cls: "eps", title: i ? "" : count(eps),
+        col: old[n] ? Math.min(old[n].col, items.length - 1) : 0, items });
+    }
+    return rows;
   };
   async function loadSeason(i, focusKey) {
     const season = seasons[i];
     if (!season) return;
     const specials = seasons.find((s) => Number(s.raw.index) === 0);
-    const eps = (await seasonEpisodes(season.key, Number(season.raw.index), specials && specials.key)).map(norm)
-      .map((e) => (Number(season.raw.index) > 0 && Number(e.seasonNo) === 0 ? { ...e, special: true } : e));
-    epRow.items = eps;
-    // Focus: the asked-for episode, else the first one not watched yet.
-    let col = focusKey ? eps.findIndex((e) => e.key === focusKey) : -1;
-    if (col < 0) col = eps.findIndex((e) => !watched(e));
-    epRow.col = Math.max(0, col);
-    makeButtons();
-    p.rows = [epRow, btnRow, ...more];
+    const inSeason = Number(season.raw.index) > 0;
+    const eps = (await seasonEpisodes(season.key, Number(season.raw.index), specials && specials.key)).map(norm).map((e) => {
+      const special = inSeason && Number(e.seasonNo) === 0;   // (a special that aired mid-season, see seasonEpisodes)
+      return { ...e, special, labelBelow: e.epTitle || "", labelSmall: special ? tr("Special") : tr("Episode {n}", { n: e.epNo }),
+        open: () => showPage(episodePage(e), { push: true }) };
+    });
+    const label = season.sub || season.epTitle || tr("Season {n}", { n: season.raw.index });
+    p.heroItem = { ...season, title: show ? show.title : season.title, sub: label, details: true, genres: [], cast: [], directors: [], rates: [],
+      facts: [count(eps)] };
+    if (show) p.heroItem.art = show.art;
+    p.poster = season.poster ? img(season.poster, 390, 585) : show && show.poster ? img(show.poster, 390, 585) : "";
+    // Watch / Resume: the season's next episode (the one you're on, else the first not watched)
+    const next = eps.find((e) => e.offset) || eps.find((e) => !watched(e)) || eps[0];
+    const b = detailButtons({ ...season, title: show ? show.title : season.title }, () => loadSeason(tabs.selected)).filter((x) => x.icon !== "bookmark");
+    b[0] = { icon: "play", label: next && next.offset ? tr("Resume") : tr("Watch"), named: true, action: () => { if (next) playItem(next, !!next.offset); } };
+    const old = p.rows.filter((r) => r.eps);
+    const keep = old.length && p.rows.length ? p.row : null;
+    p.rows = [{ kind: "buttons", col: 0, items: b, note: season.summary || (show && show.summary) || "" }, ...gridOf(eps, old)];
+    // focus: back on the episode asked for (or where you were), else the buttons
+    const at = focusKey ? eps.findIndex((e) => e.key === focusKey) : -1;
+    if (at >= 0) { const per = perRow(428); p.row = 2 + Math.floor(at / per); p.rows[1 + Math.floor(at / per)].col = at % per; }
+    else p.row = keep != null ? Math.min(keep, p.allRows().length - 1) : 1;
     if (page === p) { p.rendered = false; drawPage(p); }
   }
-  p.onTab = (i) => { p.row = 1; loadSeason(i).catch(() => {}); };
-  // Back from the player: reload the season (progress / watched marks), same episode.
-  p.refresh = () => { const ep = focusedEpisode(); return loadSeason(tabs.selected, ep && ep.key).catch(() => {}); };
-  // The hero follows the focused episode; the buttons act on it.
-  p.focused = function () {
-    const r = this.allRows()[this.row];
-    if (r === epRow || r === btnRow) { const ep = focusedEpisode(); return ep ? { ...ep, title: show ? show.title : ep.title, sub: ep.epTitle, details: true } : null; }
-    return null;
-  };
-  const baseDraw = p.draw;
-  p.draw = function () {
-    if (this.allRows()[this.row] === epRow) { const before = btnRow.items.map((b) => b.label).join(); makeButtons(); if (btnRow.items.map((b) => b.label).join() !== before && this.rendered) redrawRow(this, btnRow); }
-    baseDraw.call(this);
-  };
+  p.onTab = (i) => { p.row = 1; p.rows = p.rows.slice(0, 1); loadSeason(i).catch(() => {}); };
+  // Back from the player or an episode's page: the season again (progress / watched marks), same place.
+  p.refresh = () => loadSeason(tabs.selected).catch(() => {});
   busy(true);
   (async () => {
     const [meta, kids] = await Promise.all([
@@ -2039,22 +2052,49 @@ function showPage_(showKey, { seasonKey = null, episodeKey = null } = {}) {
     ]);
     const m = (mc(meta).Metadata || [])[0];
     show = m ? norm(m) : null;
-    p.heroItem = show ? { ...show, details: true } : null;
-    if (m) more = await extraRows(m).catch(() => []);
     if (m && m.theme && page === p) playTheme(showKey, m.theme);
-    seasons =(mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
+    seasons = (mc(kids).Metadata || []).filter((s) => s.type === "season").map(norm);
     tabs.items = seasons.map((s) => ({ label: s.sub || s.epTitle || tr("Season {n}", { n: s.raw.index }) }));
-    // Which season: the asked-for one, else the On Deck episode's, else the first.
+    // Which season: the asked-for one, else the On Deck episode's, else the first (not Specials).
     let si = seasonKey ? seasons.findIndex((s) => s.key === String(seasonKey)) : -1;
-    let focusKey = episodeKey;
     const deck = m && m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
-    if (si < 0 && deck) { si = seasons.findIndex((s) => s.key === String(deck.parentRatingKey)); focusKey = focusKey || deck.ratingKey; }
+    if (si < 0 && deck) si = seasons.findIndex((s) => s.key === String(deck.parentRatingKey));
     if (si < 0) si = seasons.findIndex((s) => s.raw.index > 0);
     si = Math.max(0, si);
     tabs.col = tabs.selected = si;
     p.row = 1;
-    await loadSeason(si, focusKey ? String(focusKey) : null);
+    await loadSeason(si, episodeKey ? String(episodeKey) : null);
   })().catch(() => showError(tr("Couldn't load this show."))).finally(() => busy(false));
+  return p;
+}
+
+// ---- an episode, like Plex's: its picture, the show's name and the episode's, Season · Episode,
+// the date and length, the buttons with the summary and what will play under them, then the cast
+function episodePage(item) {
+  const p = makePage({ heroItem: { ...item, details: true }, pinned: false, pinFrom: 1 });
+  p.themeFor = item.showKey;   // (the show's tune plays on from its season)
+  p.showKey = item.showKey;
+  p.focused = () => null;
+  p.poster = item.still ? img(item.still, 640, 360) : "";
+  p.posterWide = true;   // a 16:9 picture, not a poster (tv.css body.series-wide)
+  p.sum = { row: 0, dir: "Down", target: () => document.querySelector('#rows > .row[data-r="0"] .bnote'),
+    title: () => (p.heroItem ? `${p.heroItem.title} · S${p.heroItem.seasonNo} · E${p.heroItem.epNo}  ${p.heroItem.epTitle || ""}` : "") };
+  let more = null;
+  const refresh = async () => {
+    const raw = (mc(await api(`/library/metadata/${item.key}`)).Metadata || [])[0] || item.raw;
+    const full = norm(raw);
+    if (!more) more = await extraRows(raw).catch(() => []);
+    p.heroItem = { ...full, details: true };
+    if (full.still) p.poster = img(full.still, 640, 360);
+    const keepRow = p.rows.length ? p.row : 0;
+    // (no Watchlist: Plex's takes shows and movies, not an episode)
+    p.rows = [{ kind: "buttons", col: 0, items: detailButtons(full, refresh).filter((x) => x.icon !== "bookmark"), note: full.summary, facts: mediaChips(raw) }, ...more];
+    p.row = Math.min(keepRow, p.rows.length - 1);
+    if (page === p) { p.rendered = false; drawPage(p); }
+  };
+  busy(true);
+  refresh().catch(() => showError(tr("Couldn't load this episode."))).finally(() => busy(false));
+  p.refresh = refresh;
   return p;
 }
 
@@ -2543,7 +2583,7 @@ function toggleSaverLib(key) {
   drawProfPanel();
 }
 let nativePlaying = false;   // the native (mpv) player is open on top
-let lastInput = Date.now(), saverOn = false, saverTimer = null, saverItems = [], saverI = 0, saverFlip = false;
+let lastInput = Date.now(), saverOn = false, saverTimer = null, saverItems = [], saverI = 0, saverFlip = false, saverMix = false;
 const saverDim = () => Math.max(0, Math.min(80, Math.round(Number(lastPrefs.saverDim ?? 20)) || 0));   // %
 const saverSecs = () => Math.max(3, Math.min(300, Number(lastPrefs.saverSecs) || 12));   // a picture's seconds
 async function startSaver() {
@@ -2558,10 +2598,17 @@ async function startSaver() {
   }
   const step = () => {
     $("saverClock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    // Settings → Screensaver: backgrounds or cover art, and how dim (read each time: a change shows at once)
-    const posters = lastPrefs.saverArt === "poster", items = saverItems.filter((x) => (posters ? x.thumb : x.art));
-    $("saver").classList.toggle("posters", posters);
+    // Settings → Screensaver: backgrounds, cover art or the two in turn (mix), and how dim (read each
+    // time: a change shows at once). A picture carries its own kind (img.poster): in a mix the one
+    // fading out keeps its shape.
+    const mode = lastPrefs.saverArt;
+    const posters = mode === "poster" || (mode === "mix" && (saverMix = !saverMix));
+    const items = saverItems.filter((x) => (posters ? x.thumb : x.art));
+    $("saver").classList.toggle("posters", mode === "poster" || mode === "mix");   // (the blurred copy behind a poster)
     $("saver").style.setProperty("--saver-dim", String(saverDim() / 100));
+    // the clock's and title's outline (Settings → Screensaver → Clock Outline): its width in px, clock / title
+    const [oc, ot] = { off: [0, 0], thin: [6, 4], medium: [10, 6] }[lastPrefs.saverOutline] || [14, 8];
+    $("saver").style.setProperty("--saver-stroke", `${oc}px`); $("saver").style.setProperty("--saver-stroke-t", `${ot}px`);
     if (!items.length) { $("saverTitle").textContent = ""; return; }   // no libraries chosen: just the clock
     const m = items[saverI++ % items.length];
     const show = saverFlip ? $("saverA") : $("saverB"), hide = saverFlip ? $("saverB") : $("saverA");
@@ -2571,6 +2618,7 @@ async function startSaver() {
       if (posters) $("saver").style.setProperty("--saver-bg", `url("${img(m.thumb, 300, 450)}")`);   // (the blurred copy behind)
     };
     show.classList.remove("on");
+    show.classList.toggle("poster", posters);
     show.src = posters ? img(m.thumb, 1000, 1500) : img(m.art, 1920, 1080);
     $("saverTitle").textContent = m.title + (m.year ? ` (${m.year})` : "");
   };

@@ -369,14 +369,14 @@ html:has(body.osd-mode) { background: rgba(0, 0, 0, .01); }
 /* Settings → Screensaver: Dim (--saver-dim, 0–.8; the clock stays bright), and Show → Cover art:
    the poster whole in the middle, on a blurred, darker copy of itself */
 #saver img { filter: brightness(calc(1 - var(--saver-dim, .2))); }
-#saver.posters img { object-fit: contain; }
+#saver img.poster { object-fit: contain; }
 #saver.posters::before { content: ""; position: absolute; inset: -80px; background: var(--saver-bg) center / cover no-repeat;
   filter: blur(48px) brightness(calc(.5 - var(--saver-dim, .2) / 2)); }
 /* the clock and the title: a thick black outline round the letters (drawn outside them — paint-order
    — so the thin clock keeps its shape), readable on any artwork */
 #saverInfo { position: absolute; left: 80px; bottom: 70px; text-shadow: 0 2px 12px rgba(0,0,0,.8); paint-order: stroke fill; }
-#saverClock { font-size: 96px; font-weight: 300; -webkit-text-stroke: 14px #000; }
-#saverTitle { font-size: 30px; color: rgba(255,255,255,.9); margin-top: 6px; -webkit-text-stroke: 8px #000; }
+#saverClock { font-size: 96px; font-weight: 300; -webkit-text-stroke: var(--saver-stroke, 14px) #000; }
+#saverTitle { font-size: 30px; color: rgba(255,255,255,.9); margin-top: 6px; -webkit-text-stroke: var(--saver-stroke-t, 8px) #000; }
 
 #message.toast { background: transparent; place-content: end center; padding-bottom: 80px; pointer-events: none; }
 #message.toast .spinner { display: none; }
@@ -791,6 +791,17 @@ body.series-down #rowsWindow { top: 120px; }
 .row.grid .card:not(.tile) { width: var(--cw, 220px); }
 .row.grid .card:not(.tile) .img { width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.5); }
 .row.grid .card.sq .img { height: var(--cw, 220px); }
+/* a season's episodes (tv.js showPage_), like Plex's: 4 across, 16:9 pictures, the title and
+   "Episode n" under each */
+.row.grid.eps .card.wide:not(.tile), .row.grid.eps .card.wide .label { width: 400px; }
+.row.grid.eps .card.wide:not(.tile) .img { width: 400px; height: 225px; }
+.row.grid.eps .card.wide .label:not(.small) { margin-top: 12px; font-size: 23px; color: #e6e6e6; }
+.row.grid.eps .card.wide .label { text-shadow: 0 1px 6px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.9); }   /* (readable on the show's artwork) */
+.row.grid.eps .card.wide .label.small { font-size: 19px; color: var(--dimmer); }
+/* an episode's page (tv.js episodePage): its 16:9 picture where a poster goes */
+body.series-wide #hero { width: 1330px; padding-left: 430px; }
+body.series-wide #heroPoster { width: 390px; height: 219px; }
+body.series-wide #rows > .row.brow:first-child { padding-left: calc(var(--content-x) + 430px); }
 /* Side-by-side full-screen choices (profile, Actions, Audio & subtitles): placed by the stage's
    width, so a bigger Text Size (a narrower stage) doesn't push the list off the right edge.
    At 100 % the same as before (208 / 672 / 1006 / 740 px of 1920). */
