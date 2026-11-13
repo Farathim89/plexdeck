@@ -1356,6 +1356,33 @@ function watchOrder(leaves, inOrder = true, withUndated = false) {
   }
   return withUndated ? [...leaves.filter((e) => special(e) && !e.originallyAvailableAt), ...out] : out;
 }
+// A show's next episode in watching order (watchOrder): the first not watched after the one you
+// watched last — after 1×25 the special that aired before 2×1, where Plex's On Deck / Continue
+// Watching (season by season) offers 2×1. null: nothing after it (keep what the server says).
+async function nextInOrder(showKey) {
+  const order = watchOrder(mc(await api(`/library/metadata/${showKey}/allLeaves`)).Metadata || []);
+  let last = -1, at = -1;
+  order.forEach((e, i) => { if (e.viewCount > 0 && (e.lastViewedAt || 0) >= at) { at = e.lastViewedAt || 0; last = i; } });
+  return order.slice(last + 1).find((e) => !(e.viewCount > 0 && !e.viewOffset)) || null;
+}
+// Plex's Continue Watching / On Deck hubs, with Specials in Airing Order on: a show's "next up"
+// episode in watching order (one you're in the middle of stays as it is).
+async function airedDeck(hubs) {
+  if (lastPrefs.specialsInOrder === false) return hubs;
+  await Promise.all((hubs || []).filter((h) => /continue|ondeck|on deck/i.test(`${h.hubIdentifier || ""} ${h.title || ""}`)).map(async (h) => {
+    h.Metadata = await Promise.all((h.Metadata || []).map(async (m) => {
+      if (m.type !== "episode" || m.viewOffset || !m.grandparentRatingKey) return m;
+      const next = await nextInOrder(m.grandparentRatingKey).catch(() => null);
+      return next && String(next.ratingKey) !== String(m.ratingKey) ? next : m;
+    }));
+  }));
+  return hubs;
+}
+// A show's On Deck episode (Plex's), in watching order when Specials in Airing Order is on.
+async function deckInOrder(showKey, d) {
+  if (!d || d.viewOffset || lastPrefs.specialsInOrder === false) return d;
+  return (await nextInOrder(showKey).catch(() => null)) || d;
+}
 // A season's episodes. With Specials in Airing Order on, a special that aired in the middle of the
 // season goes between its episodes, where Up Next plays it (Sword Art Online season 3: Alicization
 // 18.5 after episode 18); one between two seasons stays with the specials. `specialsKey`: the
@@ -1385,7 +1412,7 @@ async function nextEpisodeOf(it) {
     api(`/library/metadata/${it.key}/allLeaves`),
   ]);
   const m = (mc(meta).Metadata || [])[0];
-  const deck = m && m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
+  const deck = await deckInOrder(it.key, m && m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0]);   // (specials where they aired)
   if (deck) return norm(deck);
   const all = mc(leaves).Metadata || [];
   const order = watchOrder(all, lastPrefs.specialsInOrder !== false);
@@ -1445,7 +1472,7 @@ function homePage() {
     ]);
     if (!perLib && !hubs) throw new Error("no hubs");
     const rows = [];
-    const cw = mc(cont).Hub || [];
+    const cw = await airedDeck(mc(cont).Hub || []);   // (a show's next episode with its specials where they aired)
     rows.push(...hubRows(cw));
     // Plex's own list has one Recently Added row per kind ("Recently Added Movies", "… TV"): with
     // the libraries' rows, only Recent Playlists comes from it (an older server: all of it)
@@ -1519,7 +1546,7 @@ function libraryPage(sec) {
   const keep = (i) => (rows) => { tabRows[i] = { rows, loadMore: null }; };
   const loadRecommended = (o = {}) => loadInto(p, async () => {
     // (with the library's Recent Playlists, like Plex; not its radio stations or TIDAL)
-    const hubs = mc(await api(`/hubs/sections/${sec.key}`, { count: 20, includeLibraryPlaylists: 1 })).Hub || [];
+    const hubs = await airedDeck(mc(await api(`/hubs/sections/${sec.key}`, { count: 20, includeLibraryPlaylists: 1 })).Hub || []);
     // A TV library hidden from Home (Plex: "Exclude from home screen"): the server fills its
     // Recently Added from Home's list, which leaves the library out, so it comes back empty. Fill it
     // with the shows by their newest episode (the same order, one card a show).
@@ -1960,7 +1987,7 @@ function seriesPage(showKey) {
     p.poster = show.poster ? img(show.poster, 390, 585) : "";
     if (!more) more = await extraRows(m, { related: true }).catch(() => []);
     if (m.theme && page === p) playTheme(showKey, m.theme);
-    const d = m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0];
+    const d = await deckInOrder(showKey, m.OnDeck && m.OnDeck.Metadata && m.OnDeck.Metadata[0]);   // (specials where they aired)
     deck = d ? norm(d) : null;
     const seasons = (mc(kids).Metadata || []).filter((x) => x.type === "season").map(norm).map((x) => ({
       ...x, labelBelow: x.sub || tr("Season {n}", { n: x.raw.index }),
