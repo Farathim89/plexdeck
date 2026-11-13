@@ -366,9 +366,11 @@ html:has(body.osd-mode) { background: rgba(0, 0, 0, .01); }
 #saver[hidden] { display: none; }
 #saver img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2s ease, transform 14s linear; transform: scale(1.0); }
 #saver img.on { opacity: 1; transform: scale(1.08); }
-#saverInfo { position: absolute; left: 80px; bottom: 70px; text-shadow: 0 2px 12px rgba(0,0,0,.8); }
-#saverClock { font-size: 96px; font-weight: 300; }
-#saverTitle { font-size: 30px; color: var(--dim); margin-top: 6px; }
+/* the clock and the title: a thick black outline round the letters (drawn outside them — paint-order
+   — so the thin clock keeps its shape), readable on any artwork */
+#saverInfo { position: absolute; left: 80px; bottom: 70px; text-shadow: 0 2px 12px rgba(0,0,0,.8); paint-order: stroke fill; }
+#saverClock { font-size: 96px; font-weight: 300; -webkit-text-stroke: 14px #000; }
+#saverTitle { font-size: 30px; color: rgba(255,255,255,.9); margin-top: 6px; -webkit-text-stroke: 8px #000; }
 
 #message.toast { background: transparent; place-content: end center; padding-bottom: 80px; pointer-events: none; }
 #message.toast .spinner { display: none; }
