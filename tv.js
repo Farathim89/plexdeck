@@ -1306,7 +1306,9 @@ function openItem(it) {
   if (it.type === "movie" || it.type === "video" || it.type === "clip") return showPage(moviePage(it), { push: true });
   if (it.type === "show") return showPage(seriesPage(it.key), { push: true });
   if (it.type === "season") return showPage(showPage_(it.showKey, { seasonKey: it.key }), { push: true });
-  if (it.type === "episode") return showPage(episodePage(it), { push: true });
+  // an episode (Continue Watching, Search…): its season's list with it focused, as before; OK there
+  // opens its own page (episodePage)
+  if (it.type === "episode") return showPage(showPage_(it.showKey, { seasonKey: it.seasonKey, episodeKey: it.key }), { push: true });
   if (it.type === "collection") return showPage(listPage(it.title, `/library/collections/${it.key}/children`, it), { push: true });
   if (it.type === "playlist") return showPage(playlistPage(it), { push: true });
   if (it.type === "artist") return showPage(artistPage(it), { push: true });
