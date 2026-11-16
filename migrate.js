@@ -64,7 +64,9 @@ const DEFAULTS = {
   preferredSubtitleLang: "English",
   preferNonSdh: false,
   // TV mode extras
-  tvTextSize: 1,             // TV mode's text size: 0.85 … 1.5 (everything grows, like a TV's display size)
+  tvTextSize: 1,             // TV mode's interface size: 0.85 … 1.5 (everything grows, like a TV's display size)
+  tvFontSize: 1,             // TV mode's text size: 0.85 … 1.5 (only the letters)
+  tvCardSize: 1,             // TV mode's card size: 0.8 … 1.3 (only the cards in rows and grids)
   themeMusic: true,          // a show's theme tune plays quietly on its page
   themeVolume: 30,           // …this loud: 15 Quiet · 30 Medium · 50 High · 80 Loud (% of PlexDeck's sound)
   screensaver: 5,            // minutes idle before the artwork screensaver (0 = off)

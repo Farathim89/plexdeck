@@ -27,10 +27,12 @@ const stack = [];           // pages to go Back to
 let overlayOpen = false;
 
 // ---- the stage, scaled to the window --------------------------------------------
-// Laid out for a 1920-wide TV screen. Text Size (Settings → Experience) changes that width:
-// at 130 % the stage is 1920 / 1.3 wide and scaled up more, so everything grows and rows hold
-// fewer cards — like a TV's own display size setting.
-let textScale = 1, STAGE_W = 1920, gridGen = 0;   // gridGen: +1 when the stage width changes
+// Laid out for a 1920-wide TV screen. Interface Size (Settings → Experience, the tvTextSize key)
+// changes that width: at 130 % the stage is 1920 / 1.3 wide and scaled up more, so everything grows
+// and rows hold fewer cards — like a TV's own display size setting. Text Size (fontScale: --ts)
+// only the letters, Card Size (cardScale: --cs) only the cards in rows and grids (tv.css).
+let textScale = 1, STAGE_W = 1920, gridGen = 0;   // gridGen: +1 when the stage width (or card size) changes
+let fontScale = 1, cardScale = 1;
 function fit() {
   const w = Math.round(1920 / textScale);
   if (w !== STAGE_W) { STAGE_W = w; gridGen++; }
@@ -85,12 +87,12 @@ function resizePage(p) {
   else { p.rendered = false; drawPage(p); freshen(p); }
 }
 // How many cards fit across a grid row (cards `step` apart; `reserve` keeps room on the right).
-const perRow = (step, reserve = 40) => Math.max(3, Math.floor((STAGE_W - 128 - reserve) / step));
+const perRow = (step, reserve = 40) => Math.max(3, Math.floor((STAGE_W - 128 - reserve) / (step * cardScale)));
 // Poster grids (Browse, Collections, a genre…): as many as fit at full size, never fewer than 5 —
 // at a bigger Text Size the posters get a little narrower instead of dropping to 4 (or 3) a row.
 // { per: posters a row, cw: their width }
 function gridFit(reserve = 40) {
-  const room = STAGE_W - 128 - reserve;
+  const room = (STAGE_W - 128 - reserve) / cardScale;   // (in the cards' own size, see Card Size)
   const per = Math.max(5, Math.floor(room / 248));
   return { per, cw: Math.min(220, Math.floor(room / per) - 28) };
 }
@@ -620,7 +622,9 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
   { label: tr("Experience"), action: () => pushPanel({ title: tr("Experience"), rows: () => [
     { label: tr("Theme"), value: () => { const t = (lastPrefs.themes || []).find((x) => x.id === lastPrefs.theme); return t ? tr(t.label || t.name || "") : ""; },
       action: () => pushPanel({ title: tr("Theme"), rows: () => (lastPrefs.themes || []).map((t) => ({ label: tr(t.label || t.name || t.id), radio: () => lastPrefs.theme === t.id, action: () => { setPref("theme", t.id); popPanel(); } })) }) },
-    prefRow(tr("Text Size"), "tvTextSize", [0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Makes everything in TV mode bigger or smaller.")),
+    prefRow(tr("Interface Size"), "tvTextSize", [0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Makes everything in TV mode bigger or smaller.")),
+    prefRow(tr("Text Size"), "tvFontSize", [0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Only the letters bigger or smaller.")),
+    prefRow(tr("Card Size"), "tvCardSize", [0.8, 0.9, 1, 1.15, 1.3].map((n) => ({ v: n, l: `${Math.round(n * 100)} %` })), tr("Posters and pictures in rows and grids: bigger (fewer a row) or smaller (more).")),
     prefRow(tr("Title Style"), "heroTitle", [{ v: "logo", l: tr("Logo artwork") }, { v: "text", l: tr("Text") }]),
     prefRow(tr("Theme Music"), "themeMusic", "toggle"),
     prefRow(tr("Theme Music Volume"), "themeVolume", THEME_LEVELS.map((x) => ({ v: x.v, l: tr(x.l) })), tr("How loud a show's theme tune plays on its page.")),
@@ -1192,7 +1196,7 @@ function drawPage(p) {
     if (r.kind !== "buttons" && r.kind !== "options" && r.kind !== "track" && !r.grid) {   // (grids are sized to fit)
       const step = r.step || (r.kind === "wide" || r.kind === "landscape" || r.kind === "tiles" ? 368 : r.kind === "keys" ? 76 : r.kind === "set" ? 272 : 248);
       const contentX = 128;
-      const visible = Math.floor((STAGE_W - contentX - 120) / step);
+      const visible = Math.floor((STAGE_W - contentX - 120) / (step * cardScale));   // (Card Size zooms the strip)
       const shift = Math.max(0, Math.min(r.col - (visible - 2), r.items.length - visible)) * step;
       el.querySelector(".strip").style.transform = `translateX(${-Math.max(0, shift)}px)`;
     }
@@ -3064,10 +3068,15 @@ function applyPrefs(s) {
   // Theme Music switched off, or a new level: at once (you hear it while you choose)
   if (!s.themeMusic) stopTheme();
   else if (themeFor && !themeAudio.paused) fadeTo(themeVol());
-  // Text Size: refit the stage, then rebuild what's on screen (grids count their cards again)
+  // Interface Size: refit the stage; Text Size / Card Size: the letters / the cards (tv.css --ts, --cs);
+  // then rebuild what's on screen (grids count their cards again)
   const ts = Math.max(0.7, Math.min(1.6, Number(s.tvTextSize) || 1));
-  if (ts !== textScale) {
-    textScale = ts;
+  const fs = Math.max(0.7, Math.min(1.6, Number(s.tvFontSize) || 1)), cs = Math.max(0.6, Math.min(1.6, Number(s.tvCardSize) || 1));
+  if (ts !== textScale || fs !== fontScale || cs !== cardScale) {
+    if (cs !== cardScale) gridGen++;   // (pages kept in memory count their cards again when shown)
+    textScale = ts; fontScale = fs; cardScale = cs;
+    document.documentElement.style.setProperty("--ts", String(fs));
+    document.documentElement.style.setProperty("--cs", String(cs));
     fit();
     if (page && S) resizePage(page);
     if (typeof drawMenu === "function" && S) drawMenu();

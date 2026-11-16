@@ -49,18 +49,18 @@ body.menu-open #menu { width: var(--menu-open); }
 #profile[hidden] { display: none; }
 /* You at the top (picture + name), like Plex */
 .mi .mi-face { width: 44px; height: 44px; margin: 0 -8px; flex: none; border-radius: 50%; object-fit: cover; background: #333;
-  display: grid; place-items: center; font-size: 20px; font-weight: 700; color: #fff; }
+  display: grid; place-items: center; font-size: calc(20px * var(--ts, 1)); font-weight: 700; color: #fff; }
 #avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: #333; }
-#userName { font-size: 26px; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+#userName { font-size: calc(26px * var(--ts, 1)); opacity: 0; transition: opacity .2s; white-space: nowrap; }
 #menu { padding-top: 34px; }
 #menuItems { display: flex; flex-direction: column; gap: 8px; transition: transform .2s ease; }
 /* Plex's sidebar: plain entries; the focused one a solid white bar with dark text; where you are in the accent colour */
 .mi { display: flex; align-items: center; gap: 26px; height: 80px; margin-left: 48px; width: 320px; padding-left: 22px;
-  border-radius: 4px; font-size: 26px; color: #e2e2e2; white-space: nowrap; overflow: hidden; transition: transform .12s ease; }
+  border-radius: 4px; font-size: calc(26px * var(--ts, 1)); color: #e2e2e2; white-space: nowrap; overflow: hidden; transition: transform .12s ease; }
 .mi svg { width: 30px; height: 30px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .mi svg.solid { fill: currentColor; stroke: none; }
 .mi span { opacity: 0; transition: opacity .15s; display: flex; flex-direction: column; line-height: 1.15; }
-.mi span small { font-size: 18px; opacity: .7; }
+.mi span small { font-size: calc(18px * var(--ts, 1)); opacity: .7; }
 body.menu-open .mi span { opacity: 1; }
 .mi.current { color: var(--accent); }
 body.menu-open .mi.focus { background: #fff; color: #1b1b1b; }
@@ -75,39 +75,39 @@ body.menu-open .mi.moving { background: #fff; color: #1b1b1b; transform: transla
 #menuDots[hidden] { display: none; }
 #menuDots svg { width: 26px; height: 26px; fill: currentColor; }
 #menuDots.focus { background: #fff; color: #1b1b1b; }
-#menuHint { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 36px 32px; font-size: 21px; color: var(--dim); white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
+#menuHint { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 36px 32px; font-size: calc(21px * var(--ts, 1)); color: var(--dim); white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
 body.menu-open #menuHint { opacity: 1; }
 body.menu-moving #menuHint { color: var(--accent); }
 
 /* ---- main area -------------------------------------------------------- */
 #main { position: absolute; inset: 0; padding-left: var(--content-x); transition: padding-left .22s ease; }
 body.menu-open { --content-x: var(--menu-open); }
-#clock { position: absolute; right: 88px; top: 44px; font-size: 26px; color: var(--dim); }
+#clock { position: absolute; right: 88px; top: 44px; font-size: calc(26px * var(--ts, 1)); color: var(--dim); }
 
 #tabs { position: absolute; top: 34px; left: var(--content-x); display: flex; gap: 8px; transition: left .22s ease; }
-.tab { font-size: 26px; padding: 10px 34px 14px; color: var(--dim); border-radius: 8px; position: relative; white-space: nowrap; }
+.tab { font-size: calc(26px * var(--ts, 1)); padding: 10px 34px 14px; color: var(--dim); border-radius: 8px; position: relative; white-space: nowrap; }
 .tab.selected { color: var(--fg); }
 .tab.selected::after { content: ""; position: absolute; left: 18px; right: 18px; bottom: 2px; height: 4px; border-radius: 2px; background: var(--accent); }
 .tab.focus { background: #fff; color: #1b1b1b; }
 .tab.focus.selected::after { display: none; }
 
 #hero { position: absolute; top: 104px; left: var(--content-x); width: 900px; transition: left .22s ease; }
-#heroTitle { margin: 0; font-size: 56px; font-weight: 700; line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,.5);
+#heroTitle { margin: 0; font-size: calc(56px * var(--ts, 1)); font-weight: 700; line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,.5);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* a long title wraps to a second line, like on a show's page; one that needs more gets smaller
    letters (tv.js showHero: .long), then "…" */
 #heroTitle:not(.logo) { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-#heroTitle.long:not(.logo) { font-size: 44px; }
-#heroSub { margin: 4px 0 0; font-size: 30px; font-weight: 600; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#heroTitle.long:not(.logo) { font-size: calc(44px * var(--ts, 1)); }
+#heroSub { margin: 4px 0 0; font-size: calc(30px * var(--ts, 1)); font-weight: 600; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #heroSub:empty { display: none; }
-#heroMeta { margin-top: 14px; display: flex; gap: 26px; align-items: center; font-size: 26px; color: var(--dim); }
-.chip { background: rgba(0,0,0,.55); color: var(--fg); border-radius: 6px; padding: 2px 10px; font-size: 22px; font-weight: 600; display: inline-flex; gap: 8px; align-items: center; }
+#heroMeta { margin-top: 14px; display: flex; gap: 26px; align-items: center; font-size: calc(26px * var(--ts, 1)); color: var(--dim); }
+.chip { background: rgba(0,0,0,.55); color: var(--fg); border-radius: 6px; padding: 2px 10px; font-size: calc(22px * var(--ts, 1)); font-weight: 600; display: inline-flex; gap: 8px; align-items: center; }
 .chip .ring { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: var(--accent); border-right-color: var(--accent); }
-#heroLine { margin-top: 6px; font-size: 26px; color: var(--dim); }
+#heroLine { margin-top: 6px; font-size: calc(26px * var(--ts, 1)); color: var(--dim); }
 #heroLine:empty { display: none; }
-#heroSummary { margin: 14px 0 0; font-size: 24px; line-height: 1.25; color: var(--dim);
+#heroSummary { margin: 14px 0 0; font-size: calc(24px * var(--ts, 1)); line-height: 1.25; color: var(--dim);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-#heroCast { margin-top: 10px; font-size: 22px; color: var(--dimmer); }
+#heroCast { margin-top: 10px; font-size: calc(22px * var(--ts, 1)); color: var(--dimmer); }
 #heroCast:empty { display: none; }
 
 /* Rows: the focused row sits at a fixed height under the hero. */
@@ -116,21 +116,25 @@ body.menu-open { --content-x: var(--menu-open); }
 .row { position: relative; padding-left: var(--content-x); transition: padding-left .22s ease; margin-bottom: 60px;
   /* cards that scroll off to the left disappear at the menu's edge (room above/below for the focus zoom) */
   clip-path: inset(-40px -40px -40px calc(var(--content-x) - 16px)); }
-.row h3 { margin: 0 0 22px; font-size: 32px; font-weight: 700; white-space: nowrap; }
+.row h3 { margin: 0 0 22px; font-size: calc(32px * var(--ts, 1)); font-weight: 700; white-space: nowrap; }
 .row.dim h3 { opacity: .55; }
 .strip { display: flex; gap: 28px; transition: transform .25s ease; }
+/* Settings → Experience → Card Size: the cards in rows and grids (with their gaps and labels) bigger or
+   smaller (--cs, tv.js applyPrefs; rows and grids count their cards with it). The keyboard's keys stay. */
+.strip { zoom: var(--cs, 1); }
+.strip.keys { zoom: 1; }
 .card { position: relative; flex: none; width: 220px; }
 .card .img { width: 220px; height: 330px; border-radius: 6px; background: #2a2a2a center/cover no-repeat; position: relative; overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,.45); border: 3px solid transparent; transition: transform .15s ease, border-color .15s ease; }
 .card.wide { width: 340px; }
 .card.wide .img { width: 340px; height: 191px; }
 .card .img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.card .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; font-size: 22px; color: var(--dim); }
+.card .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; font-size: calc(22px * var(--ts, 1)); color: var(--dim); }
 .card.focus .img { border-color: #fff; transform: scale(1.04); }
 .card .progress { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.3); }
 .card .progress i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
-.card .badge { position: absolute; right: 0; top: 0; background: rgba(0,0,0,.75); padding: 4px 10px; border-bottom-left-radius: 6px; font-size: 20px; font-weight: 600; display: flex; gap: 6px; align-items: center; }
-.card .label { margin-top: 12px; font-size: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .badge { position: absolute; right: 0; top: 0; background: rgba(0,0,0,.75); padding: 4px 10px; border-bottom-left-radius: 6px; font-size: calc(20px * var(--ts, 1)); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.card .label { margin-top: 12px; font-size: calc(22px * var(--ts, 1)); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .label:empty { display: none; }
 /* the focused card's title that doesn't fit scrolls to its end, waits, starts over (tv.js
    marquee); a moving <span> has to be inline-block, a resting one stays inline so the "…" shows */
@@ -140,7 +144,7 @@ body.menu-open { --content-x: var(--menu-open); }
 /* Action buttons (details pages): round, the focused one opens into a labelled pill. */
 .buttons { display: flex; gap: 24px; align-items: center; }
 .btn { height: 64px; min-width: 64px; border-radius: 32px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center;
-  gap: 12px; padding: 0 20px; font-size: 24px; font-weight: 600; color: var(--fg); transition: background .15s, color .15s; }
+  gap: 12px; padding: 0 20px; font-size: calc(24px * var(--ts, 1)); font-weight: 600; color: var(--fg); transition: background .15s, color .15s; }
 .btn svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .btn svg.solid { fill: currentColor; stroke: none; }
 .btn span { display: none; white-space: nowrap; }
@@ -153,18 +157,18 @@ body.menu-open { --content-x: var(--menu-open); }
 /* quality / audio / subtitles of what plays, right of the buttons */
 .row.brow { display: flex; align-items: center; padding-right: 80px; }
 .mchips { margin-left: auto; display: flex; gap: 16px; }
-.mchip { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 4px; background: rgba(0,0,0,.45); font-size: 22px; font-weight: 600; color: #e6e6e6; }
+.mchip { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 4px; background: rgba(0,0,0,.45); font-size: calc(22px * var(--ts, 1)); font-weight: 600; color: #e6e6e6; }
 .mchip svg { width: 26px; height: 26px; fill: currentColor; }
 /* scores under the genres (Rotten Tomatoes, IMDb, TMDB) */
-#heroRates { margin-top: 14px; display: flex; gap: 22px; font-size: 22px; font-weight: 600; color: var(--dim); }
+#heroRates { margin-top: 14px; display: flex; gap: 22px; font-size: calc(22px * var(--ts, 1)); font-weight: 600; color: var(--dim); }
 #heroRates:empty { display: none; }
 .rate { display: inline-flex; align-items: center; gap: 8px; }
 .rt-tom, .rt-pop { width: 18px; height: 18px; border-radius: 50%; background: #fa320a; display: inline-block; }
 .rt-tom.bad { background: #0ac855; border-radius: 30% 60% 40% 50%; }
 .rt-pop { border-radius: 3px 3px 8px 8px; background: linear-gradient(#fff 0 40%, #fa320a 40%); }
 .rt-pop.bad { background: linear-gradient(#ddd 0 40%, #0ac855 40%); }
-.rt-imdb { background: #f5c518; color: #000; font-size: 15px; padding: 1px 5px; border-radius: 3px; }
-.rt-tmdb { background: linear-gradient(90deg, #90cea1, #01b4e4); color: #0d253f; font-size: 15px; padding: 1px 5px; border-radius: 3px; }
+.rt-imdb { background: #f5c518; color: #000; font-size: calc(15px * var(--ts, 1)); padding: 1px 5px; border-radius: 3px; }
+.rt-tmdb { background: linear-gradient(90deg, #90cea1, #01b4e4); color: #0d253f; font-size: calc(15px * var(--ts, 1)); padding: 1px 5px; border-radius: 3px; }
 .btn.on { color: var(--accent); }
 .btn.focus.on { color: var(--accent); }
 
@@ -173,7 +177,7 @@ body.menu-open { --content-x: var(--menu-open); }
 
 /* Messages: connecting, errors. */
 #message { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 22px; z-index: 20;
-  background: rgba(10,10,10,.82); font-size: 28px; color: var(--dim); text-align: center; }
+  background: rgba(10,10,10,.82); font-size: calc(28px * var(--ts, 1)); color: var(--dim); text-align: center; }
 #message[hidden] { display: none; }
 #message .spinner { width: 54px; height: 54px; border-radius: 50%; border: 5px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .9s linear infinite; }
 #message.error .spinner { display: none; }
@@ -181,13 +185,13 @@ body.menu-open { --content-x: var(--menu-open); }
 #loading { position: absolute; right: 56px; bottom: 48px; z-index: 21; pointer-events: none; }
 #loading[hidden] { display: none; }
 #loading .spinner { width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .9s linear infinite; }
-#messageButton { font: inherit; font-size: 26px; font-weight: 600; border: 0; border-radius: 32px; padding: 14px 34px; background: #fff; color: #111; }
+#messageButton { font: inherit; font-size: calc(26px * var(--ts, 1)); font-weight: 600; border: 0; border-radius: 32px; padding: 14px 34px; background: #fff; color: #111; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Search: the on-screen letters */
 .keys { gap: 12px; }
-.key { flex: none; width: 64px; height: 64px; border-radius: 8px; background: rgba(255,255,255,.1); display: grid; place-items: center; font-size: 26px; font-weight: 600; }
-.key.wide { width: auto; padding: 0 22px; font-size: 22px; }
+.key { flex: none; width: 64px; height: 64px; border-radius: 8px; background: rgba(255,255,255,.1); display: grid; place-items: center; font-size: calc(26px * var(--ts, 1)); font-weight: 600; }
+.key.wide { width: auto; padding: 0 22px; font-size: calc(22px * var(--ts, 1)); }
 .key.focus { box-shadow: inset 0 0 0 3px #fff; background: rgba(255,255,255,.18); }
 
 /* Full-screen pages (who's watching, PIN) have no side menu, like Plex's own */
@@ -202,7 +206,7 @@ body.who-mode #main { visibility: hidden; }
 .wc .wt { position: relative; width: 288px; height: 288px; overflow: hidden; border-radius: 2px; background: #2a2d31; }
 .wc .wbg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: blur(26px) brightness(.7) saturate(1.3); }
 .wc .wface { position: absolute; left: 50%; top: 50%; width: 192px; height: 192px; transform: translate(-50%, -50%); border-radius: 50%; object-fit: cover; }
-.wc .wface.none { display: grid; place-items: center; background: #555; font-size: 84px; font-weight: 700; }
+.wc .wface.none { display: grid; place-items: center; background: #555; font-size: calc(84px * var(--ts, 1)); font-weight: 700; }
 .wc .wlock, .wc .wcrown { position: absolute; bottom: 10px; width: 66px; height: 66px; border-radius: 50%; background: rgba(0,0,0,.3); display: grid; place-items: center; }
 .wc .wlock { left: 10px; } .wc .wcrown { right: 10px; }
 .wc .wlock svg { width: 36px; height: 36px; fill: #4caf50; }
@@ -212,13 +216,13 @@ body.who-mode #main { visibility: hidden; }
 .wc.focus .wt { width: 328px; height: 328px; }
 .wc.focus .wface { width: 216px; height: 216px; }
 .wc.focus.on .wface { box-shadow: 0 0 0 4px #fff; }
-.wc.focus .wname { display: flex; height: 62px; align-items: center; justify-content: center; background: #1c1d1f; font-size: 34px; color: #e2e2e2; }
+.wc.focus .wname { display: flex; height: 62px; align-items: center; justify-content: center; background: #1c1d1f; font-size: calc(34px * var(--ts, 1)); color: #e2e2e2; }
 .wc .wname.wrong { color: #ff6b6b; }
 .wc .wname.shake { animation: pinShake .4s; }
 @keyframes pinShake { 20%, 60% { transform: translateX(-12px); } 40%, 80% { transform: translateX(12px); } }
 #whoPad { position: absolute; top: 616px; width: 328px; height: 330px; display: grid; grid-template-columns: repeat(3, 1fr) 82px; grid-template-rows: repeat(4, 1fr); background: #3b3c3e; }
 #whoPad[hidden] { display: none; }
-#whoPad .pk { display: grid; place-items: center; font-size: 34px; color: #dcdcdc; }
+#whoPad .pk { display: grid; place-items: center; font-size: calc(34px * var(--ts, 1)); color: #dcdcdc; }
 #whoPad .pk.blank { visibility: hidden; }
 #whoPad .pk.bk { grid-column: 4; grid-row: 1 / span 4; background: #2d2e30; }
 #whoPad .pk.bk svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -236,16 +240,16 @@ body.who-mode #main { visibility: hidden; }
 #pShadeTop { position: absolute; left: 0; right: 0; top: 0; height: 260px; background: linear-gradient(rgba(0,0,0,.75), rgba(0,0,0,0)); }
 #pShadeBottom { position: absolute; left: 0; right: 0; bottom: 0; height: 520px; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.85)); }
 .ptop { position: absolute; left: 80px; top: 60px; right: 80px; }
-#pTitle { font-size: 52px; font-weight: 700; }
-#pSub { margin-top: 8px; font-size: 28px; color: var(--dim); }
-#pTech { margin-top: 10px; font-size: 22px; color: var(--dimmer); }   /* what's active for the picture (native player) */
+#pTitle { font-size: calc(52px * var(--ts, 1)); font-weight: 700; }
+#pSub { margin-top: 8px; font-size: calc(28px * var(--ts, 1)); color: var(--dim); }
+#pTech { margin-top: 10px; font-size: calc(22px * var(--ts, 1)); color: var(--dimmer); }   /* what's active for the picture (native player) */
 .pbottom { position: absolute; left: 80px; right: 80px; bottom: 70px; }
 .pseek { height: 34px; display: flex; align-items: center; }
 #pBar { position: relative; flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25); }
 #pBar.focus { height: 12px; box-shadow: 0 0 0 3px #fff; }
 #pFill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
 #pKnob { position: absolute; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #fff; }
-.ptimes { display: flex; justify-content: space-between; margin-top: 10px; font-size: 26px; color: var(--dim); }
+.ptimes { display: flex; justify-content: space-between; margin-top: 10px; font-size: calc(26px * var(--ts, 1)); color: var(--dim); }
 #pButtons { display: flex; align-items: center; justify-content: space-between; margin-top: 26px; }
 .pgroup { display: flex; gap: 22px; align-items: center; width: 33%; }
 .pgroup.center { justify-content: center; }
@@ -257,21 +261,21 @@ body.who-mode #main { visibility: hidden; }
 #bPlay svg { width: 40px; height: 40px; fill: currentColor; stroke: none; }
 .pb.focus { box-shadow: inset 0 0 0 3px #fff; background: rgba(255,255,255,.22); }
 .pb.off { opacity: .3; }
-#pSkip { position: absolute; right: 80px; bottom: 300px; font: inherit; font-size: 28px; font-weight: 600; color: #fff;
+#pSkip { position: absolute; right: 80px; bottom: 300px; font: inherit; font-size: calc(28px * var(--ts, 1)); font-weight: 600; color: #fff;
   background: rgba(0,0,0,.6); border: 3px solid #fff; border-radius: 10px; padding: 16px 34px; }
 #pSkip[hidden] { display: none; }
 /* Skip Intro / Credits, like Plex: the bottom-right corner on its own (10 s); with the controls
    up, above the option buttons — selected with Up from them */
-#pSkip { right: 72px; bottom: 76px; font-size: 26px; padding: 14px 30px; border-width: 2px; }
+#pSkip { right: 72px; bottom: 76px; font-size: calc(26px * var(--ts, 1)); padding: 14px 30px; border-width: 2px; }
 #player.osd #pSkip { bottom: 236px; border-color: rgba(255,255,255,.45); }
 #player.osd #pSkip.focus { background: #000; border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
 /* Jumping with ← / → while the controls are hidden: a small hint instead of the whole bar */
 #pJump { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 18px;
-  padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: 26px; pointer-events: none; }
+  padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: calc(26px * var(--ts, 1)); pointer-events: none; }
 #pJump[hidden] { display: none; }
 /* Volume (the right stick): a small pill at the top while it changes */
 #pVol, #mVol { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px;
-  padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: 26px; pointer-events: none; z-index: 5; }
+  padding: 14px 30px; border-radius: 40px; background: rgba(15,15,15,.82); color: #fff; font-size: calc(26px * var(--ts, 1)); pointer-events: none; z-index: 5; }
 #pVol[hidden], #mVol[hidden] { display: none; }
 #pVol svg, #mVol svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #pVol .vbar, #mVol .vbar { width: 260px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25); overflow: hidden; }
@@ -280,21 +284,21 @@ body.who-mode #main { visibility: hidden; }
 #pVol.ext .vbar { display: none; }
 #pVol.ext b { min-width: 0; font-weight: 400; }
 #mVol { z-index: 27; }   /* the music's: over Now Playing */
-#pJump b { font-size: 32px; color: var(--accent); }
+#pJump b { font-size: calc(32px * var(--ts, 1)); color: var(--accent); }
 #pJump span { color: var(--dim); }
 #pUpNext { position: absolute; right: 80px; bottom: 300px; width: 760px; display: flex; gap: 24px; align-items: center;
   background: rgba(20,20,20,.92); border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
 #pUpNext[hidden] { display: none; }
 #pUpNextImg { width: 300px; height: 169px; object-fit: cover; border-radius: 8px; border: 3px solid #fff; flex: none; }
-.un-label { font-size: 22px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-#pUpNextTitle { margin-top: 6px; font-size: 26px; font-weight: 600; }
-#pUpNextCount { margin-top: 10px; font-size: 24px; color: var(--dim); }
-.un-hint { margin-top: 10px; font-size: 20px; color: var(--dimmer); }
+.un-label { font-size: calc(22px * var(--ts, 1)); color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+#pUpNextTitle { margin-top: 6px; font-size: calc(26px * var(--ts, 1)); font-weight: 600; }
+#pUpNextCount { margin-top: 10px; font-size: calc(24px * var(--ts, 1)); color: var(--dim); }
+.un-hint { margin-top: 10px; font-size: calc(20px * var(--ts, 1)); color: var(--dimmer); }
 #pMenu { position: absolute; right: 0; top: 0; bottom: 0; width: 640px; background: rgba(16,16,16,.96); padding: 60px 40px; overflow: hidden; }
 #pMenu[hidden] { display: none; }
-#pMenu h3 { margin: 0 0 24px; font-size: 34px; }
+#pMenu h3 { margin: 0 0 24px; font-size: calc(34px * var(--ts, 1)); }
 #pMenuList { max-height: calc(100% - 80px); overflow: hidden; }
-.pm { font-size: 26px; padding: 16px 20px; border-radius: 8px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm { font-size: calc(26px * var(--ts, 1)); padding: 16px 20px; border-radius: 8px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pm.sel { color: var(--accent); }
 .pm.focus { box-shadow: inset 0 0 0 3px #fff; color: #fff; background: rgba(255,255,255,.1); }
 
@@ -302,11 +306,11 @@ body.who-mode #main { visibility: hidden; }
 .card.person { width: 220px; }
 .card.person .img { width: 200px; height: 200px; border-radius: 50%; margin: 0 10px; }
 .card.person.focus .img { border-color: #fff; }
-.card .label.small { margin-top: 2px; font-size: 19px; color: var(--dimmer); }
+.card .label.small { margin-top: 2px; font-size: calc(19px * var(--ts, 1)); color: var(--dimmer); }
 .card.wide .label { width: 340px; }
 .card.tile { width: 340px; }
 .card.tile .img { width: 340px; height: 140px; background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.05)); }
-.card.tile .fallback { font-size: 28px; font-weight: 600; color: #fff; }
+.card.tile .fallback { font-size: calc(28px * var(--ts, 1)); font-weight: 600; color: #fff; }
 .opts .btn.opt span { display: inline; }
 .opts .btn.opt { padding: 0 30px; width: auto; border-radius: 4px; font-weight: 400; background: rgba(255,255,255,.1); }
 .opts .btn.opt.focus { background: #fff; color: #1b1b1b; }
@@ -314,7 +318,7 @@ body.who-mode #main { visibility: hidden; }
 /* Music & photos */
 .card.sq .img { height: 220px; }
 .trkrow { margin-bottom: 6px; }
-.trk { display: flex; gap: 24px; align-items: center; width: 1100px; padding: 14px 22px; border-radius: 8px; font-size: 26px; color: var(--dim); }
+.trk { display: flex; gap: 24px; align-items: center; width: 1100px; padding: 14px 22px; border-radius: 8px; font-size: calc(26px * var(--ts, 1)); color: var(--dim); }
 .trk .n { width: 40px; color: var(--dimmer); }
 .trk .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trk.focus { box-shadow: inset 0 0 0 3px #fff; color: #fff; background: rgba(255,255,255,.08); }
@@ -322,27 +326,27 @@ body.who-mode #main { visibility: hidden; }
 #music[hidden] { display: none; }
 #mArt { width: 620px; height: 620px; object-fit: cover; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); flex: none; }
 .mInfo { flex: 1; min-width: 0; }
-#mTitle { font-size: 60px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#mArtist { font-size: 34px; color: var(--dim); margin-top: 8px; }
-#mAlbum { font-size: 26px; color: var(--dimmer); margin-top: 6px; }
+#mTitle { font-size: calc(60px * var(--ts, 1)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mArtist { font-size: calc(34px * var(--ts, 1)); color: var(--dim); margin-top: 8px; }
+#mAlbum { font-size: calc(26px * var(--ts, 1)); color: var(--dimmer); margin-top: 6px; }
 .mBar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.2); margin-top: 60px; overflow: hidden; }
 .mBar i { display: block; height: 100%; background: var(--accent); }
-.mTimes { display: flex; justify-content: space-between; margin-top: 10px; font-size: 24px; color: var(--dim); }
-.mControls { display: flex; align-items: center; gap: 40px; margin-top: 40px; font-size: 22px; color: var(--dimmer); }
+.mTimes { display: flex; justify-content: space-between; margin-top: 10px; font-size: calc(24px * var(--ts, 1)); color: var(--dim); }
+.mControls { display: flex; align-items: center; gap: 40px; margin-top: 40px; font-size: calc(22px * var(--ts, 1)); color: var(--dimmer); }
 .mControls .pb.big { box-shadow: inset 0 0 0 3px #fff; }
 .mControls .pb svg { fill: currentColor; stroke: none; width: 40px; height: 40px; }
-#mQueue { margin-top: 40px; font-size: 22px; color: var(--dimmer); }
-#mNext { margin-top: 6px; font-size: 24px; color: var(--dim); }
-.mHelp { margin-top: 40px; font-size: 20px; color: var(--dimmer); }
+#mQueue { margin-top: 40px; font-size: calc(22px * var(--ts, 1)); color: var(--dimmer); }
+#mNext { margin-top: 6px; font-size: calc(24px * var(--ts, 1)); color: var(--dim); }
+.mHelp { margin-top: 40px; font-size: calc(20px * var(--ts, 1)); color: var(--dimmer); }
 #mini { position: absolute; right: 60px; bottom: 40px; z-index: 6; display: flex; gap: 16px; align-items: center; background: rgba(20,20,20,.92); border-radius: 12px; padding: 12px 22px 12px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: 520px; }
 #mini[hidden] { display: none; }
 #miniArt { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; }
-#miniTitle { font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 380px; }
-#miniArtist { font-size: 19px; color: var(--dim); }
+#miniTitle { font-size: calc(22px * var(--ts, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 380px; }
+#miniArtist { font-size: calc(19px * var(--ts, 1)); color: var(--dim); }
 #photo { position: absolute; inset: 0; z-index: 26; background: #000; display: grid; place-items: center; }
 #photo[hidden] { display: none; }
 #photoImg { max-width: 100%; max-height: 100%; object-fit: contain; }
-#photoCap { position: absolute; left: 60px; bottom: 40px; font-size: 24px; color: var(--dim); text-shadow: 0 2px 8px #000; }
+#photoCap { position: absolute; left: 60px; bottom: 40px; font-size: calc(24px * var(--ts, 1)); color: var(--dim); text-shadow: 0 2px 8px #000; }
 
 /* The native player's controls layer: only the player controls, over mpv's video. */
 body.osd-mode, body.osd-mode #stage { background: transparent; }
@@ -375,8 +379,8 @@ html:has(body.osd-mode) { background: rgba(0, 0, 0, .01); }
 /* the clock and the title: a thick black outline round the letters (drawn outside them — paint-order
    — so the thin clock keeps its shape), readable on any artwork */
 #saverInfo { position: absolute; left: 80px; bottom: 70px; text-shadow: 0 2px 12px rgba(0,0,0,.8); paint-order: stroke fill; }
-#saverClock { font-size: 96px; font-weight: 300; -webkit-text-stroke: var(--saver-stroke, 14px) #000; }
-#saverTitle { font-size: 30px; color: rgba(255,255,255,.9); margin-top: 6px; -webkit-text-stroke: var(--saver-stroke-t, 8px) #000; }
+#saverClock { font-size: calc(96px * var(--ts, 1)); font-weight: 300; -webkit-text-stroke: var(--saver-stroke, 14px) #000; }
+#saverTitle { font-size: calc(30px * var(--ts, 1)); color: rgba(255,255,255,.9); margin-top: 6px; -webkit-text-stroke: var(--saver-stroke-t, 8px) #000; }
 
 #message.toast { background: transparent; place-content: end center; padding-bottom: 80px; pointer-events: none; }
 #message.toast .spinner { display: none; }
@@ -410,10 +414,10 @@ body.mini #stage { display: none; }
 #music.lyrics #mLyrics { display: block; }
 #music.lyrics #mQueue, #music.lyrics #mNext { display: none; }
 #music.lyrics .mBar { margin-top: 24px; }
-#mLyrics p { margin: 0; padding: 7px 0; font-size: 32px; line-height: 1.3; color: var(--dim); transition: color .25s, transform .25s; transform-origin: left center; }
+#mLyrics p { margin: 0; padding: 7px 0; font-size: calc(32px * var(--ts, 1)); line-height: 1.3; color: var(--dim); transition: color .25s, transform .25s; transform-origin: left center; }
 #mLyrics.synced p { color: rgba(255,255,255,.35); }
 #mLyrics.synced p.now { color: #fff; transform: scale(1.06); }
-#mLyrics .lnote { color: var(--dimmer); font-size: 26px; padding-top: 150px; }
+#mLyrics .lnote { color: var(--dimmer); font-size: calc(26px * var(--ts, 1)); padding-top: 150px; }
 #mLyrics:not(.synced) { overflow-y: auto; }
 
 /* ---- full-screen choices, like Plex's own --------------------------------------------
@@ -423,38 +427,38 @@ body.mini #stage { display: none; }
 #dlg { position: absolute; inset: 0; z-index: 30; color: #fff;
   background: radial-gradient(ellipse at 85% 95%, #2a3036 0%, #15181b 45%, #050607 100%); }
 #dlg[hidden] { display: none; }
-#dlgTitle { position: absolute; left: 0; right: 0; top: 128px; margin: 0; text-align: center; font-size: 64px; font-weight: 700; color: #e6e6e6;
+#dlgTitle { position: absolute; left: 0; right: 0; top: 128px; margin: 0; text-align: center; font-size: calc(64px * var(--ts, 1)); font-weight: 700; color: #e6e6e6;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 120px; }
 #dlgTitle:empty { display: none; }
 #dlgSide { position: absolute; left: 208px; width: 672px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 110px; }
 #dlgIcon { width: 216px; height: 216px; display: grid; place-items: center; }
 #dlgIcon img { width: 216px; height: 216px; border-radius: 50%; object-fit: cover; }
-#dlgIcon .face { width: 216px; height: 216px; border-radius: 50%; background: #444; display: grid; place-items: center; font-size: 96px; font-weight: 700; }
+#dlgIcon .face { width: 216px; height: 216px; border-radius: 50%; background: #444; display: grid; place-items: center; font-size: calc(96px * var(--ts, 1)); font-weight: 700; }
 #dlgIcon svg { width: 200px; height: 200px; fill: none; stroke: #d6d6d6; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-#dlgName { margin-top: 44px; font-size: 34px; color: #e6e6e6; }
+#dlgName { margin-top: 44px; font-size: calc(34px * var(--ts, 1)); color: #e6e6e6; }
 #dlgName:empty { display: none; }
 #dlgRule { display: block; width: 672px; height: 2px; margin-top: 30px; background: rgba(255,255,255,.4); }
-#dlgDesc { margin: 34px 0 0; min-height: 110px; font-size: 25px; line-height: 1.12; color: #ddd; text-align: center; }
+#dlgDesc { margin: 34px 0 0; min-height: 110px; font-size: calc(25px * var(--ts, 1)); line-height: 1.12; color: #ddd; text-align: center; }
 #dlgList { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 32px; }
 #dlg.side #dlgList { left: 1006px; width: 740px; top: 0; bottom: 0; justify-content: center; padding-top: 110px; }
 #dlg.list #dlgSide { display: none; }
 /* Audio & subtitles: the focused row's track list on the left, one track a line */
-#dlg.tracks #dlgDesc { white-space: pre-line; text-align: left; align-self: stretch; font-size: 23px; line-height: 1.45; color: #cfcfcf; }
-#dlg.tracks #dlgName { font-size: 30px; }
+#dlg.tracks #dlgDesc { white-space: pre-line; text-align: left; align-self: stretch; font-size: calc(23px * var(--ts, 1)); line-height: 1.45; color: #cfcfcf; }
+#dlg.tracks #dlgName { font-size: calc(30px * var(--ts, 1)); }
 #dlg.list #dlgList { left: 0; right: 0; top: 235px; }
-#dlg.list #dlgTitle { top: 128px; font-size: 46px; font-weight: 400; }
+#dlg.list #dlgTitle { top: 128px; font-size: calc(46px * var(--ts, 1)); font-weight: 400; }
 .dl { width: 672px; height: 80px; border-radius: 6px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.82);
-  display: grid; place-items: center; font-size: 28px; padding: 0 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: grid; place-items: center; font-size: calc(28px * var(--ts, 1)); padding: 0 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: width .12s ease, height .12s ease, background .12s ease; }
 #dlg.list .dl { width: 600px; }
-.dl.focus { width: 740px; height: 88px; background: #fff; color: #1b1b1b; font-size: 30px; }
-#dlg.list .dl.focus { width: 600px; height: 80px; font-size: 28px; }
+.dl.focus { width: 740px; height: 88px; background: #fff; color: #1b1b1b; font-size: calc(30px * var(--ts, 1)); }
+#dlg.list .dl.focus { width: 600px; height: 80px; font-size: calc(28px * var(--ts, 1)); }
 /* a summary in full (OK on a cut-off one, tv.js showSummary): the title, the text (Up / Down
    scroll a long one), Close */
 #dlg.list.summary #dlgSide { display: block; left: 50%; width: 1200px; margin-left: -600px; top: 230px; bottom: 210px; padding: 0 16px 0 0;
   overflow-y: auto; scrollbar-width: thin; }
 #dlg.summary #dlgIcon, #dlg.summary #dlgName, #dlg.summary #dlgRule { display: none; }
-#dlg.summary #dlgDesc { margin: 0; min-height: 0; font-size: 28px; line-height: 1.5; text-align: left; white-space: pre-line; color: #e6e6e6; }
+#dlg.summary #dlgDesc { margin: 0; min-height: 0; font-size: calc(28px * var(--ts, 1)); line-height: 1.5; text-align: left; white-space: pre-line; color: #e6e6e6; }
 #dlg.list.summary #dlgList, body.short #dlg.list.summary #dlgList { top: auto; bottom: 90px; }
 /* a details page's summary that's cut off ("…"): a stop of its own, OK (or a click) shows all of
    it (tv.js summaryAct) — the white ring when it has the focus */
@@ -488,7 +492,7 @@ body.no-hero #shade { opacity: 0; }
 body.no-hero.lib-bar #rowsWindow { top: 280px; }
 #azBar { position: absolute; right: 100px; top: 196px; display: flex; flex-direction: column; align-items: center; gap: 0; z-index: 2; }
 #azBar[hidden] { display: none; }
-#azBar div { width: 44px; height: 32px; display: grid; place-items: center; font-size: 22px; color: rgba(255,255,255,.75); border-radius: 4px; }
+#azBar div { width: 44px; height: 32px; display: grid; place-items: center; font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.75); border-radius: 4px; }
 #azBar div.cur { color: var(--accent); }
 #azBar div.focus { background: #fff; color: #1b1b1b; }
 
@@ -513,17 +517,17 @@ body.menu-open #menu { left: 34px; top: 34px; bottom: 34px; width: 384px; paddin
 body.menu-open #menu::after { display: none; }
 body.menu-open #main, body.menu-open #art, body.menu-open #bg { filter: brightness(.4); }
 #menuItems { gap: 0; }
-.mi { position: relative; margin: 0 32px; width: auto; height: 62px; padding: 0 18px; gap: 18px; border-radius: 31px; font-size: 25px; color: #fff; }
+.mi { position: relative; margin: 0 32px; width: auto; height: 62px; padding: 0 18px; gap: 18px; border-radius: 31px; font-size: calc(25px * var(--ts, 1)); color: #fff; }
 .mi svg { width: 32px; height: 32px; stroke-width: 1.6; }
 .mi.me { height: 70px; }
 .mi.me .mi-face { width: 48px; height: 48px; margin: 0; }
-.mi.me span { font-size: 21px; font-weight: 400; }
+.mi.me span { font-size: calc(21px * var(--ts, 1)); font-weight: 400; }
 .mi .chev { margin-left: auto; display: grid; }
 .mi .chev svg { width: 22px; height: 22px; }
 .mi.current { color: #fff; }
 body.menu-open .mi.focus { background: #fff; color: #111; }
 .mi.sec { margin-top: 44px; overflow: visible; }
-.mi.sec::before { content: attr(data-sec); position: absolute; left: 16px; right: 16px; top: -40px; font-size: 18px; color: rgba(255,255,255,.6);
+.mi.sec::before { content: attr(data-sec); position: absolute; left: 16px; right: 16px; top: -40px; font-size: calc(18px * var(--ts, 1)); color: rgba(255,255,255,.6);
   border-bottom: 1px solid rgba(255,255,255,.25); padding-bottom: 6px; }
 .mi.sec span { overflow: hidden; text-overflow: ellipsis; }
 #menuDots { left: -34px; }
@@ -531,22 +535,22 @@ body.menu-open .mi.focus { background: #fff; color: #111; }
 /* ---- tabs: pills inside one rounded bar; the open tab outlined, the focused one white */
 #tabs { top: 32px; gap: 4px; padding: 6px; border-radius: 34px; background: rgba(0, 0, 0, .28); }
 #tabs:empty { display: none; }
-.tab { padding: 8px 18px; border-radius: 26px; font-size: 25px; color: rgba(255,255,255,.65); }
+.tab { padding: 8px 18px; border-radius: 26px; font-size: calc(25px * var(--ts, 1)); color: rgba(255,255,255,.65); }
 .tab.selected { color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
 .tab.selected::after { display: none; }
 .tab.focus { background: #fff; color: #111; box-shadow: none; }
-#clock { top: 40px; right: 96px; padding: 4px 22px; border-radius: 26px; background: rgba(0, 0, 0, .25); font-size: 24px; color: rgba(255,255,255,.9); }
+#clock { top: 40px; right: 96px; padding: 4px 22px; border-radius: 26px; background: rgba(0, 0, 0, .25); font-size: calc(24px * var(--ts, 1)); color: rgba(255,255,255,.9); }
 #ovMenu { right: 270px; top: 34px; width: 64px; height: 64px; }
 
 /* ---- hero: the title as its logo; meta line; content rating in a box */
 #hero { top: 186px; left: 128px; }
 #heroTitle.logo { height: 112px; display: flex; align-items: flex-end; }
 #heroTitle.logo img { max-height: 112px; max-width: 720px; object-fit: contain; object-position: left bottom; }
-#heroMeta { margin-top: 18px; gap: 24px; font-size: 22px; color: rgba(255,255,255,.85); }
+#heroMeta { margin-top: 18px; gap: 24px; font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.85); }
 #heroMeta .cr { background: rgba(0,0,0,.55); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
-#heroRates { margin-top: 12px; font-size: 22px; }
-#heroSummary { margin-top: 20px; font-size: 24px; line-height: 1.33; color: rgba(255,255,255,.85); width: 820px; }
-#heroCast { font-size: 22px; color: rgba(255,255,255,.55); }
+#heroRates { margin-top: 12px; font-size: calc(22px * var(--ts, 1)); }
+#heroSummary { margin-top: 20px; font-size: calc(24px * var(--ts, 1)); line-height: 1.33; color: rgba(255,255,255,.85); width: 820px; }
+#heroCast { font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.55); }
 
 /* ---- details buttons: the Watch pill, then round ones */
 .btn { background: rgba(255,255,255,.14); }
@@ -558,39 +562,39 @@ body.menu-open .mi.focus { background: #fff; color: #111; }
 /* ---- Browse: All, Movies, by Title, N Items, the dots; round A-Z bar; rounded posters */
 #libBar { top: 130px; left: 128px; right: auto; }
 #libBar .opts { gap: 16px; align-items: center; width: auto; }
-#libBar .btn.opt { height: 52px; border-radius: 26px; padding: 0 18px; font-size: 24px; font-weight: 500; background: rgba(255,255,255,.14); gap: 10px; }
+#libBar .btn.opt { height: 52px; border-radius: 26px; padding: 0 18px; font-size: calc(24px * var(--ts, 1)); font-weight: 500; background: rgba(255,255,255,.14); gap: 10px; }
 #libBar .btn.opt svg { width: 24px; height: 24px; }
 #libBar .btn.opt.icon { width: 52px; padding: 0; border-radius: 50%; margin-left: 0; }
 #libBar .btn.opt.icon:nth-last-child(2) { margin-left: 0; }
 #libBar .btn.opt.focus { background: #fff; color: #111; }
-#libBar .by { font-size: 24px; color: rgba(255,255,255,.75); }
-#libBar .count { font-size: 20px; padding: 4px 10px; border-radius: 6px; background: rgba(0,0,0,.5); color: #fff; }
+#libBar .by { font-size: calc(24px * var(--ts, 1)); color: rgba(255,255,255,.75); }
+#libBar .count { font-size: calc(20px * var(--ts, 1)); padding: 4px 10px; border-radius: 6px; background: rgba(0,0,0,.5); color: #fff; }
 body.no-hero.lib-bar #rowsWindow { top: 200px; }
 #azBar { right: 44px; top: 112px; }
-#azBar div { width: 44px; height: 32px; font-size: 22px; border-radius: 50%; }
+#azBar div { width: 44px; height: 32px; font-size: calc(22px * var(--ts, 1)); border-radius: 50%; }
 #azBar div.cur { color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,.85); height: 44px; }
 #azBar div.focus { background: #fff; color: #111; box-shadow: none; height: 44px; }
 body.no-hero #bg { background: linear-gradient(160deg, #262626 0%, #121212 55%, #1d1d1d 100%) !important; }
 .card .img { border-radius: 12px; border: none; box-shadow: 0 6px 18px rgba(0,0,0,.45); outline: 4px solid transparent; outline-offset: 4px; }
 .card.focus .img { outline-color: #fff; transform: none; }
 .card .badge { top: 8px; right: 8px; border-radius: 6px; padding: 2px 8px; background: rgba(0,0,0,.7); }
-.card.g .label { font-size: 24px; color: #fff; }
-.card.g .label.small { font-size: 21px; color: rgba(255,255,255,.65); }
+.card.g .label { font-size: calc(24px * var(--ts, 1)); color: #fff; }
+.card.g .label.small { font-size: calc(21px * var(--ts, 1)); color: rgba(255,255,255,.65); }
 
 /* ---- player: title top left, clock top right, round buttons above the bar on the right,
    play, time, seek bar, time left along the bottom */
 #pShadeTop { height: 200px; background: linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,0)); }
 #pShadeBottom { height: 300px; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.75)); }
 .ptop { left: 72px; right: 72px; top: 60px; }
-#pTitle { font-size: 34px; font-weight: 700; }
-#pSub { margin-top: 6px; font-size: 22px; color: rgba(255,255,255,.65); }
-#pClock { position: absolute; right: 8px; top: 0; font-size: 24px; color: #fff; }
+#pTitle { font-size: calc(34px * var(--ts, 1)); font-weight: 700; }
+#pSub { margin-top: 6px; font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.65); }
+#pClock { position: absolute; right: 8px; top: 0; font-size: calc(24px * var(--ts, 1)); color: #fff; }
 .pbottom { left: 72px; right: 72px; bottom: 76px; }
 #pButtons { display: block; margin-top: 0; }
 #pButtons .pgroup.right { width: auto; justify-content: flex-end; gap: 12px; margin-bottom: 18px; }
 #pButtons .prow { display: flex; align-items: center; }
 #pButtons .pgroup.left { width: auto; gap: 6px; margin-right: 56px; }
-#pTime, #pLeft { font-size: 26px; color: #fff; min-width: 90px; }
+#pTime, #pLeft { font-size: calc(26px * var(--ts, 1)); color: #fff; min-width: 90px; }
 #pLeft { text-align: right; margin-left: 40px; }
 .prow .pseek { flex: 1; height: 30px; }
 #pBar { height: 6px; background: rgba(255,255,255,.35); }
@@ -613,12 +617,12 @@ body.details #hero { top: 150px; }
    on the right (or a second line), a white pill for focus, orange radio dots for the choice */
 #pMenu { right: 34px; top: 34px; bottom: 34px; width: 640px; border-radius: 16px; background: #000;
   border: 1px solid rgba(255,255,255,.12); padding: 64px 40px 40px; }
-#pMenu h3 { margin: 0 0 40px 10px; font-size: 32px; font-weight: 700; }
+#pMenu h3 { margin: 0 0 40px 10px; font-size: calc(32px * var(--ts, 1)); font-weight: 700; }
 #pMenuList .pm { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 64px; padding: 8px 26px;
-  margin-bottom: 4px; border-radius: 34px; font-size: 26px; color: #fff; background: none; }
+  margin-bottom: 4px; border-radius: 34px; font-size: calc(26px * var(--ts, 1)); color: #fff; background: none; }
 #pMenuList .pm .l { display: flex; flex-direction: column; min-width: 0; }
-#pMenuList .pm small { font-size: 19px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#pMenuList .pm .r { flex: none; font-size: 20px; color: rgba(255,255,255,.7); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pMenuList .pm small { font-size: calc(19px * var(--ts, 1)); color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pMenuList .pm .r { flex: none; font-size: calc(20px * var(--ts, 1)); color: rgba(255,255,255,.7); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #pMenuList .pm .radio { flex: none; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
 #pMenuList .pm.sel .radio { background: radial-gradient(circle, #e5a00d 0 7px, transparent 8px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.75); }
 #pMenuList .pm.focus { background: #fff; color: #111; }
@@ -628,31 +632,31 @@ body.details #hero { top: 150px; }
 #pMenuList .pm.sel:not(.focus) { color: #fff; }
 #pMenuList .pm.focus { box-shadow: none; }
 /* the player clock: bigger, with a dark outline so it reads over any picture */
-#pClock { font-size: 38px; font-weight: 600; top: -6px; paint-order: stroke fill; -webkit-text-stroke: 5px rgba(0,0,0,.85); text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+#pClock { font-size: calc(38px * var(--ts, 1)); font-weight: 600; top: -6px; paint-order: stroke fill; -webkit-text-stroke: 5px rgba(0,0,0,.85); text-shadow: 0 2px 8px rgba(0,0,0,.6); }
 
 /* ---- Who's watching, like the new Plex: title top left, round faces with names under them,
    a lock badge, the PIN field + round keypad under the chosen face */
-#whoTitle { position: absolute; left: 250px; top: 40px; margin: 0; font-size: 70px; font-weight: 700; color: #fff; }
+#whoTitle { position: absolute; left: 250px; top: 40px; margin: 0; font-size: calc(70px * var(--ts, 1)); font-weight: 700; color: #fff; }
 #whoRow { top: 200px; left: 418px; gap: 68px; align-items: flex-start; }
 .wc, .wc.focus { width: 224px; margin-top: 0; text-align: center; }
 .wc .wt, .wc.focus .wt { width: 224px; height: 224px; border-radius: 50%; overflow: visible; background: none; position: relative; }
 .wc .wface, .wc.focus .wface { position: absolute; left: 0; top: 0; width: 224px; height: 224px; transform: none; border-radius: 50%; object-fit: cover; }
-.wc .wface.none { display: grid; place-items: center; background: #555; font-size: 96px; font-weight: 700; }
+.wc .wface.none { display: grid; place-items: center; background: #555; font-size: calc(96px * var(--ts, 1)); font-weight: 700; }
 .wc.focus.on .wface { box-shadow: 0 0 0 4px #000, 0 0 0 8px #fff; }
 .wc.focus:not(.on) .wface { box-shadow: 0 0 0 4px #000, 0 0 0 7px rgba(255,255,255,.55); }
 .wc .wlock { left: auto; right: 4px; bottom: 6px; width: 48px; height: 48px; background: #e5a00d; }
 .wc .wlock svg { width: 26px; height: 26px; fill: #fff; }
 .wc.focus .wlock { background: #fff; }
 .wc.focus .wlock svg { fill: #e5a00d; }
-.wc .wname, .wc.focus .wname { display: block; height: auto; margin-top: 14px; background: none; font-size: 29px; color: rgba(255,255,255,.65); font-weight: 400;
+.wc .wname, .wc.focus .wname { display: block; height: auto; margin-top: 14px; background: none; font-size: calc(29px * var(--ts, 1)); color: rgba(255,255,255,.65); font-weight: 400;
   white-space: nowrap; overflow: visible; }
 .wc.focus .wname { color: #fff; font-weight: 700; }
 #whoPad { top: 488px; width: 290px; height: auto; display: block; background: none; }
 #whoPad .pfield { height: 70px; border-radius: 35px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.75); display: grid; place-items: center;
-  font-size: 30px; letter-spacing: 10px; color: #fff; margin-bottom: 12px; }
-#whoPad .pfield.wrong { font-size: 24px; letter-spacing: 0; color: #ff6b6b; box-shadow: inset 0 0 0 2px #ff6b6b; }
+  font-size: calc(30px * var(--ts, 1)); letter-spacing: 10px; color: #fff; margin-bottom: 12px; }
+#whoPad .pfield.wrong { font-size: calc(24px * var(--ts, 1)); letter-spacing: 0; color: #ff6b6b; box-shadow: inset 0 0 0 2px #ff6b6b; }
 #whoPad .pkeys { display: grid; grid-template-columns: repeat(3, 64px) 64px; grid-template-rows: repeat(4, 64px); gap: 12px 11px; }
-#whoPad .pk { display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); font-size: 30px; color: #fff; }
+#whoPad .pk { display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); font-size: calc(30px * var(--ts, 1)); color: #fff; }
 #whoPad .pk.zero { grid-column: 1 / span 3; border-radius: 32px; }
 #whoPad .pk.bk { grid-column: 4; grid-row: 1 / span 4; border-radius: 32px; background: rgba(255,255,255,.14); }
 #whoPad .pk.bk svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
@@ -662,7 +666,7 @@ body.details #hero { top: 150px; }
 /* your profile's panel beside the sidebar (like the new Plex) */
 #profPanel { position: absolute; left: 432px; top: 34px; width: 400px; padding: 26px 0; border-radius: 16px; background: #000; z-index: 6; }
 #profPanel[hidden] { display: none; }
-#profPanel .pp { display: flex; align-items: center; gap: 22px; height: 70px; margin: 0 24px; padding: 0 22px; border-radius: 35px; font-size: 25px; color: #fff; }
+#profPanel .pp { display: flex; align-items: center; gap: 22px; height: 70px; margin: 0 24px; padding: 0 22px; border-radius: 35px; font-size: calc(25px * var(--ts, 1)); color: #fff; }
 #profPanel .pp svg { width: 30px; height: 30px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 #profPanel .pp svg.solid { fill: currentColor; stroke: none; }
 #profPanel .pp.focus { background: #fff; color: #111; }
@@ -676,20 +680,20 @@ body.details #hero { top: 150px; }
 .card.stile .img svg { width: 112px; height: 112px; fill: none; stroke: #8a8a8a; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .card.stile .img svg.solid { fill: #8a8a8a; stroke: none; }
 .card.stile.focus .img { outline: 4px solid #fff; outline-offset: 4px; }
-.card.stile .label { font-size: 25px; color: #e6e6e6; margin-top: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card.stile .label.small { font-size: 21px; color: rgba(255,255,255,.6); margin-top: 4px; }
+.card.stile .label { font-size: calc(25px * var(--ts, 1)); color: #e6e6e6; margin-top: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.stile .label.small { font-size: calc(21px * var(--ts, 1)); color: rgba(255,255,255,.6); margin-top: 4px; }
 
 /* ---- profile / Settings panels beside the sidebar, like the new Plex */
 #profPanel { left: 432px; top: 34px; bottom: auto; width: 400px; max-height: 1012px; padding: 26px 0; display: flex; flex-direction: column; }
 #profPanel.wide { width: 600px; bottom: 34px; padding: 50px 0 30px; }
-#profPanel h2 { margin: 0 0 40px 48px; font-size: 30px; font-weight: 700; }
-#profPanel .intro { margin: -14px 48px 26px; font-size: 23px; line-height: 1.3; color: #ddd; }
+#profPanel h2 { margin: 0 0 40px 48px; font-size: calc(30px * var(--ts, 1)); font-weight: 700; }
+#profPanel .intro { margin: -14px 48px 26px; font-size: calc(23px * var(--ts, 1)); line-height: 1.3; color: #ddd; }
 #profPanel .pplist { overflow: hidden; flex: 1; }
-#profPanel h3 { margin: 22px 48px 12px; font-size: 28px; font-weight: 700; }
-#profPanel .pp { height: auto; min-height: 60px; margin: 0 24px 4px; padding: 6px 24px; gap: 20px; font-size: 24px; }
+#profPanel h3 { margin: 22px 48px 12px; font-size: calc(28px * var(--ts, 1)); font-weight: 700; }
+#profPanel .pp { height: auto; min-height: 60px; margin: 0 24px 4px; padding: 6px 24px; gap: 20px; font-size: calc(24px * var(--ts, 1)); }
 #profPanel .pp .t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-#profPanel .pp small { font-size: 18px; color: rgba(255,255,255,.65); }
-#profPanel .pp .v { flex: none; font-size: 19px; color: rgba(255,255,255,.65); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#profPanel .pp small { font-size: calc(18px * var(--ts, 1)); color: rgba(255,255,255,.65); }
+#profPanel .pp .v { flex: none; font-size: calc(19px * var(--ts, 1)); color: rgba(255,255,255,.65); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #profPanel .pp.focus small, #profPanel .pp.focus .v { color: rgba(0,0,0,.65); }
 #profPanel .pp .pface { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; }
 #profPanel .sw { flex: none; width: 40px; height: 24px; border-radius: 12px; background: #3a3a40; position: relative; }
@@ -702,9 +706,9 @@ body.details #hero { top: 150px; }
 
 /* "Custom…" seconds: a box you change with ← / → */
 #profPanel .pp.stepbox { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px 24px; }
-#profPanel .pp.stepbox .t { font-size: 19px; color: rgba(255,255,255,.65); }
+#profPanel .pp.stepbox .t { font-size: calc(19px * var(--ts, 1)); color: rgba(255,255,255,.65); }
 #profPanel .pp.stepbox.focus .t { color: rgba(0,0,0,.6); }
-#profPanel .pp.stepbox .box { align-self: stretch; text-align: center; font-size: 40px; font-weight: 700; padding: 10px; border-radius: 12px; box-shadow: inset 0 0 0 2px currentColor; }
+#profPanel .pp.stepbox .box { align-self: stretch; text-align: center; font-size: calc(40px * var(--ts, 1)); font-weight: 700; padding: 10px; border-radius: 12px; box-shadow: inset 0 0 0 2px currentColor; }
 
 /* ---- Text Size: bigger text on a wide screen leaves a shorter stage (fit() sets --short =
    1080 − its height). The hero moves up and the rows follow, so a whole row of cards fits. */
@@ -729,7 +733,7 @@ body.shortest #main:has(#tabs:not(:empty)) #heroSummary { display: none; }
    shorter stage), it scrolls: tv.js keeps the lit / focused letter in the middle */
 #azBar { top: 112px; bottom: auto; max-height: calc(100% - 136px); width: auto; padding: 6px; gap: 2px; border-radius: 36px;
   background: rgba(0, 0, 0, .28); overflow-y: auto; scrollbar-width: none; container-type: normal; }
-#azBar div { flex: 0 0 auto; width: 60px; height: 60px; margin: 0; border-radius: 50%; font-size: 30px; font-weight: 600; color: rgba(255,255,255,.9); }
+#azBar div { flex: 0 0 auto; width: 60px; height: 60px; margin: 0; border-radius: 50%; font-size: calc(30px * var(--ts, 1)); font-weight: 600; color: rgba(255,255,255,.9); }
 #azBar div.cur, #azBar div.focus { height: 60px; margin: 0; }
 /* Now Playing on a smaller stage (bigger text): the cover, the gaps and the lyrics box shrink with
    the stage (at 100 % they stay 620px / 90px / 140px / 380px), tighter spacing in the info column,
@@ -763,8 +767,8 @@ body.menu-open .mi.moving { box-shadow: inset 0 0 0 3px #fff, 0 8px 24px rgba(0,
 body.series #hero { width: 1200px; padding-left: 300px; box-sizing: border-box; }
 body.series #heroPoster { display: block; position: absolute; left: 0; top: 0; width: 260px; height: 390px; object-fit: cover;
   border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
-body.series #heroTitle:not(.logo) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: 50px; }
-body.series #heroTitle.long:not(.logo) { font-size: 42px; }
+body.series #heroTitle:not(.logo) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: calc(50px * var(--ts, 1)); }
+body.series #heroTitle.long:not(.logo) { font-size: calc(42px * var(--ts, 1)); }
 body.series #heroSummary, body.series #heroCast { display: none; }
 /* an actor's page (tv.js personPage): the photo, their name, born, how many of their titles you
    have and the biography beside it; their titles below */
@@ -772,13 +776,13 @@ body.series.person #heroSummary { display: -webkit-box; -webkit-line-clamp: 6; w
 body.series #rowsWindow { top: 368px; }
 body.series #rows > .row.brow:first-child { padding-left: calc(var(--content-x) + 300px); flex-wrap: wrap; align-content: flex-start; }
 body.series #rows > .row.brow:first-child .buttons { flex: 0 0 100%; }
-.brow .bnote { margin: 22px 0 0; width: 900px; font-size: 24px; line-height: 1.33; color: rgba(255,255,255,.85);
+.brow .bnote { margin: 22px 0 0; width: 900px; font-size: calc(24px * var(--ts, 1)); line-height: 1.33; color: rgba(255,255,255,.85);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 /* a movie's page: "Directed by" under the title, and what will play under the summary
    (Video / Audio / Subtitles, like Plex) */
-body.series #heroSub { margin-top: 6px; font-size: 22px; font-weight: 400; color: rgba(255,255,255,.7); }
+body.series #heroSub { margin-top: 6px; font-size: calc(22px * var(--ts, 1)); font-weight: 400; color: rgba(255,255,255,.7); }
 .brow .bfacts { display: grid; grid-template-columns: max-content auto; gap: 6px 40px; margin-top: 20px; width: 900px;
-  font-size: 22px; color: rgba(255,255,255,.92); }
+  font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.92); }
 .brow .bfacts span:nth-child(odd) { color: rgba(255,255,255,.55); }
 body.series-down #hero { display: none; }
 body.series-down #rowsWindow { top: 120px; }
@@ -786,7 +790,7 @@ body.series-down #rowsWindow { top: 120px; }
 .row.small .card, .row.small .card .img { width: 190px; }
 .row.small .card .img { height: 285px; }
 .row.small .card .label { text-align: left; }
-.row.small .card .label:not(.small) { font-size: 22px; }
+.row.small .card .label:not(.small) { font-size: calc(22px * var(--ts, 1)); }
 /* Poster grids size their cards (gridFit in tv.js: at least 5 a row; 220px at 100 %) */
 .row.grid .card:not(.tile) { width: var(--cw, 220px); }
 .row.grid .card:not(.tile) .img { width: var(--cw, 220px); height: calc(var(--cw, 220px) * 1.5); }
@@ -795,9 +799,9 @@ body.series-down #rowsWindow { top: 120px; }
    "Episode n" under each */
 .row.grid.eps .card.wide:not(.tile), .row.grid.eps .card.wide .label { width: 400px; }
 .row.grid.eps .card.wide:not(.tile) .img { width: 400px; height: 225px; }
-.row.grid.eps .card.wide .label:not(.small) { margin-top: 12px; font-size: 23px; color: #e6e6e6; }
+.row.grid.eps .card.wide .label:not(.small) { margin-top: 12px; font-size: calc(23px * var(--ts, 1)); color: #e6e6e6; }
 .row.grid.eps .card.wide .label { text-shadow: 0 1px 6px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.9); }   /* (readable on the show's artwork) */
-.row.grid.eps .card.wide .label.small { font-size: 19px; color: var(--dimmer); }
+.row.grid.eps .card.wide .label.small { font-size: calc(19px * var(--ts, 1)); color: var(--dimmer); }
 /* an episode's page (tv.js episodePage): its 16:9 picture where a poster goes */
 body.series-wide #hero { width: 1330px; padding-left: 430px; }
 body.series-wide #heroPoster { width: 390px; height: 219px; }
@@ -819,19 +823,19 @@ body.short #dlg.list #dlgList { top: 170px; }
 body.short #dlg.list #dlgTitle { top: 64px; }   /* (the list itself starts at 170px there) */
 /* Who's watching at a bigger Text Size: faces, PIN field and keypad smaller and higher, so the
    keypad stays on screen (130 %: ends ~780 of 831 px; 150 %: ~660 of 720) */
-body.short #whoTitle { top: 28px; font-size: 60px; }
+body.short #whoTitle { top: 28px; font-size: calc(60px * var(--ts, 1)); }
 body.short #whoRow { top: 150px; }
 body.short #whoPad { top: 452px; width: 254px; }
-body.short #whoPad .pfield { height: 60px; margin-bottom: 10px; font-size: 26px; }
+body.short #whoPad .pfield { height: 60px; margin-bottom: 10px; font-size: calc(26px * var(--ts, 1)); }
 body.short #whoPad .pkeys { grid-template-columns: repeat(4, 56px); grid-template-rows: repeat(4, 56px); gap: 10px; }
-body.short #whoPad .pk { font-size: 26px; }
+body.short #whoPad .pk { font-size: calc(26px * var(--ts, 1)); }
 body.short #whoPad .pk.zero, body.short #whoPad .pk.bk { border-radius: 28px; }
-body.shortest #whoTitle { top: 22px; font-size: 54px; }
+body.shortest #whoTitle { top: 22px; font-size: calc(54px * var(--ts, 1)); }
 body.shortest #whoRow { top: 112px; gap: 52px; }
 body.shortest .wc, body.shortest .wc.focus, body.shortest .wc .wt, body.shortest .wc.focus .wt { width: 184px; }
 body.shortest .wc .wt, body.shortest .wc.focus .wt,
 body.shortest .wc .wface, body.shortest .wc.focus .wface { width: 184px; height: 184px; }
-body.shortest .wc .wname, body.shortest .wc.focus .wname { margin-top: 10px; font-size: 26px; }
+body.shortest .wc .wname, body.shortest .wc.focus .wname { margin-top: 10px; font-size: calc(26px * var(--ts, 1)); }
 body.shortest #whoPad { top: 362px; width: 227px; }
 body.shortest #whoPad .pfield { height: 56px; margin-bottom: 8px; }
 body.shortest #whoPad .pkeys { grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(4, 50px); gap: 9px; }
@@ -851,25 +855,25 @@ body.link-mode #main { visibility: hidden; }
 #link { position: absolute; inset: 0; z-index: 21; display: grid; place-content: center; justify-items: center; text-align: center; gap: 16px;
   background: radial-gradient(ellipse at 85% 95%, #2a3036 0%, #15181b 45%, #050607 100%); }
 #link[hidden] { display: none; }
-#linkTitle { margin: 0 0 22px; font-size: 64px; font-weight: 700; color: #fff; }
-#link p { margin: 0; font-size: 30px; color: rgba(255,255,255,.75); }
-#linkUrl { margin-bottom: 22px; font-size: 56px; font-weight: 700; color: var(--accent); }
+#linkTitle { margin: 0 0 22px; font-size: calc(64px * var(--ts, 1)); font-weight: 700; color: #fff; }
+#link p { margin: 0; font-size: calc(30px * var(--ts, 1)); color: rgba(255,255,255,.75); }
+#linkUrl { margin-bottom: 22px; font-size: calc(56px * var(--ts, 1)); font-weight: 700; color: var(--accent); }
 #linkCode { display: flex; gap: 16px; min-height: 128px; align-items: center; margin: 6px 0 8px; }
 #linkCode span { width: 104px; height: 128px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.1);
-  font-size: 76px; font-weight: 700; color: #fff; }
+  font-size: calc(76px * var(--ts, 1)); font-weight: 700; color: #fff; }
 #linkCode .spinner { width: 54px; height: 54px; border-radius: 50%; border: 5px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .9s linear infinite; }
-#link #linkNote { font-size: 22px; color: var(--dim); }
-#linkPc { margin-top: 26px; height: 64px; padding: 0 34px; border: 0; border-radius: 32px; font: inherit; font-size: 24px;
+#link #linkNote { font-size: calc(22px * var(--ts, 1)); color: var(--dim); }
+#linkPc { margin-top: 26px; height: 64px; padding: 0 34px; border: 0; border-radius: 32px; font: inherit; font-size: calc(24px * var(--ts, 1));
   background: #000; color: #fff; box-shadow: inset 0 0 0 3px #fff; cursor: pointer; }
-body.short #linkTitle { margin-bottom: 10px; font-size: 54px; }
-body.short #linkUrl { margin-bottom: 10px; font-size: 48px; }
+body.short #linkTitle { margin-bottom: 10px; font-size: calc(54px * var(--ts, 1)); }
+body.short #linkUrl { margin-bottom: 10px; font-size: calc(48px * var(--ts, 1)); }
 body.short #linkCode { min-height: 104px; }
-body.short #linkCode span { width: 86px; height: 104px; font-size: 62px; }
+body.short #linkCode span { width: 86px; height: 104px; font-size: calc(62px * var(--ts, 1)); }
 body.short #linkPc { margin-top: 12px; }
 /* details pages at about 150 %: the rows start higher, so a focused poster in a lower row
    (More like this…) keeps its frame on screen */
 body.shortest.details #rowsWindow { top: calc(554px - var(--short, 0px) * .7); }
-body.shortest.details .row h3 { margin-bottom: 12px; font-size: 28px; }   /* (a show's season tabs push its top area down) */
+body.shortest.details .row h3 { margin-bottom: 12px; font-size: calc(28px * var(--ts, 1)); }   /* (a show's season tabs push its top area down) */
 /* rows just drawn go straight to their place (tv.js renderRows): no slide from the start */
 #rows.fresh, #rows.fresh .strip { transition: none; }
 /* PlexDeck update (a sidebar entry while there's one): its icon in the accent colour, in the open and
