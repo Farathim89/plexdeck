@@ -681,7 +681,9 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
       tr("Automatic follows Windows' speaker setup. Stereo / 5.1 / 7.1 take the sound device while playing.")),
     { label: tr("Speakers"),
       value: () => (pn.audio ? [pn.audio.layout, pn.audio.device].filter(Boolean).join(" · ") : pn.loaded ? tr("Unknown") : "…"),
-      sub: pn.audio && pn.audio.channels < 8 && lastPrefs.passthrough !== "all"
+      sub: pn.audio && pn.audio.headphones
+        ? tr("Headphones: the sound plays the normal way here. Passthrough and Audio Channels are for a receiver or speakers.")
+        : pn.audio && pn.audio.channels < 8 && lastPrefs.passthrough !== "all"
         ? tr("7.1 is mixed down to {layout} (Windows' speaker setup). 7.1 speakers? Set Audio Channels to 7.1.", { layout: pn.audio.layout })
         : "" },
     prefRow(tr("Volume"), "defaultVolume", steps(0, 100, 10, (n) => `${n}%`)),
@@ -2974,9 +2976,22 @@ addEventListener("mousemove", (e) => {
 addEventListener("click", (e) => { if (e.button === 0) clickAt(e.target, false); });
 addEventListener("contextmenu", (e) => { e.preventDefault(); clickAt(e.target, true); });
 addEventListener("mouseup", (e) => { if (e.button === 3) { e.preventDefault(); act("Back"); mouseOn(); } });
-let wheelAt = 0;
+let wheelAt = 0, wheelSum = 0;
 addEventListener("wheel", (e) => {
   const across = Math.abs(e.deltaX) > Math.abs(e.deltaY), d = across ? e.deltaX : e.deltaY;
+  // In the player and on Now Playing the wheel is the volume (like most players), each notch 5 %.
+  // A touchpad's small steps add up to a notch.
+  const player = Player.isActive(), music = !player && Music.isScreen() && !Dialog.isOpen() && !menuOpen;
+  if (!across && (player || music) && !overlayOpen && !Link.isOpen()) {
+    if (Date.now() - wheelAt > 400) wheelSum = 0;
+    wheelAt = Date.now();
+    wheelSum += e.deltaMode ? d * 100 : d;
+    if (Math.abs(wheelSum) < 50) return;
+    const notches = Math.max(-4, Math.min(4, Math.trunc(wheelSum / 100) || Math.sign(wheelSum)));
+    wheelSum = 0;
+    if (player) Player.wheel(-notches); else Music.wheel(-notches);
+    return;
+  }
   if (Math.abs(d) < 4 || Date.now() - wheelAt < 140) return;
   wheelAt = Date.now();
   act(across ? (d > 0 ? "Right" : "Left") : (d > 0 ? "Down" : "Up"));

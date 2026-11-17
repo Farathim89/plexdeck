@@ -312,6 +312,7 @@ const Music = (() => {
 
   return {
     init, playQueue, stop, act, showScreen,
+    wheel: (notches) => { if (screen && queue.length && notches) changeVolume(0.05 * notches); },   // the mouse wheel on Now Playing
     isScreen: () => screen,
     isActive: () => queue.length > 0,
     pauseForVideo: () => { if (!audio.paused) audio.pause(); },

@@ -248,19 +248,86 @@ function seek(command) {
   return (seekChain = seekChain.then(run, run));
 }
 
-// mpv options from PlexDeck's settings (picture, sound, subtitles).
-function settingsArgs(c) {
-  const a = ["--vo=gpu-next"];
-  a.push(`--target-colorspace-hint=${c.hdr === false ? "no" : "yes"}`);
-  a.push(`--hwdec=${c.hwDecode === "off" ? "no" : c.hwDecode === "d3d11" ? "d3d11va" : "auto-safe"}`);
-  if (c.passthrough === "dolby-dts") a.push("--audio-spdif=ac3,eac3,dts", "--audio-exclusive=yes");
-  if (c.passthrough === "all") a.push("--audio-spdif=ac3,eac3,dts,dts-hd,truehd", "--audio-exclusive=yes");
+// ---- the sound device ------------------------------------------------------------------
+// The device Windows plays to now (mpv takes Windows' default one): its name and what it is.
+// Passthrough (Dolby / DTS as they are) and Audio Channels (the device to ourselves, exclusive
+// mode) are for a receiver or speakers. Headphones and headsets stayed silent with them — also
+// virtual ones like SteelSeries Sonar, which pass the sound on to a headset with their own
+// surround: those get the sound the normal way, decoded by mpv and mixed by Windows.
+// Windows' audio API through PowerShell (no extra files); about 0.35 s.
+const SOUND_PS = `
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceEnumerator { int EnumAudioEndpoints(int flow, int mask, out IntPtr list); int GetDefaultAudioEndpoint(int flow, int role, out IMMDevice dev); }
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDevice { int Activate(ref Guid iid, int ctx, IntPtr p, out IntPtr i); int OpenPropertyStore(int access, out IntPtr store); int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); }
+[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class PPMMDeviceEnumerator {}
+public static class PPSound {
+  public static string Default() {
+    var e = (IMMDeviceEnumerator)new PPMMDeviceEnumerator(); IMMDevice d; string id;
+    if (e.GetDefaultAudioEndpoint(0, 1, out d) != 0 || d.GetId(out id) != 0) return "";
+    return id;
+  }
+}
+"@
+$id = [PPSound]::Default()
+$g = if ($id -match '[.]([{][0-9a-fA-F-]+[}])$') { $Matches[1] } else { '' }
+$p = if ($g) { Get-ItemProperty ('HKLM:/SOFTWARE/Microsoft/Windows/CurrentVersion/MMDevices/Audio/Render/' + $g + '/Properties') -ErrorAction SilentlyContinue }
+[pscustomobject]@{ id = $id; name = [string]$p.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'; formFactor = [int]$p.'{1da5d803-d492-4edd-8c23-e0c0ffee7f0e},0' } | ConvertTo-Json -Compress
+`;
+// (Windows' endpoint form factors: 3 headphones, 5 headset, 6 handset)
+const HEADPHONES = new Set([3, 5, 6]);
+let lastSound = null;   // the device at the last look: { id, name, formFactor, headphones }
+function soundOutput() {
+  return new Promise((resolve) => {
+    let out = "";
+    const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", SOUND_PS], { windowsHide: true });
+    const t = setTimeout(() => { try { p.kill(); } catch {} }, 5000);
+    p.stdout.on("data", (b) => { out += b; });
+    p.on("error", () => { clearTimeout(t); resolve(null); });
+    p.on("close", () => {
+      clearTimeout(t);
+      let s = null;
+      try { s = JSON.parse(out.trim()); } catch {}
+      if (!s || !s.id) return resolve(null);
+      resolve(lastSound = { id: s.id, name: s.name || "", formFactor: Number(s.formFactor) || 0, headphones: HEADPHONES.has(Number(s.formFactor)) });
+    });
+  });
+}
+// mpv's sound options for your settings on that device.
+function soundProps(c, out) {
+  const p = { "audio-spdif": "", "audio-exclusive": false, "audio-channels": "auto-safe" };
+  if (out && out.headphones) return p;
+  if (c.passthrough === "dolby-dts") Object.assign(p, { "audio-spdif": "ac3,eac3,dts", "audio-exclusive": true });
+  if (c.passthrough === "all") Object.assign(p, { "audio-spdif": "ac3,eac3,dts,dts-hd,truehd", "audio-exclusive": true });
   // Speakers: Automatic = Windows' speaker setup for the device. Stereo / 5.1 / 7.1 work whatever
   // Windows is set to — only possible with the device to ourselves (exclusive mode; in shared
   // mode Windows keeps its own layout, e.g. 5.1 even when stereo is asked for). 5.1 / 7.1 mean
   // "up to": a 5.1 or stereo source goes out as it is (the receiver can then upmix it its way).
   const layouts = { stereo: "stereo", "5.1": "5.1,stereo", "7.1": "7.1,5.1,stereo" }[c.audioChannels];
-  if (layouts) a.push(`--audio-channels=${layouts}`, "--audio-exclusive=yes");
+  if (layouts) Object.assign(p, { "audio-channels": layouts, "audio-exclusive": true });
+  return p;
+}
+const soundArgs = (c, out) => Object.entries(soundProps(c, out)).map(([k, v]) => `--${k}=${v === true ? "yes" : v === false ? "no" : v}`);
+// Before each video: the sound as it should be for the device Windows plays to now (it may have
+// changed since the last video — headphones on, the receiver back).
+let soundLook = null;   // a look started early (when the player opens), used by the first video
+async function applySound() {
+  const look = soundLook || soundOutput();
+  soundLook = null;
+  const out = await look;
+  const want = soundProps(d.config(), out || lastSound);
+  for (const [k, v] of Object.entries(want)) if ((await getProp(k)) !== v) await send(["set_property", k, v]);
+  plog(out ? `sound: ${out.name || out.id}${out.headphones ? " — headphones: no passthrough, Windows' own channels" : ""}` : "sound: couldn't read the sound device");
+}
+
+// mpv options from PlexDeck's settings (picture, sound, subtitles).
+function settingsArgs(c) {
+  const a = ["--vo=gpu-next"];
+  a.push(`--target-colorspace-hint=${c.hdr === false ? "no" : "yes"}`);
+  a.push(`--hwdec=${c.hwDecode === "off" ? "no" : c.hwDecode === "d3d11" ? "d3d11va" : "auto-safe"}`);
+  a.push(...soundArgs(c, lastSound));
   const vol = Number(c.defaultVolume);   // 0 is a real choice (it was taken as "not set" → 100)
   a.push(`--volume=${Number.isFinite(vol) && c.defaultVolume !== "" && c.defaultVolume != null ? Math.max(0, Math.min(100, vol)) : 100}`);
   const size = { Small: 0.8, Normal: 1, Large: 1.3, Huge: 1.6 }[c.subSize] || 1;
@@ -369,6 +436,7 @@ function open(item) {
     ...settingsArgs(d.config()),
   ];
   now.paused = false; now.title = ""; lastFps = 0; lastVideo = null; rateDone = false;
+  soundLook = soundOutput();   // which sound device: ready by the time the video's details are in
   // which screen, and how it is now — ready by the time the video's details are in
   const win = d.win();
   // (after the last video's screen is put back — else it reads HDR still on and doesn't switch)
@@ -408,12 +476,14 @@ function stop() {
 // What the sound device gets from a 7.1 source with your settings: a second of silent
 // test tone, then mpv says which device and layout it opened ("5.1 · DENON-AVR").
 let audioInfo = null;
-function probeAudio() {
-  const audioArgs = settingsArgs(d.config()).filter((x) => /^--audio-(channels|exclusive)/.test(x));
-  const key = audioArgs.join(" ");
-  if (audioInfo && audioInfo.key === key && Date.now() - audioInfo.at < 30000) return Promise.resolve(audioInfo);
+async function probeAudio() {
+  // (headphones: the normal way, like a video gets it — see soundProps)
+  const snd = await soundOutput();
+  const audioArgs = soundArgs(d.config(), snd).filter((x) => /^--audio-(channels|exclusive)/.test(x));
+  const key = `${snd ? snd.id : ""} ${audioArgs.join(" ")}`;
+  if (audioInfo && audioInfo.key === key && Date.now() - audioInfo.at < 30000) return audioInfo;
   const exe = mpvPath();
-  if (!exe) return Promise.resolve(null);
+  if (!exe) return null;
   const args = ["--no-config", "--vo=null", "--volume=0", "--length=0.4", "--msg-level=all=no,cplayer=info,ao/wasapi=v", ...audioArgs,
     "av://lavfi:sine=frequency=440:sample_rate=48000,aformat=channel_layouts=7.1"];
   return new Promise((resolve) => {
@@ -424,7 +494,8 @@ function probeAudio() {
     const done = () => {
       const ao = /AO: \[\w+\] (\d+)Hz (\S+) (\d+)ch/.exec(out);
       const dev = /Selecting device '[^']*' \((.+)\)\s*$/m.exec(out);
-      audioInfo = ao ? { key, at: Date.now(), layout: ao[2], channels: Number(ao[3]), device: dev ? dev[1].replace(/ \((?:NVIDIA|AMD|Intel|Realtek)[^)]*\)$/i, "") : "" } : null;
+      audioInfo = ao ? { key, at: Date.now(), layout: ao[2], channels: Number(ao[3]), headphones: !!(snd && snd.headphones),
+        device: dev ? dev[1].replace(/ \((?:NVIDIA|AMD|Intel|Realtek|SteelSeries Sonar Virtual Audio Device)[^)]*\)$/i, "") : "" } : null;
       resolve(audioInfo);
     };
     p.on("exit", done);
@@ -462,7 +533,9 @@ function init(deps) {
     lastVideo = { fps: fps > 10 && fps < 130 ? fps : 0, hdrVideo: hdr || rtxHdr };
     plog(`prepare: ${lastVideo.fps || "?"} fps, ${hdr ? "HDR" : "SDR"}, ${Number(v && v.width) || "?"}x${Number(v && v.height) || "?"}`);
     let settle = 0;
+    const sound = applySound().catch((err) => plog(`sound failed: ${err && err.message}`));
     try { settle = await prepareDisplay(); } catch (err) { plog(`prepare failed: ${err && err.message}`); }
+    await sound;
     try {
       if (spdifFallback) {
         const devs = await audioDevices();

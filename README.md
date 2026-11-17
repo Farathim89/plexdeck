@@ -54,7 +54,9 @@ mouse too: click to pick, right-click (or **C**) for a title's menu, **Esc** for
 Your own videos play in [mpv](https://mpv.io) straight from your server — HEVC, 10-bit,
 DTS / TrueHD, styled subtitles — without the server converting anything. In both modes.
 
-- HDR to HDR screens, surround passthrough to an AV receiver (incl. TrueHD / Atmos / DTS-HD)
+- HDR to HDR screens, surround passthrough to an AV receiver (incl. TrueHD / Atmos / DTS-HD);
+  headphones and headsets (also SteelSeries Sonar and the like) always get normal sound
+- the mouse wheel sets the volume (the controller's right stick too)
 - match the screen's refresh rate to the video
 - Skip Intro / Credits (optionally automatic after a delay you choose), Up Next (with
   specials where they aired, like Plex), chapters, audio & subtitle tracks, playback speed, audio / subtitle sync

@@ -768,6 +768,14 @@ const Player = (() => {
     clearTimeout(volSaveTimer);
     volSaveTimer = setTimeout(() => window.ppDesktop.setSetting("defaultVolume", v), 1500);
   }
+  // The mouse wheel: the volume, 5 % a notch (up = louder). In a menu (subtitles, audio…) it
+  // moves up and down the list instead.
+  function wheel(notches) {
+    lastAct = Date.now();
+    if (!active || !notches) return;
+    if (menu && !mini) { for (let i = 0; i < Math.abs(notches); i++) act(notches > 0 ? "Up" : "Down"); return; }
+    changeVolume(5 * notches);
+  }
   function showVolume(v) {
     $("pVol").classList.toggle("ext", v == null);
     $("pVolText").textContent = v == null ? tr("The receiver sets the volume (passthrough)") : `${v} %`;
@@ -830,5 +838,5 @@ const Player = (() => {
     wireMini();
   }
 
-  return { init, open, close, act, isActive: () => active };
+  return { init, open, close, act, wheel, isActive: () => active };
 })();

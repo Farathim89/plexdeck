@@ -267,7 +267,7 @@ body.who-mode #main { visibility: hidden; }
 /* Skip Intro / Credits, like Plex: the bottom-right corner on its own (10 s); with the controls
    up, above the option buttons — selected with Up from them */
 #pSkip { right: 72px; bottom: 76px; font-size: calc(26px * var(--ts, 1)); padding: 14px 30px; border-width: 2px; }
-#player.osd #pSkip { bottom: 236px; border-color: rgba(255,255,255,.45); }
+#player.osd #pSkip { bottom: 200px; border-color: rgba(255,255,255,.45); }
 #player.osd #pSkip.focus { background: #000; border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
 /* Jumping with ← / → while the controls are hidden: a small hint instead of the whole bar */
 #pJump { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 18px;
@@ -585,11 +585,11 @@ body.no-hero #bg { background: linear-gradient(160deg, #262626 0%, #121212 55%, 
    play, time, seek bar, time left along the bottom */
 #pShadeTop { height: 200px; background: linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,0)); }
 #pShadeBottom { height: 300px; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.75)); }
-.ptop { left: 72px; right: 72px; top: 60px; }
+.ptop { left: 72px; right: 72px; top: 34px; }
 #pTitle { font-size: calc(34px * var(--ts, 1)); font-weight: 700; }
 #pSub { margin-top: 6px; font-size: calc(22px * var(--ts, 1)); color: rgba(255,255,255,.65); }
 #pClock { position: absolute; right: 8px; top: 0; font-size: calc(24px * var(--ts, 1)); color: #fff; }
-.pbottom { left: 72px; right: 72px; bottom: 76px; }
+.pbottom { left: 72px; right: 72px; bottom: 40px; }
 #pButtons { display: block; margin-top: 0; }
 #pButtons .pgroup.right { width: auto; justify-content: flex-end; gap: 12px; margin-bottom: 18px; }
 #pButtons .prow { display: flex; align-items: center; }
@@ -597,8 +597,9 @@ body.no-hero #bg { background: linear-gradient(160deg, #262626 0%, #121212 55%, 
 #pTime, #pLeft { font-size: calc(26px * var(--ts, 1)); color: #fff; min-width: 90px; }
 #pLeft { text-align: right; margin-left: 40px; }
 .prow .pseek { flex: 1; height: 30px; }
-#pBar { height: 6px; background: rgba(255,255,255,.35); }
-#pBar.focus { height: 8px; box-shadow: none; }
+#pBar { height: 10px; border-radius: 5px; background: rgba(255,255,255,.18); box-shadow: 0 0 0 2px rgba(255,255,255,.45); }   /* a thin border: it reads over bright pictures too */
+#pBar.focus { height: 12px; border-radius: 6px; box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+#pFill { border-radius: 5px; }
 .pb { width: 64px; height: 64px; background: rgba(255,255,255,.14); }
 .pb svg { width: 30px; height: 30px; }
 .pb svg.gear { fill: currentColor; stroke: none; }
