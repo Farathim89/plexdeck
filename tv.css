@@ -232,6 +232,8 @@ body.who-mode #main { visibility: hidden; }
 #player { position: absolute; inset: 0; background: #000; z-index: 30; }
 #player[hidden] { display: none; }
 #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+/* Settings → Video & Audio → Dim: the picture (and its subtitles) darker; the controls on top stay bright */
+#pDim { position: absolute; inset: 0; background: #000; opacity: var(--player-dim, 0); pointer-events: none; }
 .pspin { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; border-radius: 50%;
   border: 5px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .9s linear infinite; }
 .pspin[hidden] { display: none; }

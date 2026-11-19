@@ -675,6 +675,11 @@ const SETTINGS_PANEL = () => ({ title: tr("Settings"), rows: () => [
     prefRow(tr("RTX Super Resolution"), "rtxUpscale", "toggle", tr("NVIDIA RTX cards: videos smaller than the screen are upscaled with AI.")),
     prefRow(tr("RTX Video HDR"), "rtxHdr", "toggle", tr("NVIDIA RTX cards: SDR videos play as HDR (with HDR Switching, or Windows HDR on).")),
     prefRow(tr("Hardware Decoding"), "hwDecode", [{ v: "auto", l: tr("Automatic") }, { v: "d3d11", l: "Direct3D 11" }, { v: "off", l: tr("Software") }]),
+    { label: tr("Dim"), sub: tr("Videos darker, like the screensaver's Dim (at night, say). The controls stay bright."),
+      value: () => (playerDim() ? `${playerDim()} %` : tr("Off")), action: () => pushPanel({
+      title: tr("Dim"), stepper: { key: "playerDim", min: 0, max: 80, step: 5, v: playerDim() },
+      rows: (pn) => [{ label: tr("← / →  change   ·   OK  save"), box: () => `${pn.stepper.v} %`, action: () => { setPref("playerDim", pn.stepper.v); popPanel(); } }],
+    }) },
     { header: tr("Audio") },
     prefRow(tr("Passthrough"), "passthrough", [{ v: "off", l: tr("Off") }, { v: "dolby-dts", l: "Dolby Digital / DTS" }, { v: "all", l: tr("All (TrueHD, Atmos, DTS-HD)") }]),
     prefRow(tr("Audio Channels"), "audioChannels", [{ v: "auto", l: tr("Automatic") }, { v: "stereo", l: tr("Stereo") }, { v: "5.1", l: tr("Up to {layout}", { layout: "5.1" }) }, { v: "7.1", l: tr("Up to {layout}", { layout: "7.1" }) }],
@@ -2700,6 +2705,7 @@ function toggleSaverLib(key) {
 let nativePlaying = false;   // the native (mpv) player is open on top
 let lastInput = Date.now(), saverOn = false, saverTimer = null, saverItems = [], saverI = 0, saverFlip = false, saverMix = false;
 const saverDim = () => Math.max(0, Math.min(80, Math.round(Number(lastPrefs.saverDim ?? 20)) || 0));   // %
+const playerDim = () => Math.max(0, Math.min(80, Math.round(Number(lastPrefs.playerDim)) || 0));   // %, videos
 const saverSecs = () => Math.max(3, Math.min(300, Number(lastPrefs.saverSecs) || 12));   // a picture's seconds
 async function startSaver() {
   if (saverOn) return;
@@ -3078,6 +3084,7 @@ let lastPrefs = {};
 function applyPrefs(s) {
   if (!s || !s.themes) return;
   lastPrefs = s;
+  document.documentElement.style.setProperty("--player-dim", String(playerDim() / 100));
   const t = s.themes.find((x) => x.id === s.theme);
   if (t) document.documentElement.style.setProperty("--accent", t.accent);
   // Theme Music switched off, or a new level: at once (you hear it while you choose)

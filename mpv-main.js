@@ -648,4 +648,4 @@ function command(cmd) {
 
 // The player's controls, when they should have the keyboard / controller (not in the mini player).
 const controls = () => (osd && !osd.isDestroyed() && !mini ? osd : null);
-module.exports = { init, available, stop, isOpen: () => !!host, state, command, controls };
+module.exports = { init, available, stop, isOpen: () => !!host, state, command, controls, osdView: () => (alive(osd) ? osd : null) };

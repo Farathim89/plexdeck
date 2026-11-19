@@ -206,11 +206,13 @@ const Player = (() => {
     sleepAt = Date.now() + min * 60000;
     sleepTimer = setTimeout(() => { sleepAt = 0; if (active && !video().paused) togglePause(); }, min * 60000);
   }
+  const dimNow = () => Math.max(0, Math.min(80, Math.round(Number((ctx.prefs() || {}).playerDim)) || 0));
   const sleepName = () => (sleepEnd ? tr("End of video") : sleepAt ? tr("{n} min left", { n: Math.max(1, Math.round((sleepAt - Date.now()) / 60000)) }) : tr("Off"));
   function moreMenu(parent = null) {
     const speedName = (v) => (v === 1 ? tr("Normal") : `${v}×`);
     const items = [{ label: tr("Playback Speed"), right: speedName(fx.speed), value: "speed" },
-      { label: tr("Sleep Timer"), right: sleepName(), value: "sleep" }];
+      { label: tr("Sleep Timer"), right: sleepName(), value: "sleep" },
+      { label: tr("Dim"), right: dimNow() ? `${dimNow()} %` : tr("Off"), value: "dim" }];
     if (mpvMode) items.push(
       { label: tr("Audio Sync"), right: ms(fx.audioDelay), value: "audio" },
       { label: tr("Subtitle Sync"), right: ms(fx.subDelay), value: "sub" },
@@ -218,6 +220,12 @@ const Player = (() => {
     const me = openMenu(tr("Playback Options"), items, (k) => {
       if (k === "sleep") openMenu(tr("Sleep Timer"), [["Off", 0], ["15 min", 15], ["30 min", 30], ["45 min", 45], ["60 min", 60], ["90 min", 90], ["End of video", "end"]]
         .map(([l, v]) => ({ label: tr(l), value: v, radio: true, selected: v === "end" ? sleepEnd : v === 0 ? !sleepAt && !sleepEnd : false })), (v) => setSleep(v), me);
+      // Dim: the picture darker (Settings → Video & Audio → Dim), kept for the next videos
+      if (k === "dim") openMenu(tr("Dim"), [0, 10, 20, 30, 40, 50, 60, 70, 80].map((v) => ({ label: v ? `${v} %` : tr("Off"), value: v, selected: v === dimNow(), radio: true })), (v) => {
+        const pr = ctx.prefs(); if (pr) pr.playerDim = v;
+        document.documentElement.style.setProperty("--player-dim", String(v / 100));
+        window.ppDesktop.setSetting("playerDim", v);
+      }, me);
       if (k === "speed") openMenu(tr("Playback Speed"), SPEEDS.map((v) => ({ label: speedName(v), value: v, selected: v === fx.speed, radio: true })), (v) => {
         fx.speed = v; if (mpvMode) setProp("speed", v); else $("video").playbackRate = v; }, me);
       if (k === "audio") openMenu(tr("Audio Sync (+ = later)"), DELAYS.map((v) => ({ label: ms(v), value: v, selected: v === fx.audioDelay, radio: true })), (v) => { fx.audioDelay = v; setProp("audio-delay", v); }, me);

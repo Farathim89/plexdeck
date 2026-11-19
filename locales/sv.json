@@ -790,5 +790,9 @@
   "PlexDeck {version} is available. Update it from the menu.": "PlexDeck {version} finns tillgänglig. Uppdatera från menyn.",
   "PlexDeck {version} is out": "PlexDeck {version} har kommit",
   "Update to {version}": "Uppdatera till {version}",
-  "You have {current}": "Du har {current}"
+  "You have {current}": "Du har {current}",
+  "(the controls stay bright)": "(kontrollerna förblir ljusa)",
+  "Dim videos": "Dämpa videor",
+  "Player dimming": "Spelarens dämpning",
+  "Videos darker, like the screensaver's Dim (at night, say). The controls stay bright.": "Mörkare videor, som skärmsläckarens Dämpa (till exempel på kvällen). Kontrollerna förblir ljusa."
 }

@@ -790,5 +790,9 @@
   "PlexDeck {version} is available. Update it from the menu.": "PlexDeck {version} está disponible. Actualízalo desde el menú.",
   "PlexDeck {version} is out": "Ya salió PlexDeck {version}",
   "Update to {version}": "Actualizar a {version}",
-  "You have {current}": "Tienes la {current}"
+  "You have {current}": "Tienes la {current}",
+  "(the controls stay bright)": "(los controles siguen brillantes)",
+  "Dim videos": "Atenuar vídeos",
+  "Player dimming": "Atenuación del reproductor",
+  "Videos darker, like the screensaver's Dim (at night, say). The controls stay bright.": "Vídeos más oscuros, como la atenuación del salvapantallas (por la noche, por ejemplo). Los controles siguen brillantes."
 }

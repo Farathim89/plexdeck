@@ -53,6 +53,7 @@ const DEFAULTS = {
   rtxHdr: false,             // NVIDIA RTX Video HDR: SDR videos as HDR (with Windows HDR on)
   defaultVolume: 100,
   hwDecode: "auto",          // "auto" | "off" | "d3d11"
+  playerDim: 0,              // how much darker videos are, % (the controls stay bright), like the screensaver's Dim
   // Subtitles (text subtitles like SRT; styled ASS subtitles keep their own look)
   subSize: "Normal",         // Small | Normal | Large | Huge
   subColor: "White",         // White | Yellow | Cyan | Green | Gray
